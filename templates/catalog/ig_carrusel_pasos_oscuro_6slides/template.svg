@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  template.svg · ig_carrusel_pasos_oscuro_6slides · v0.2.1
+  Un solo archivo con los 6 slides, cada uno en <g id="slide-N" class="slide">.
+  Solo el slide con la clase "activo" se ve: el renderizador (Playwright) activa uno por vez y
+  reemplaza los {{placeholders}} dentro de ese grupo (los nombres se repiten entre slides a propósito).
+  Colores = templates/brand-kits/mvp.json. Tamaños mínimos y líneas máximas = card.json.
+  Zona segura vertical: y 120..1200 (margen superior 120, inferior 150 sobre 1350).
+  Cada campo de texto es un <foreignObject> con altura fija = lineas_max x interlineado.
+  Desborde = scrollHeight > clientHeight (lo mide el renderizador; no se recorta con line-clamp).
+
+  Layout (v0.2.1):
+  - Margen lateral 80 px y alineación a la izquierda en todos los slides (un solo borde de lectura).
+  - Los bloques de contenido van centrados ópticamente: su centro queda en y 600, por encima del
+    centro geométrico de la zona segura (660), porque el ojo percibe el centro más arriba.
+    Los títulos de los slides 3, 4 y 5 arrancan en la misma y (360) para que no salten al deslizar.
+    Decoración fija: marca de acento en y 120 y barra de progreso en y 1180.
+  - Escala tipográfica pensada para el celular: Instagram muestra el slide a ~36 % del tamaño real,
+    así que el cuerpo sube a 36-38 px (≈13 px en pantalla) en vez de quedarse en el mínimo de 30.
+  - Espacios entre bloques: 40-48 px (múltiplos de 8).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <title>Carrusel lista de pasos (fondo oscuro, 6 slides)</title>
+  <style>
+    :root { --fondo:#0F172A; --texto:#F8FAFC; --acento:#38BDF8; --texto-sobre-acento:#0F172A; }
+    .slide { display: none; }
+    .slide.activo { display: inline; }
+    .t { margin:0; padding:0; overflow:hidden; overflow-wrap:break-word; color:var(--texto);
+         font-family:"Inter", "Segoe UI", Arial, sans-serif; }
+    .titulo { font-weight:700; }
+    .cuerpo { font-weight:400; }
+    .mono { font-family:"JetBrains Mono", Consolas, monospace; }
+    .sobre-acento { color:var(--texto-sobre-acento); font-weight:600; }
+  </style>
+
+  <rect id="fondo" width="1080" height="1350" fill="#0F172A"/>
+
+  <!-- ============ Slide 1 · gancho ============ -->
+  <g id="slide-1" class="slide activo" data-rol="gancho">
+    <rect x="80" y="120" width="96" height="8" fill="#38BDF8"/>
+    <foreignObject x="80" y="390" width="920" height="222" data-campo="{{titulo}}" data-lineas-max="3" data-fuente-min="56">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:64px;line-height:74px;height:222px;">{{titulo}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="660" width="920" height="150" data-campo="{{subtitulo}}" data-lineas-max="3" data-fuente-min="32" data-opcional="true">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:50px;height:150px;opacity:.8;">{{subtitulo}}</div>
+    </foreignObject>
+    <g id="progreso-1">
+      <rect x="80"  y="1180" width="140" height="6" fill="#38BDF8"/>
+      <rect x="236" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="392" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="548" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="704" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="860" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+    </g>
+  </g>
+
+  <!-- ============ Slide 2 · segundo gancho ============ -->
+  <g id="slide-2" class="slide" data-rol="segundo_gancho">
+    <rect x="80" y="120" width="96" height="8" fill="#38BDF8"/>
+    <foreignObject x="80" y="200" width="920" height="210" data-campo="{{titulo}}" data-lineas-max="3" data-fuente-min="56">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:60px;line-height:70px;height:210px;">{{titulo}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="450" width="920" height="200" data-campo="{{cuerpo}}" data-lineas-max="4" data-fuente-min="32">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:50px;height:200px;opacity:.85;">{{cuerpo}}</div>
+    </foreignObject>
+    <!-- Opcional: si el usuario no sube imagen, el renderizador oculta este grupo -->
+    <g id="imagen-producto" data-campo="{{imagen_producto}}" data-opcional="true">
+      <title>Foto del producto</title>
+      <rect x="80" y="698" width="920" height="422" rx="16" fill="#F8FAFC" fill-opacity=".06" stroke="#38BDF8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>
+      <image x="80" y="698" width="920" height="422" preserveAspectRatio="xMidYMid slice" href="{{imagen_producto}}"/>
+    </g>
+    <g id="progreso-2">
+      <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="236" y="1180" width="140" height="6" fill="#38BDF8"/>
+      <rect x="392" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="548" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="704" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="860" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+    </g>
+  </g>
+
+  <!-- ============ Slide 3 · desarrollo ============ -->
+  <g id="slide-3" class="slide" data-rol="desarrollo">
+    <rect x="80" y="120" width="96" height="8" fill="#38BDF8"/>
+    <foreignObject x="80" y="360" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;">{{titulo}}</div>
+    </foreignObject>
+    <rect x="80" y="528" width="6" height="312" fill="#38BDF8"/>
+    <foreignObject x="116" y="528" width="884" height="312" data-campo="{{cuerpo}}" data-lineas-max="6" data-fuente-min="30">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:52px;height:312px;opacity:.85;">{{cuerpo}}</div>
+    </foreignObject>
+    <g id="progreso-3">
+      <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="236" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="392" y="1180" width="140" height="6" fill="#38BDF8"/>
+      <rect x="548" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="704" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="860" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+    </g>
+  </g>
+
+  <!-- ============ Slide 4 · desarrollo ============ -->
+  <g id="slide-4" class="slide" data-rol="desarrollo">
+    <rect x="80" y="120" width="96" height="8" fill="#38BDF8"/>
+    <foreignObject x="80" y="360" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;">{{titulo}}</div>
+    </foreignObject>
+    <rect x="80" y="528" width="6" height="312" fill="#38BDF8"/>
+    <foreignObject x="116" y="528" width="884" height="312" data-campo="{{cuerpo}}" data-lineas-max="6" data-fuente-min="30">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:52px;height:312px;opacity:.85;">{{cuerpo}}</div>
+    </foreignObject>
+    <g id="progreso-4">
+      <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="236" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="392" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="548" y="1180" width="140" height="6" fill="#38BDF8"/>
+      <rect x="704" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="860" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+    </g>
+  </g>
+
+  <!-- ============ Slide 5 · cierre ============ -->
+  <g id="slide-5" class="slide" data-rol="cierre">
+    <rect x="80" y="120" width="96" height="8" fill="#38BDF8"/>
+    <foreignObject x="80" y="360" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;">{{titulo}}</div>
+    </foreignObject>
+    <rect x="80" y="532" width="920" height="258" rx="20" fill="#38BDF8"/>
+    <!-- display:flex + align-items:center: el texto queda centrado en la caja con 2 o 3 líneas -->
+    <foreignObject x="128" y="580" width="824" height="162" data-campo="{{cta}}" data-lineas-max="3" data-fuente-min="36">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t sobre-acento" style="display:flex;align-items:center;font-size:40px;line-height:54px;height:162px;">{{cta}}</div>
+    </foreignObject>
+    <g id="progreso-5">
+      <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="236" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="392" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="548" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="704" y="1180" width="140" height="6" fill="#38BDF8"/>
+      <rect x="860" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+    </g>
+  </g>
+
+  <!-- ============ Slide 6 · fuentes y atribución ============ -->
+  <g id="slide-6" class="slide" data-rol="fuentes">
+    <rect x="80" y="120" width="96" height="8" fill="#38BDF8"/>
+    <foreignObject x="80" y="415" width="920" height="120" data-campo="{{fuente_atribucion}}" data-lineas-max="3" data-fuente-min="24">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:28px;line-height:40px;height:120px;">{{fuente_atribucion}}</div>
+    </foreignObject>
+    <rect x="80" y="567" width="920" height="2" fill="#F8FAFC" fill-opacity=".2"/>
+    <foreignObject x="80" y="601" width="920" height="80" data-campo="{{fuente_licencia}}" data-lineas-max="2" data-fuente-min="24">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:28px;line-height:40px;height:80px;opacity:.85;">{{fuente_licencia}}</div>
+    </foreignObject>
+    <rect x="80" y="713" width="920" height="2" fill="#F8FAFC" fill-opacity=".2"/>
+    <foreignObject x="80" y="745" width="920" height="40" data-campo="{{sello_revision}}" data-lineas-max="1" data-fuente-min="24">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t mono" style="font-size:24px;line-height:40px;height:40px;color:#38BDF8;">{{sello_revision}}</div>
+    </foreignObject>
+    <g id="progreso-6">
+      <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="236" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="392" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="548" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="704" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
+      <rect x="860" y="1180" width="140" height="6" fill="#38BDF8"/>
+    </g>
+  </g>
+</svg>

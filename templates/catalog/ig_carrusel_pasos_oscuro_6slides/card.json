@@ -1,5 +1,5 @@
 {
-  "$comment": "Ficha de la plantilla de lista de pasos (fondo oscuro, 6 slides). El sexto slide es siempre el de fuentes y atribución; su sello de revisión lo calcula código. Falta template.svg (pendiente de la Fase 0).",
+  "$comment": "Ficha de la plantilla de lista de pasos (fondo oscuro, 6 slides). El sexto slide es siempre el de fuentes y atribución; su sello de revisión lo calcula código.",
   "id": "ig_carrusel_pasos_oscuro_6slides",
   "version": "0.1.0",
   "plataforma": "instagram",

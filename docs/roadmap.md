@@ -19,7 +19,7 @@ Tope para la Fase 0: **3 días**. Más papel no baja el riesgo; ejecutar sí.
 - [x] Secuencia grabada válida contra el esquema
 - [x] Ficha de plantilla definida (`card.json` de la plantilla de pasos)
 - [x] Kit de marca del MVP definido
-- [ ] `template.svg` renderizable de la plantilla de pasos
+- [x] `template.svg` renderizable de la plantilla de pasos
 - [ ] Reglas del canal acordadas: SSE, reanudación por `seq`, validación
 - [ ] Caso estrella elegido y licencia confirmada
 

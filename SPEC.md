@@ -138,7 +138,7 @@ Ver el estado en `docs/roadmap.md`.
 - [x] Secuencia grabada en `contracts/recordings`, válida contra el esquema
 - [x] Ficha de plantilla definida
 - [x] Kit de marca del MVP definido
-- [ ] Plantilla de Instagram completa y renderizable (`template.svg`)
+- [x] Plantilla de Instagram completa y renderizable (`template.svg`)
 - [ ] Reglas del canal acordadas: SSE, reanudación por `seq`, validación
 - [ ] Caso estrella elegido y licencia confirmada
 
