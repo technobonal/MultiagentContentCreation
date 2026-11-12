@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/verificacion_fidelidad.schema.json",
+  "$comment": "El revisor verificó una afirmación del pack contra la fuente. Es la base del fact ledger exportable: guarda la afirmación, su clasificación, el veredicto y la cita literal con posición. Las reglas condicionales codifican lo que el código le impone al LLM (por ejemplo, una opinión o CTA nunca lleva cifras ni veredicto 'contradice').",
+  "title": "verificacion_fidelidad",
+  "required": ["agente", "slide", "payload"],
+  "properties": {
+    "agente": { "const": "revisor" },
+    "payload": {
+      "$comment": "Afirmación atómica con su veredicto y evidencia. Las cuatro reglas de allOf mantienen coherentes clasificación, veredicto y cita.",
+      "type": "object",
+      "required": ["afirmacion_id", "afirmacion", "clasificacion", "veredicto", "cita", "motivo"],
+      "additionalProperties": false,
+      "properties": {
+        "afirmacion_id": {
+          "type": "string",
+          "pattern": "^a[0-9]{1,3}$",
+          "description": "Identificador de la afirmación atómica. Una reverificación posterior reutiliza el mismo id."
+        },
+        "afirmacion": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        },
+        "clasificacion": {
+          "type": "string",
+          "enum": ["factual", "opinion_cta"],
+          "description": "'factual' se verifica contra la fuente; 'opinion_cta' (gancho o llamada a la acción) no es verificable por diseño."
+        },
+        "veredicto": {
+          "$ref": "../common.schema.json#/$defs/veredicto"
+        },
+        "cita": {
+          "$comment": "Evidencia de la fuente, o null cuando no existe un fragmento que respalde o contradiga la afirmación.",
+          "oneOf": [
+            { "$ref": "../common.schema.json#/$defs/cita" },
+            { "type": "null" }
+          ]
+        },
+        "motivo": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        }
+      },
+      "allOf": [
+        {
+          "$comment": "Regla 1: un veredicto que respalda (total o parcialmente) exige una cita literal.",
+          "if": {
+            "$comment": "El veredicto es respaldada o parcialmente_respaldada.",
+            "required": ["veredicto"],
+            "properties": { "veredicto": { "enum": ["respaldada", "parcialmente_respaldada"] } }
+          },
+          "then": {
+            "$comment": "La cita debe ser un objeto, no null.",
+            "properties": { "cita": { "type": "object" } }
+          }
+        },
+        {
+          "$comment": "Regla 2: una opinión o CTA no se verifica, así que su veredicto solo puede ser no_aplica.",
+          "if": {
+            "$comment": "La clasificación es opinion_cta.",
+            "required": ["clasificacion"],
+            "properties": { "clasificacion": { "const": "opinion_cta" } }
+          },
+          "then": {
+            "$comment": "Fuerza el veredicto no_aplica.",
+            "properties": { "veredicto": { "const": "no_aplica" } }
+          }
+        },
+        {
+          "$comment": "Regla 3: no_aplica solo es legítimo para opinión o CTA; evita que sea una salida de escape para afirmaciones factuales.",
+          "if": {
+            "$comment": "El veredicto es no_aplica.",
+            "required": ["veredicto"],
+            "properties": { "veredicto": { "const": "no_aplica" } }
+          },
+          "then": {
+            "$comment": "Fuerza la clasificación opinion_cta.",
+            "properties": { "clasificacion": { "const": "opinion_cta" } }
+          }
+        },
+        {
+          "$comment": "Regla 4: 'contradice' habla de un hecho, por lo que la afirmación es siempre factual.",
+          "if": {
+            "$comment": "El veredicto es contradice.",
+            "required": ["veredicto"],
+            "properties": { "veredicto": { "const": "contradice" } }
+          },
+          "then": {
+            "$comment": "Fuerza la clasificación factual.",
+            "properties": { "clasificacion": { "const": "factual" } }
+          }
+        }
+      ]
+    }
+  }
+}

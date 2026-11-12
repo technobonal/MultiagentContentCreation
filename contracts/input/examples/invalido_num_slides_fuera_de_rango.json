@@ -1,0 +1,15 @@
+{
+  "$comment": "INVÁLIDO: num_slides fijo en 9; el MVP admite de 5 a 7.",
+  "fuente": {
+    "tipo": "documento",
+    "referencia": "guia.md",
+    "idioma_salida": "es",
+    "atribucion": "Autor de ejemplo",
+    "licencia": "CC BY 4.0"
+  },
+  "destino": {
+    "red": "instagram",
+    "formato": "carrusel_1080x1350",
+    "num_slides": { "modo": "fijo", "valor": 9 }
+  }
+}

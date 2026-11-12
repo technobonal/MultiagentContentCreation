@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/fuente_indexada.schema.json",
+  "$comment": "El sistema indexó la fuente en fragmentos con posición. Incluye la huella SHA-256 para poder afirmar que los resultados salieron de esta fuente exacta.",
+  "title": "fuente_indexada",
+  "required": ["agente", "payload"],
+  "properties": {
+    "agente": { "const": "sistema" },
+    "payload": {
+      "$comment": "Datos mínimos de la indexación; nunca lleva la fuente completa.",
+      "type": "object",
+      "required": ["num_fragmentos", "num_caracteres", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "num_fragmentos": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Cantidad de fragmentos indexados."
+        },
+        "num_caracteres": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Longitud total de la fuente en caracteres."
+        },
+        "sha256": {
+          "$ref": "../common.schema.json#/$defs/sha256"
+        }
+      }
+    }
+  }
+}

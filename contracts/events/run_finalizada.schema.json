@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/run_finalizada.schema.json",
+  "$comment": "Último evento de una ejecución. Resume el estado final y referencia el fact ledger (el registro de verificaciones exportable) junto con el sello calculado por código.",
+  "title": "run_finalizada",
+  "required": ["agente", "payload"],
+  "properties": {
+    "agente": { "const": "sistema" },
+    "payload": {
+      "$comment": "Estado final y referencias de salida.",
+      "type": "object",
+      "required": ["estado_final", "fact_ledger_ref", "sello"],
+      "additionalProperties": false,
+      "properties": {
+        "estado_final": {
+          "$ref": "../common.schema.json#/$defs/estado_revision"
+        },
+        "fact_ledger_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Referencia al registro de verificaciones de esta ejecución (los eventos verificacion_fidelidad)."
+        },
+        "sello": {
+          "$ref": "../common.schema.json#/$defs/sello_revision"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$comment": "INVÁLIDO: plantilla en modo fijo pero sin 'valor'. Es un error de validación visible, nunca silencioso.",
+  "fuente": {
+    "tipo": "documento",
+    "referencia": "guia.md",
+    "idioma_salida": "es",
+    "atribucion": "Autor de ejemplo",
+    "licencia": "CC BY 4.0"
+  },
+  "destino": { "red": "instagram", "formato": "carrusel_1080x1350" },
+  "diseno": { "plantilla": { "modo": "fijo" } }
+}

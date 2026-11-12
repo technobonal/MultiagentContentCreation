@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/common.schema.json",
+  "$comment": "Tipos compartidos por todos los contratos (eventos, entrada, ficha de plantilla, kit de marca). Cada contrato los referencia con $ref para no repetir enumeraciones.",
+  "title": "Tipos comunes",
+  "$defs": {
+    "run_id": {
+      "$comment": "Identificador de una ejecución. Minúsculas, dígitos y guion bajo, para que sea seguro en URLs y nombres de archivo.",
+      "type": "string",
+      "pattern": "^run_[a-z0-9_]{3,40}$"
+    },
+    "seq": {
+      "$comment": "Número de secuencia creciente dentro de una ejecución. El lienzo aplica eventos estrictamente por seq.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "timestamp": {
+      "$comment": "Momento de emisión del evento en formato ISO 8601 con zona horaria.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "agente": {
+      "$comment": "Quién emite el evento. 'humano' se usa solo en aprobaciones y ediciones; 'sistema' en el ciclo de vida.",
+      "type": "string",
+      "enum": ["estratega", "redactor", "director_arte", "revisor", "sistema", "humano"]
+    },
+    "origen": {
+      "$comment": "'real' lo emite un agente en ejecución; 'grabado' es una secuencia de desarrollo y el lienzo muestra una marca visible.",
+      "type": "string",
+      "enum": ["real", "grabado"]
+    },
+    "slide_num": {
+      "$comment": "Número de slide dentro del carrusel (1 a 7; el MVP admite de 5 a 7 slides).",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 7
+    },
+    "idioma": {
+      "$comment": "Idioma de salida del pack. Nativo, no traducción.",
+      "type": "string",
+      "enum": ["es", "pt-BR"]
+    },
+    "modo": {
+      "$comment": "'auto' decide el agente y explica el motivo; 'fijo' lo eligió el usuario y los agentes no lo tocan.",
+      "type": "string",
+      "enum": ["auto", "fijo"]
+    },
+    "tipo_mensaje": {
+      "$comment": "Los tres tipos de mensaje del portfolio. El catálogo de la Fase 4 agrega más.",
+      "type": "string",
+      "enum": ["lista_de_pasos", "antes_despues", "comparativa"]
+    },
+    "rol_slide": {
+      "$comment": "Función de un slide dentro del carrusel. 'fuentes' es siempre el último slide.",
+      "type": "string",
+      "enum": ["gancho", "segundo_gancho", "desarrollo", "cierre", "fuentes"]
+    },
+    "veredicto": {
+      "$comment": "Resultado de verificar una afirmación contra la fuente. 'no_aplica' es para opinión o llamada a la acción; 'no_verificada' es una cita no literal y nunca cuenta como hallazgo.",
+      "type": "string",
+      "enum": ["respaldada", "parcialmente_respaldada", "no_respaldada", "contradice", "no_verificada", "no_aplica"]
+    },
+    "gravedad": {
+      "$comment": "Bloqueante: la pieza no puede salir. Mayor: debe corregirse o justificarse. Menor: se corrige si es barato.",
+      "type": "string",
+      "enum": ["bloqueante", "mayor", "menor"]
+    },
+    "dimension": {
+      "$comment": "Dimensiones de la rúbrica del revisor (Apéndice A.3 más las cuatro nuevas de 0.1).",
+      "type": "string",
+      "enum": [
+        "fidelidad", "especificaciones_red", "atribucion_licencia", "claridad", "gancho",
+        "gancho_slide2", "valor_guardable", "estructura", "contraste", "desbordes",
+        "zona_segura", "idioma", "longitud", "marca", "variedad"
+      ]
+    },
+    "estado_revision": {
+      "$comment": "Resultado final de la revisión de una pieza. Ninguna pieza con un bloqueante abierto sale como aprobada.",
+      "type": "string",
+      "enum": ["aprobada", "aprobada_con_advertencias", "requiere_humano"]
+    },
+    "color_hex": {
+      "$comment": "Color en hexadecimal de 6 dígitos con almohadilla.",
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$"
+    },
+    "texto": {
+      "$comment": "Texto corto de un slide o de un motivo. No vacío y acotado para mantener los eventos pequeños.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400
+    },
+    "nombre_campo": {
+      "$comment": "Nombre de un campo de plantilla sin llaves (por ejemplo 'titulo' o 'bullet_1'). En la ficha se escribe con llaves dobles.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,30}$"
+    },
+    "sha256": {
+      "$comment": "Huella SHA-256 en hexadecimal; identifica la fuente congelada.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "licencia_fuente": {
+      "$comment": "Texto libre con la licencia de la fuente; alimenta el slide final de fuentes.",
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 120
+    },
+    "sello_revision": {
+      "$comment": "Sello 'N de M afirmaciones respaldadas'. Lo calcula código a partir de los eventos de verificación, nunca el LLM, y no promete que todo sea verdad: el juez es un LLM y puede errar.",
+      "type": "object",
+      "required": ["afirmaciones_respaldadas", "afirmaciones_totales"],
+      "additionalProperties": false,
+      "properties": {
+        "afirmaciones_respaldadas": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cantidad de afirmaciones factuales cuyo último veredicto es 'respaldada'."
+        },
+        "afirmaciones_totales": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cantidad de afirmaciones factuales distintas verificadas."
+        }
+      }
+    },
+    "cita": {
+      "$comment": "Fragmento literal de la fuente con su posición en caracteres; es la evidencia que muestra la interfaz.",
+      "type": "object",
+      "required": ["fragmento", "inicio", "fin"],
+      "additionalProperties": false,
+      "properties": {
+        "fragmento": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Texto copiado literalmente de la fuente."
+        },
+        "inicio": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Posición del primer carácter del fragmento en la fuente."
+        },
+        "fin": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Posición siguiente al último carácter del fragmento (fuente[inicio:fin])."
+        }
+      }
+    }
+  }
+}

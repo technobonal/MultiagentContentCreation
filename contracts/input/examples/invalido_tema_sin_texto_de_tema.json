@@ -1,0 +1,11 @@
+{
+  "$comment": "INVÁLIDO: tipo tema con fuente pero sin el campo 'tema' (el texto que orienta el ángulo).",
+  "fuente": {
+    "tipo": "tema",
+    "referencia": "guia_scrum.pdf",
+    "idioma_salida": "es",
+    "atribucion": "Autor de ejemplo",
+    "licencia": "CC BY 4.0"
+  },
+  "destino": { "red": "instagram", "formato": "carrusel_1080x1350" }
+}

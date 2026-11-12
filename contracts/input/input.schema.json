@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/input/input.schema.json",
+  "$comment": "Esquema de entrada: lo que llega al sistema antes de que empiece cualquier agente. Cada parámetro de diseño tiene modo 'auto' (decide el agente) o 'fijo' (lo eligió el usuario). Este esquema cubre la forma; las reglas que cruzan archivos (plantilla fija contra num_slides fijo, plantilla inexistente) las aplica contracts/validate.py y, en producción, backend/app/resolution.",
+  "title": "Entrada del sistema",
+  "type": "object",
+  "required": ["fuente", "destino"],
+  "additionalProperties": false,
+  "properties": {
+    "fuente": {
+      "$comment": "Qué se transforma en carrusel. 'verificacion' no se declara a propósito: la fija el sistema (viaja en run_iniciada) y un usuario que la envíe es rechazado por additionalProperties.",
+      "type": "object",
+      "required": ["tipo", "referencia", "idioma_salida", "atribucion", "licencia"],
+      "additionalProperties": false,
+      "properties": {
+        "tipo": {
+          "type": "string",
+          "enum": ["documento", "url", "tema"],
+          "description": "'tema' exige además el texto del tema y una fuente asociada en 'referencia' (portfolio)."
+        },
+        "referencia": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Archivo (.pdf, .md, .txt) o URL. Siempre obligatoria en el portfolio: un tema sin fuente se rechaza."
+        },
+        "tema": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200,
+          "description": "Texto libre que orienta el ángulo; no reemplaza a la fuente."
+        },
+        "idioma_salida": {
+          "$ref": "../common.schema.json#/$defs/idioma"
+        },
+        "atribucion": {
+          "type": "string",
+          "minLength": 2,
+          "description": "Autoría de la fuente; alimenta el slide final de fuentes."
+        },
+        "licencia": {
+          "$ref": "../common.schema.json#/$defs/licencia_fuente"
+        }
+      },
+      "allOf": [
+        {
+          "$comment": "Regla 4 del SPEC: un tema exige el texto del tema (la fuente asociada ya es obligatoria).",
+          "if": {
+            "$comment": "El tipo de fuente es tema.",
+            "required": ["tipo"],
+            "properties": { "tipo": { "const": "tema" } }
+          },
+          "then": {
+            "$comment": "Debe venir el campo 'tema'.",
+            "required": ["tema"]
+          }
+        },
+        {
+          "$comment": "Una fuente de tipo url debe ser una dirección http o https.",
+          "if": {
+            "$comment": "El tipo de fuente es url.",
+            "required": ["tipo"],
+            "properties": { "tipo": { "const": "url" } }
+          },
+          "then": {
+            "$comment": "La referencia empieza con http:// o https://.",
+            "properties": { "referencia": { "pattern": "^https?://" } }
+          }
+        },
+        {
+          "$comment": "Una fuente de tipo documento debe ser un archivo de los formatos soportados.",
+          "if": {
+            "$comment": "El tipo de fuente es documento.",
+            "required": ["tipo"],
+            "properties": { "tipo": { "const": "documento" } }
+          },
+          "then": {
+            "$comment": "La referencia termina en .pdf, .md o .txt.",
+            "properties": { "referencia": { "pattern": "\\.(pdf|md|txt)$" } }
+          }
+        }
+      ]
+    },
+    "destino": {
+      "$comment": "Dónde se publica la pieza. El MVP solo admite el carrusel de Instagram.",
+      "type": "object",
+      "required": ["red", "formato"],
+      "additionalProperties": false,
+      "properties": {
+        "red": {
+          "const": "instagram",
+          "description": "Única red del MVP; LinkedIn llega como configuración en la Fase 2 o 4."
+        },
+        "formato": {
+          "const": "carrusel_1080x1350",
+          "description": "Carrusel vertical de Instagram."
+        },
+        "num_slides": {
+          "$ref": "#/$defs/num_slides_param"
+        }
+      }
+    },
+    "diseno": {
+      "$comment": "Parámetros de diseño, todos opcionales: lo que falta se trata como 'auto'.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "plantilla": {
+          "$ref": "#/$defs/plantilla_param"
+        },
+        "paleta": {
+          "$ref": "#/$defs/paleta_param"
+        },
+        "tipografia": {
+          "$ref": "#/$defs/tipografia_param"
+        },
+        "estilo": {
+          "$ref": "#/$defs/estilo_param"
+        }
+      }
+    },
+    "recursos": {
+      "$comment": "Recursos del usuario. La foto de producto entra solo por un campo de imagen declarado en la ficha de la plantilla.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "imagenes": {
+          "$comment": "Lista de imágenes del usuario con el rol (campo de la plantilla) donde se colocan.",
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$comment": "Una imagen con su archivo, el campo destino y su licencia (por defecto 'usuario': declara tener los derechos).",
+            "type": "object",
+            "required": ["archivo", "rol"],
+            "additionalProperties": false,
+            "properties": {
+              "archivo": {
+                "type": "string",
+                "pattern": "\\.(png|jpg|jpeg|webp)$",
+                "description": "Nombre del archivo de imagen."
+              },
+              "rol": {
+                "$ref": "../common.schema.json#/$defs/nombre_campo"
+              },
+              "licencia": {
+                "type": "string",
+                "default": "usuario",
+                "minLength": 2,
+                "description": "Licencia de la imagen; 'usuario' significa que el usuario declara tener derechos."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "param_base": {
+      "$comment": "Base común de todo parámetro Auto/Fijo: 'fijo' exige un valor y 'auto' no puede traerlo (el agente lo decide y explica el motivo en un evento).",
+      "type": "object",
+      "required": ["modo"],
+      "properties": {
+        "modo": {
+          "$ref": "../common.schema.json#/$defs/modo"
+        }
+      },
+      "allOf": [
+        {
+          "$comment": "Fijo sin valor es un error de validación visible, nunca silencioso.",
+          "if": {
+            "$comment": "El modo es fijo.",
+            "required": ["modo"],
+            "properties": { "modo": { "const": "fijo" } }
+          },
+          "then": {
+            "$comment": "Se exige el campo valor.",
+            "required": ["valor"]
+          }
+        },
+        {
+          "$comment": "Auto con valor es contradictorio: si el usuario eligió un valor, el modo es fijo.",
+          "if": {
+            "$comment": "El modo es auto.",
+            "required": ["modo"],
+            "properties": { "modo": { "const": "auto" } }
+          },
+          "then": {
+            "$comment": "El campo valor queda prohibido (esquema false).",
+            "properties": { "valor": false }
+          }
+        }
+      ]
+    },
+    "num_slides_param": {
+      "$comment": "Número de slides, de 5 a 7, incluido el slide final de fuentes.",
+      "allOf": [{ "$ref": "#/$defs/param_base" }],
+      "properties": {
+        "valor": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 7,
+          "description": "Número de slides cuando el modo es fijo."
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "plantilla_param": {
+      "$comment": "Plantilla del catálogo. Que exista y que su número de slides sea compatible lo comprueba validate.py (reglas 3 del SPEC).",
+      "allOf": [{ "$ref": "#/$defs/param_base" }],
+      "properties": {
+        "valor": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]{5,80}$",
+          "description": "Identificador de la plantilla en templates/catalog."
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "paleta_param": {
+      "$comment": "Paleta: un preset curado o colores propios por roles (no una lista suelta de colores).",
+      "allOf": [{ "$ref": "#/$defs/param_base" }],
+      "properties": {
+        "valor": {
+          "$comment": "O el nombre de un preset, o los cuatro roles de color.",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z0-9_]{3,40}$",
+              "description": "Identificador de un preset en templates/palettes."
+            },
+            {
+              "$comment": "Color propio por roles; el revisor calcula el contraste de estos pares.",
+              "type": "object",
+              "required": ["fondo", "texto", "acento", "texto_sobre_acento"],
+              "additionalProperties": false,
+              "properties": {
+                "fondo": { "$ref": "../common.schema.json#/$defs/color_hex" },
+                "texto": { "$ref": "../common.schema.json#/$defs/color_hex" },
+                "acento": { "$ref": "../common.schema.json#/$defs/color_hex" },
+                "texto_sobre_acento": { "$ref": "../common.schema.json#/$defs/color_hex" }
+              }
+            }
+          ]
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "tipografia_param": {
+      "$comment": "Tipografía: solo combinaciones curadas (8 a 10); las fuentes propias llegan después.",
+      "allOf": [{ "$ref": "#/$defs/param_base" }],
+      "properties": {
+        "valor": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]{3,40}$",
+          "description": "Identificador de una combinación curada en templates/typography."
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "estilo_param": {
+      "$comment": "Estilo: un preset que se traduce en etiquetas de plantilla.",
+      "allOf": [{ "$ref": "#/$defs/param_base" }],
+      "properties": {
+        "valor": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]{3,40}$",
+          "description": "Identificador de un preset en templates/styles."
+        }
+      },
+      "unevaluatedProperties": false
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$comment": "INVÁLIDO (cruzada): la forma es correcta, pero la plantilla fija no existe en templates/catalog. Lo rechaza validate.py.",
+  "fuente": {
+    "tipo": "documento",
+    "referencia": "guia.md",
+    "idioma_salida": "es",
+    "atribucion": "Autor de ejemplo",
+    "licencia": "CC BY 4.0"
+  },
+  "destino": { "red": "instagram", "formato": "carrusel_1080x1350" },
+  "diseno": {
+    "plantilla": { "modo": "fijo", "valor": "plantilla_que_no_existe_9slides" }
+  }
+}

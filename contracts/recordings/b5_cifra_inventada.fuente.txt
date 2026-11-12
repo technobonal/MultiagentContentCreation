@@ -1,0 +1,13 @@
+Guía resumida de Scrum (texto de ejemplo escrito para pruebas)
+
+Scrum organiza el trabajo en ciclos de duración fija llamados Sprints. Un Sprint dura como máximo un mes.
+
+El equipo tiene tres roles: el Product Owner, el Scrum Master y los Developers.
+
+El Sprint Planning dura hasta 8 horas para un Sprint de un mes. En esa reunión el equipo decide qué trabajo entra en el Sprint.
+
+El Daily Scrum dura como máximo 15 minutos. Se hace todos los días a la misma hora y sirve para ajustar el plan del día.
+
+La Sprint Review sirve para mostrar el trabajo terminado a quienes tienen interés en el producto.
+
+La Retrospective dura 45 minutos para un Sprint de una semana. El equipo analiza qué mejorar en la forma de trabajar.

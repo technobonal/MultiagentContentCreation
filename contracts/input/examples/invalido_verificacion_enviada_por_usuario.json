@@ -1,0 +1,12 @@
+{
+  "$comment": "INVÁLIDO: el usuario envía 'verificacion'. Solo la fija el sistema (viaja en run_iniciada); no se puede simular verificación.",
+  "fuente": {
+    "tipo": "documento",
+    "referencia": "guia.md",
+    "idioma_salida": "es",
+    "atribucion": "Autor de ejemplo",
+    "licencia": "CC BY 4.0",
+    "verificacion": "verificada"
+  },
+  "destino": { "red": "instagram", "formato": "carrusel_1080x1350" }
+}

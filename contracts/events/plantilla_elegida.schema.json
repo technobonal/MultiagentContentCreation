@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/plantilla_elegida.schema.json",
+  "$comment": "El Director de arte eligió una plantilla (o el usuario la fijó). Con modo 'auto' explica el motivo; con 'fijo' el motivo registra que se respetó la elección del usuario.",
+  "title": "plantilla_elegida",
+  "required": ["agente", "payload"],
+  "properties": {
+    "agente": { "const": "director_arte" },
+    "payload": {
+      "$comment": "Decisión de plantilla con su motivo y la confianza de la elección.",
+      "type": "object",
+      "required": ["plantilla_id", "modo", "motivo", "confianza"],
+      "additionalProperties": false,
+      "properties": {
+        "plantilla_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]{5,80}$",
+          "description": "Identificador de la plantilla en templates/catalog."
+        },
+        "modo": {
+          "$ref": "../common.schema.json#/$defs/modo"
+        },
+        "motivo": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        },
+        "confianza": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confianza de la elección. Por debajo del umbral se usa una plantilla neutra y se avisa."
+        }
+      }
+    }
+  }
+}

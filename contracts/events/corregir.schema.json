@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/corregir.schema.json",
+  "$comment": "Una corrección es otro evento que referencia al anterior (los eventos son inmutables). 'causa' apunta al seq del evento sustituido; el lienzo reemplaza el cambio anterior con animación visible.",
+  "title": "corregir",
+  "required": ["agente", "slide", "causa", "payload"],
+  "properties": {
+    "agente": {
+      "type": "string",
+      "enum": ["redactor", "director_arte"],
+      "description": "Agente responsable de la corrección; el revisor nunca corrige, solo señala."
+    },
+    "payload": {
+      "$comment": "Motivo de la corrección y la operación que sustituye a la anterior.",
+      "type": "object",
+      "required": ["motivo", "operacion_nueva"],
+      "additionalProperties": false,
+      "properties": {
+        "motivo": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        },
+        "operacion_nueva": {
+          "$comment": "Operación de dibujo que reemplaza a la sustituida. En 0.1 solo se corrigen textos.",
+          "type": "object",
+          "required": ["tipo", "campo", "texto"],
+          "additionalProperties": false,
+          "properties": {
+            "tipo": { "const": "escribir_texto" },
+            "campo": { "$ref": "../common.schema.json#/$defs/nombre_campo" },
+            "texto": { "$ref": "../common.schema.json#/$defs/texto" }
+          }
+        }
+      }
+    }
+  }
+}

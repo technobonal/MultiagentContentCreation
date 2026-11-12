@@ -1,0 +1,11 @@
+{
+  "$comment": "INVÁLIDO: idioma de salida 'fr'. Solo se admiten 'es' y 'pt-BR'.",
+  "fuente": {
+    "tipo": "documento",
+    "referencia": "guia.md",
+    "idioma_salida": "fr",
+    "atribucion": "Autor de ejemplo",
+    "licencia": "CC BY 4.0"
+  },
+  "destino": { "red": "instagram", "formato": "carrusel_1080x1350" }
+}

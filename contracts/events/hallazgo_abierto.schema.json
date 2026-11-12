@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/hallazgo_abierto.schema.json",
+  "$comment": "El revisor abre un hallazgo explicable: dimensión, gravedad, evidencia, explicación en una frase, acción propuesta y quién corrige. Marca el elemento afectado en el lienzo y lo lista en el panel.",
+  "title": "hallazgo_abierto",
+  "required": ["agente", "slide", "payload"],
+  "properties": {
+    "agente": { "const": "revisor" },
+    "payload": {
+      "$comment": "Un hallazgo nunca es un simple 'no pasa': siempre trae motivo, evidencia y acción.",
+      "type": "object",
+      "required": ["hallazgo_id", "dimension", "gravedad", "evidencia", "explicacion", "accion", "responsable"],
+      "additionalProperties": false,
+      "properties": {
+        "hallazgo_id": {
+          "type": "string",
+          "pattern": "^h[0-9]{1,3}$",
+          "description": "Identificador del hallazgo; el evento hallazgo_corregido lo referencia."
+        },
+        "dimension": {
+          "$ref": "../common.schema.json#/$defs/dimension"
+        },
+        "gravedad": {
+          "$ref": "../common.schema.json#/$defs/gravedad"
+        },
+        "evidencia": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        },
+        "explicacion": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        },
+        "accion": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        },
+        "responsable": {
+          "type": "string",
+          "enum": ["redactor", "director_arte", "estratega"],
+          "description": "Agente que debe corregir (columna 'Quién corrige' de la rúbrica)."
+        }
+      }
+    }
+  }
+}

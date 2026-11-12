@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/recordings/recording.schema.json",
+  "$comment": "Secuencia grabada: una ejecución completa guardada como archivo y reproducida por el mismo canal que los eventos reales. Su origen es siempre 'grabado' y el lienzo muestra una marca visible. Sirve para desarrollar el lienzo sin backend, para la demo y para las pruebas. Las reglas de orden, causas y citas las comprueba validate.py.",
+  "title": "Secuencia grabada",
+  "type": "object",
+  "required": ["version", "descripcion", "run_id", "fuente_ref", "eventos"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^0\\.[0-9]+$",
+      "description": "Versión del contrato con la que se grabó."
+    },
+    "descripcion": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Qué muestra esta secuencia (por ejemplo, la cifra inventada que el revisor atrapa)."
+    },
+    "run_id": {
+      "$ref": "../common.schema.json#/$defs/run_id"
+    },
+    "fuente_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Ruta de la fuente de texto usada, relativa a este archivo; las citas se verifican contra ella."
+    },
+    "eventos": {
+      "$comment": "Eventos en orden por seq; cada uno cumple el esquema completo de evento.",
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "../events/event.schema.json" }
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/brief_emitido.schema.json",
+  "$comment": "El estratega emite el brief: ángulo, tono, estructura de slides y tipo de mensaje. Es la decisión visible del estratega en el panel.",
+  "title": "brief_emitido",
+  "required": ["agente", "payload"],
+  "properties": {
+    "agente": { "const": "estratega" },
+    "payload": {
+      "$comment": "Brief del pack. 'roles' lista el rol de cada slide en orden y debe terminar en 'fuentes'.",
+      "type": "object",
+      "required": ["angulo", "tono", "num_slides", "tipo_mensaje", "roles"],
+      "additionalProperties": false,
+      "properties": {
+        "angulo": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        },
+        "tono": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        },
+        "num_slides": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 7,
+          "description": "Número de slides del carrusel, incluido el de fuentes."
+        },
+        "tipo_mensaje": {
+          "$ref": "../common.schema.json#/$defs/tipo_mensaje"
+        },
+        "roles": {
+          "$comment": "Un rol por slide, en orden. El validador comprueba que la longitud coincida con num_slides y que el último sea 'fuentes'.",
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 7,
+          "items": {
+            "$ref": "../common.schema.json#/$defs/rol_slide"
+          }
+        }
+      }
+    }
+  }
+}

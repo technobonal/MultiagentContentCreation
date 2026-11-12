@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/hallazgo_corregido.schema.json",
+  "$comment": "La reevaluación del revisor cerró un hallazgo. 'causa' apunta al seq del hallazgo_abierto original; el lienzo quita la marca del elemento afectado.",
+  "title": "hallazgo_corregido",
+  "required": ["agente", "slide", "causa", "payload"],
+  "properties": {
+    "agente": { "const": "revisor" },
+    "payload": {
+      "$comment": "Identificador del hallazgo y resultado de la reevaluación (solo se reevalúan las dimensiones afectadas).",
+      "type": "object",
+      "required": ["hallazgo_id", "resultado", "reevaluacion"],
+      "additionalProperties": false,
+      "properties": {
+        "hallazgo_id": {
+          "type": "string",
+          "pattern": "^h[0-9]{1,3}$",
+          "description": "Identificador del hallazgo cerrado; debe existir un hallazgo_abierto con el mismo id."
+        },
+        "resultado": {
+          "type": "string",
+          "enum": ["corregido", "persiste"],
+          "description": "'persiste' mantiene el hallazgo abierto y puede escalar a humano tras el segundo reintento."
+        },
+        "reevaluacion": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        }
+      }
+    }
+  }
+}

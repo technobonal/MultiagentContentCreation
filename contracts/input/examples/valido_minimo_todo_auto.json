@@ -1,0 +1,14 @@
+{
+  "$comment": "Entrada válida mínima: solo la fuente y el destino. Todo lo demás se resuelve en modo auto.",
+  "fuente": {
+    "tipo": "documento",
+    "referencia": "guia_scrum_resumida.md",
+    "idioma_salida": "es",
+    "atribucion": "Texto de ejemplo escrito para pruebas",
+    "licencia": "Propio (uso libre en el proyecto)"
+  },
+  "destino": {
+    "red": "instagram",
+    "formato": "carrusel_1080x1350"
+  }
+}

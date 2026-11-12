@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/aprobacion_solicitada.schema.json",
+  "$comment": "El sistema pausa el grafo (interrupt) y pide la decisión humana. Lleva el estado de la revisión y el sello calculado por código. En el MVP nada sale sin esta aprobación.",
+  "title": "aprobacion_solicitada",
+  "required": ["agente", "payload"],
+  "properties": {
+    "agente": { "const": "sistema" },
+    "payload": {
+      "$comment": "Estado de la revisión al pedir la aprobación. Con hallazgos bloqueantes abiertos el estado nunca puede ser 'aprobada'.",
+      "type": "object",
+      "required": ["estado_revision", "hallazgos_abiertos", "sello"],
+      "additionalProperties": false,
+      "properties": {
+        "estado_revision": {
+          "$ref": "../common.schema.json#/$defs/estado_revision"
+        },
+        "hallazgos_abiertos": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cantidad de hallazgos que siguen abiertos."
+        },
+        "sello": {
+          "$ref": "../common.schema.json#/$defs/sello_revision"
+        }
+      }
+    }
+  }
+}

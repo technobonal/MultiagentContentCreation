@@ -1,0 +1,9 @@
+{
+  "$comment": "INVÁLIDO: faltan 'atribucion' y 'licencia', que alimentan el slide final de fuentes (la dimensión atribucion_licencia es bloqueante).",
+  "fuente": {
+    "tipo": "documento",
+    "referencia": "guia.md",
+    "idioma_salida": "es"
+  },
+  "destino": { "red": "instagram", "formato": "carrusel_1080x1350" }
+}

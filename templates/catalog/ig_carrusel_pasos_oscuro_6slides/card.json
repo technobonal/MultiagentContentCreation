@@ -1,0 +1,78 @@
+{
+  "$comment": "Ficha de la plantilla de lista de pasos (fondo oscuro, 6 slides). El sexto slide es siempre el de fuentes y atribución; su sello de revisión lo calcula código. Falta template.svg (pendiente de la Fase 0).",
+  "id": "ig_carrusel_pasos_oscuro_6slides",
+  "version": "0.1.0",
+  "plataforma": "instagram",
+  "formato": "carrusel_1080x1350",
+  "idiomas": ["es", "pt-BR"],
+  "tipo_mensaje": "lista_de_pasos",
+  "descripcion": "Carrusel técnico de lista de pasos con fondo oscuro y estilo minimalista",
+  "etiquetas": ["tecnologia", "educativo", "minimalista", "oscuro"],
+  "zona_segura": {
+    "margen_superior_px": 120,
+    "margen_inferior_px": 150
+  },
+  "slides": [
+    {
+      "numero": 1,
+      "rol": "gancho",
+      "campos": [
+        { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 3, "tamano_fuente_min": 56 },
+        { "nombre": "{{subtitulo}}", "tipo": "texto", "obligatorio": false, "origen_valor": "llm", "longitud_max": 120, "lineas_max": 3, "tamano_fuente_min": 32 }
+      ]
+    },
+    {
+      "numero": 2,
+      "rol": "segundo_gancho",
+      "campos": [
+        { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 3, "tamano_fuente_min": 56 },
+        { "nombre": "{{cuerpo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 160, "lineas_max": 4, "tamano_fuente_min": 32 },
+        { "nombre": "{{imagen_producto}}", "tipo": "imagen", "obligatorio": false, "origen_valor": "usuario", "texto_alternativo": "Foto del producto" }
+      ]
+    },
+    {
+      "numero": 3,
+      "rol": "desarrollo",
+      "campos": [
+        { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 2, "tamano_fuente_min": 48 },
+        { "nombre": "{{cuerpo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 220, "lineas_max": 6, "tamano_fuente_min": 30 }
+      ]
+    },
+    {
+      "numero": 4,
+      "rol": "desarrollo",
+      "campos": [
+        { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 2, "tamano_fuente_min": 48 },
+        { "nombre": "{{cuerpo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 220, "lineas_max": 6, "tamano_fuente_min": 30 }
+      ]
+    },
+    {
+      "numero": 5,
+      "rol": "cierre",
+      "campos": [
+        { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 2, "tamano_fuente_min": 48 },
+        { "nombre": "{{cta}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 100, "lineas_max": 3, "tamano_fuente_min": 36 }
+      ]
+    },
+    {
+      "numero": 6,
+      "rol": "fuentes",
+      "campos": [
+        { "nombre": "{{fuente_atribucion}}", "tipo": "texto", "obligatorio": true, "origen_valor": "usuario", "longitud_max": 120, "lineas_max": 3, "tamano_fuente_min": 24 },
+        { "nombre": "{{fuente_licencia}}", "tipo": "texto", "obligatorio": true, "origen_valor": "usuario", "longitud_max": 80, "lineas_max": 2, "tamano_fuente_min": 24 },
+        { "nombre": "{{sello_revision}}", "tipo": "texto", "obligatorio": true, "origen_valor": "calculado", "longitud_max": 60, "lineas_max": 1, "tamano_fuente_min": 24 }
+      ]
+    }
+  ],
+  "recursos": {
+    "fuentes_tipograficas": [
+      { "familia": "Inter", "licencia": "pendiente_V10" },
+      { "familia": "JetBrains Mono", "licencia": "pendiente_V10" }
+    ]
+  },
+  "calidad": {
+    "autor": "Frank (technobonal)",
+    "fecha_revision": "2026-11-11",
+    "ejemplo_aprobado": "pendiente"
+  }
+}

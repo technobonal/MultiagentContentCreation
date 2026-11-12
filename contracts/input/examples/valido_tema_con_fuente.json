@@ -1,0 +1,16 @@
+{
+  "$comment": "Entrada válida de tipo tema: en el portfolio el tema solo se acepta acompañado de una fuente (aquí un PDF) y del texto del tema.",
+  "fuente": {
+    "tipo": "tema",
+    "referencia": "guia_scrum.pdf",
+    "tema": "Guía de Scrum para equipos nuevos",
+    "idioma_salida": "es",
+    "atribucion": "Texto de ejemplo escrito para pruebas",
+    "licencia": "Propio (uso libre en el proyecto)"
+  },
+  "destino": {
+    "red": "instagram",
+    "formato": "carrusel_1080x1350",
+    "num_slides": { "modo": "auto" }
+  }
+}

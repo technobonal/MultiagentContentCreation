@@ -1,0 +1,30 @@
+{
+  "$comment": "Kit de marca del MVP (uno solo). Paleta por roles con los contrastes ya calculados: validate.py los recalcula y exige que coincidan. Logo y licencias tipográficas pendientes de V10.",
+  "nombre": "MVP MultiagentContentCreation",
+  "version": "0.1.0",
+  "paleta": {
+    "fondo": "#0F172A",
+    "texto": "#F8FAFC",
+    "acento": "#38BDF8",
+    "texto_sobre_acento": "#0F172A"
+  },
+  "contraste_precalculado": [
+    { "primero": "texto", "segundo": "fondo", "ratio": 17.06 },
+    { "primero": "texto_sobre_acento", "segundo": "acento", "ratio": 8.33 },
+    { "primero": "acento", "segundo": "fondo", "ratio": 8.33 }
+  ],
+  "tipografias": {
+    "titulos": "Inter",
+    "cuerpo": "Inter",
+    "codigo": "JetBrains Mono"
+  },
+  "logo": {
+    "archivo": "pendiente",
+    "zona_respeto_px": 24
+  },
+  "tono_voz": {
+    "descriptores": ["claro", "directo", "técnico", "cercano"],
+    "evitar": ["revolucionario", "mágico", "el mejor"],
+    "formalidad": { "es": "neutra", "pt-BR": "neutra" }
+  }
+}

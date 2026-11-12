@@ -1,0 +1,11 @@
+{
+  "$comment": "INVÁLIDO (regla 4): tipo tema sin fuente asociada. Falta 'referencia'; el portfolio no acepta un tema sin fuente.",
+  "fuente": {
+    "tipo": "tema",
+    "tema": "Guía de Scrum",
+    "idioma_salida": "es",
+    "atribucion": "Autor de ejemplo",
+    "licencia": "CC BY 4.0"
+  },
+  "destino": { "red": "instagram", "formato": "carrusel_1080x1350" }
+}

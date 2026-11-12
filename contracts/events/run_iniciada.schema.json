@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/run_iniciada.schema.json",
+  "$comment": "Primer evento de toda ejecución. Lo emite el sistema y fija la verificación de la fuente (el usuario no puede enviarla). Referencia el esquema de entrada y arranca la línea de tiempo del panel.",
+  "title": "run_iniciada",
+  "required": ["agente", "payload"],
+  "properties": {
+    "agente": { "const": "sistema" },
+    "payload": {
+      "$comment": "Resumen de la entrada ya validada más los datos de atribución que alimentan el slide de fuentes.",
+      "type": "object",
+      "required": ["entrada_ref", "plataforma", "idioma_salida", "num_slides", "verificacion", "fuente"],
+      "additionalProperties": false,
+      "properties": {
+        "entrada_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Referencia al documento de entrada validado contra contracts/input (nombre de archivo o identificador)."
+        },
+        "plataforma": {
+          "type": "string",
+          "const": "instagram",
+          "description": "Única red del MVP."
+        },
+        "idioma_salida": {
+          "$ref": "../common.schema.json#/$defs/idioma"
+        },
+        "num_slides": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 7,
+          "description": "Número de slides resuelto, incluido el slide final de fuentes."
+        },
+        "verificacion": {
+          "type": "string",
+          "enum": ["verificada", "sin_fuente_verificada"],
+          "description": "La fija el sistema. Con 'sin_fuente_verificada' el pack siempre pasa por aprobación humana."
+        },
+        "fuente": {
+          "$comment": "Datos de la fuente que viajan hasta el slide final de atribución.",
+          "type": "object",
+          "required": ["tipo", "atribucion", "licencia"],
+          "additionalProperties": false,
+          "properties": {
+            "tipo": {
+              "type": "string",
+              "enum": ["documento", "url", "tema"],
+              "description": "Tipo de fuente de la entrada."
+            },
+            "atribucion": {
+              "type": "string",
+              "minLength": 2,
+              "description": "Autoría o procedencia de la fuente."
+            },
+            "licencia": {
+              "$ref": "../common.schema.json#/$defs/licencia_fuente"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/template-card/card.schema.json",
+  "$comment": "Ficha de plantilla (B.6). Describe una plantilla de carrusel: sus slides con rol, sus campos con límites y origen del valor, la zona segura y los recursos. Los límites de la ficha son los que usan los chequeos por código del revisor; 'longitud_max' es una aproximación y la verdad es la medición sobre el render de Playwright.",
+  "title": "Ficha de plantilla",
+  "type": "object",
+  "required": ["id", "version", "plataforma", "formato", "idiomas", "tipo_mensaje", "descripcion", "etiquetas", "zona_segura", "slides", "recursos", "calidad"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]{5,80}$",
+      "description": "Identificador legible, por ejemplo ig_carrusel_pasos_oscuro_6slides. Debe coincidir con el nombre de su carpeta."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Versión de la plantilla (semver)."
+    },
+    "plataforma": {
+      "const": "instagram",
+      "description": "Red de destino; en el MVP solo Instagram."
+    },
+    "formato": {
+      "const": "carrusel_1080x1350",
+      "description": "Formato del carrusel (verificar especificaciones vigentes de la red)."
+    },
+    "idiomas": {
+      "$comment": "Idiomas de salida para los que la plantilla fue probada; la entrada fija se contrasta contra esta lista.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "../common.schema.json#/$defs/idioma" },
+      "description": "Idiomas para los que la plantilla fue probada."
+    },
+    "tipo_mensaje": {
+      "$ref": "../common.schema.json#/$defs/tipo_mensaje"
+    },
+    "descripcion": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Texto para la búsqueda semántica, por ejemplo 'carrusel técnico, fondo oscuro, estilo minimalista'."
+    },
+    "etiquetas": {
+      "$comment": "Etiquetas que usa el filtrado y la búsqueda semántica de plantillas.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 2 },
+      "description": "Etiquetas de tema y tono (tecnología, educativo, corporativo...)."
+    },
+    "zona_segura": {
+      "$comment": "Márgenes superior e inferior como límites blandos: el gancho debe sobrevivir al recorte a cuadrado de la grilla. Los valores iniciales (~120 y ~150 px) vienen de fuentes de proveedores y se calibran con el render real.",
+      "type": "object",
+      "required": ["margen_superior_px", "margen_inferior_px"],
+      "additionalProperties": false,
+      "properties": {
+        "margen_superior_px": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 400,
+          "description": "Margen superior libre de texto, en píxeles del lienzo de 1080×1350."
+        },
+        "margen_inferior_px": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 400,
+          "description": "Margen inferior libre de texto, en píxeles del lienzo de 1080×1350."
+        }
+      }
+    },
+    "slides": {
+      "$comment": "Lista ordenada de slides. validate.py comprueba que el primero sea 'gancho', el segundo 'segundo_gancho', el último 'fuentes' y que los números sean consecutivos.",
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 7,
+      "items": { "$ref": "#/$defs/slide" }
+    },
+    "recursos": {
+      "$comment": "Recursos que la plantilla necesita, con licencia registrada.",
+      "type": "object",
+      "required": ["fuentes_tipograficas"],
+      "additionalProperties": false,
+      "properties": {
+        "fuentes_tipograficas": {
+          "$comment": "Tipografías usadas; la licencia queda pendiente de V10 hasta confirmarse.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$comment": "Una familia tipográfica con su licencia.",
+            "type": "object",
+            "required": ["familia", "licencia"],
+            "additionalProperties": false,
+            "properties": {
+              "familia": { "type": "string", "minLength": 2, "description": "Nombre de la familia tipográfica." },
+              "licencia": { "type": "string", "minLength": 2, "description": "Licencia o 'pendiente_V10'." }
+            }
+          }
+        }
+      }
+    },
+    "calidad": {
+      "$comment": "Trazabilidad de calidad: autor, fecha de revisión y un ejemplo de salida aprobado, que alimenta la demo y la evaluación del revisor.",
+      "type": "object",
+      "required": ["autor", "fecha_revision", "ejemplo_aprobado"],
+      "additionalProperties": false,
+      "properties": {
+        "autor": { "type": "string", "minLength": 2, "description": "Quién creó la plantilla." },
+        "fecha_revision": { "type": "string", "format": "date", "description": "Fecha de la última revisión (AAAA-MM-DD)." },
+        "ejemplo_aprobado": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ruta relativa al ejemplo de salida aprobado, o 'pendiente' mientras no exista."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "slide": {
+      "$comment": "Un slide de la plantilla: su número, su función en el carrusel y sus campos.",
+      "type": "object",
+      "required": ["numero", "rol", "campos"],
+      "additionalProperties": false,
+      "properties": {
+        "numero": { "$ref": "../common.schema.json#/$defs/slide_num" },
+        "rol": { "$ref": "../common.schema.json#/$defs/rol_slide" },
+        "campos": {
+          "$comment": "Campos del slide; deben tener nombres únicos (lo comprueba validate.py).",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/campo" }
+        }
+      }
+    },
+    "campo": {
+      "$comment": "Un campo editable de un slide, con su tipo, límites y quién produce el valor (llm, usuario o calculado por código, como el sello de revisión).",
+      "type": "object",
+      "required": ["nombre", "tipo", "obligatorio", "origen_valor"],
+      "additionalProperties": false,
+      "properties": {
+        "nombre": {
+          "type": "string",
+          "pattern": "^\\{\\{[a-z][a-z0-9_]{0,30}\\}\\}$",
+          "description": "Nombre de la capa con llaves dobles, por ejemplo {{titulo}} o {{bullet_1}}."
+        },
+        "tipo": {
+          "type": "string",
+          "enum": ["texto", "imagen", "cifra", "cita", "lista", "codigo"],
+          "description": "Tipo de contenido. 'codigo' llega en la Fase 4 y siempre se copia literal de la fuente."
+        },
+        "obligatorio": { "type": "boolean", "description": "Si el campo debe estar siempre presente." },
+        "origen_valor": {
+          "type": "string",
+          "enum": ["llm", "usuario", "calculado"],
+          "description": "'llm' lo redacta el modelo; 'usuario' viene de la entrada; 'calculado' lo calcula código y nunca el LLM."
+        },
+        "longitud_max": { "type": "integer", "minimum": 1, "description": "Máximo de caracteres (límite blando; la verdad es el render)." },
+        "lineas_max": { "type": "integer", "minimum": 1, "description": "Máximo de líneas." },
+        "tamano_fuente_min": { "type": "integer", "minimum": 12, "description": "Tamaño mínimo de fuente en píxeles." },
+        "texto_alternativo": { "type": "string", "minLength": 3, "description": "Texto alternativo de una imagen." }
+      },
+      "allOf": [
+        {
+          "$comment": "Una imagen debe llevar texto alternativo.",
+          "if": {
+            "$comment": "El tipo es imagen.",
+            "required": ["tipo"],
+            "properties": { "tipo": { "const": "imagen" } }
+          },
+          "then": {
+            "$comment": "Se exige texto_alternativo.",
+            "required": ["texto_alternativo"]
+          }
+        },
+        {
+          "$comment": "Todo campo de texto necesita límites para que el revisor pueda medir desbordes y legibilidad.",
+          "if": {
+            "$comment": "El tipo no es imagen.",
+            "required": ["tipo"],
+            "properties": { "tipo": { "enum": ["texto", "cifra", "cita", "lista", "codigo"] } }
+          },
+          "then": {
+            "$comment": "Se exigen los tres límites.",
+            "required": ["longitud_max", "lineas_max", "tamano_fuente_min"]
+          }
+        }
+      ]
+    }
+  }
+}

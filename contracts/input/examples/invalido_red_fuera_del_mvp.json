@@ -1,0 +1,11 @@
+{
+  "$comment": "INVÁLIDO: red 'linkedin'. El MVP solo admite Instagram.",
+  "fuente": {
+    "tipo": "documento",
+    "referencia": "guia.md",
+    "idioma_salida": "es",
+    "atribucion": "Autor de ejemplo",
+    "licencia": "CC BY 4.0"
+  },
+  "destino": { "red": "linkedin", "formato": "carrusel_1080x1350" }
+}

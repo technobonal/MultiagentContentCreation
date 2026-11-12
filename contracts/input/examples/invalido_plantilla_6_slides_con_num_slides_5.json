@@ -1,0 +1,18 @@
+{
+  "$comment": "INVÁLIDO (regla 3, cruzada): la forma es correcta, pero la plantilla fija tiene 6 slides y num_slides fijo es 5. Lo rechaza validate.py comparando contra la ficha; en producción, backend/app/resolution antes de empezar.",
+  "fuente": {
+    "tipo": "documento",
+    "referencia": "guia.md",
+    "idioma_salida": "es",
+    "atribucion": "Autor de ejemplo",
+    "licencia": "CC BY 4.0"
+  },
+  "destino": {
+    "red": "instagram",
+    "formato": "carrusel_1080x1350",
+    "num_slides": { "modo": "fijo", "valor": 5 }
+  },
+  "diseno": {
+    "plantilla": { "modo": "fijo", "valor": "ig_carrusel_pasos_oscuro_6slides" }
+  }
+}

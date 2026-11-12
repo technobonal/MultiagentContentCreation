@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/event.schema.json",
+  "$comment": "Esquema completo de un evento: exige el sobre común y, según 'tipo', el esquema propio de ese evento (payload, emisor permitido y campos obligatorios como slide o causa). Es el único esquema que backend y frontend usan para validar eventos.",
+  "title": "Evento 0.1",
+  "allOf": [
+    {
+      "$comment": "Todo evento cumple el sobre común (campos, versión, origen y tipo dentro del catálogo).",
+      "$ref": "envelope.schema.json"
+    },
+    {
+      "$comment": "Si el tipo es run_iniciada, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo run_iniciada.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "run_iniciada" } }
+      },
+      "then": { "$ref": "run_iniciada.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es fuente_indexada, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo fuente_indexada.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "fuente_indexada" } }
+      },
+      "then": { "$ref": "fuente_indexada.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es brief_emitido, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo brief_emitido.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "brief_emitido" } }
+      },
+      "then": { "$ref": "brief_emitido.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es plantilla_elegida, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo plantilla_elegida.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "plantilla_elegida" } }
+      },
+      "then": { "$ref": "plantilla_elegida.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es texto_propuesto, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo texto_propuesto.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "texto_propuesto" } }
+      },
+      "then": { "$ref": "texto_propuesto.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es colocar_fondo, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo colocar_fondo.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "colocar_fondo" } }
+      },
+      "then": { "$ref": "colocar_fondo.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es escribir_texto, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo escribir_texto.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "escribir_texto" } }
+      },
+      "then": { "$ref": "escribir_texto.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es verificacion_fidelidad, aplica su esquema (base del fact ledger).",
+      "if": {
+        "$comment": "Detecta el tipo verificacion_fidelidad.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "verificacion_fidelidad" } }
+      },
+      "then": { "$ref": "verificacion_fidelidad.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es hallazgo_abierto, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo hallazgo_abierto.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "hallazgo_abierto" } }
+      },
+      "then": { "$ref": "hallazgo_abierto.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es hallazgo_corregido, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo hallazgo_corregido.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "hallazgo_corregido" } }
+      },
+      "then": { "$ref": "hallazgo_corregido.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es corregir, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo corregir.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "corregir" } }
+      },
+      "then": { "$ref": "corregir.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es aprobacion_solicitada, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo aprobacion_solicitada.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "aprobacion_solicitada" } }
+      },
+      "then": { "$ref": "aprobacion_solicitada.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es aprobada, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo aprobada.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "aprobada" } }
+      },
+      "then": { "$ref": "aprobada.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es editada, aplica su esquema (registra el diff humano para aprender después).",
+      "if": {
+        "$comment": "Detecta el tipo editada.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "editada" } }
+      },
+      "then": { "$ref": "editada.schema.json" }
+    },
+    {
+      "$comment": "Si el tipo es run_finalizada, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo run_finalizada.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "run_finalizada" } }
+      },
+      "then": { "$ref": "run_finalizada.schema.json" }
+    }
+  ]
+}

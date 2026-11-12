@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/texto_propuesto.schema.json",
+  "$comment": "El redactor propone el texto de un campo de un slide. Todavía no se dibuja: aparece como texto pendiente en el panel hasta que el Director de arte lo escribe en el lienzo. Una reescritura tras un hallazgo referencia el hallazgo en 'causa'.",
+  "title": "texto_propuesto",
+  "required": ["agente", "slide", "payload"],
+  "properties": {
+    "agente": { "const": "redactor" },
+    "payload": {
+      "$comment": "Campo de la plantilla y texto propuesto.",
+      "type": "object",
+      "required": ["campo", "texto"],
+      "additionalProperties": false,
+      "properties": {
+        "campo": {
+          "$ref": "../common.schema.json#/$defs/nombre_campo"
+        },
+        "texto": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        }
+      }
+    }
+  }
+}

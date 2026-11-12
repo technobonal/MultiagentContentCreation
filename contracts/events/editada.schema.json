@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/editada.schema.json",
+  "$comment": "El humano editó un texto antes de aprobar. Se registra el diff (antes y después) desde el MVP para poder aprender de las ediciones más adelante (Fase 6); en 0.1 solo se guarda.",
+  "title": "editada",
+  "required": ["agente", "slide", "payload"],
+  "properties": {
+    "agente": { "const": "humano" },
+    "payload": {
+      "$comment": "Campo editado con el texto previo y el posterior; deben diferir.",
+      "type": "object",
+      "required": ["campo", "texto_antes", "texto_despues"],
+      "additionalProperties": false,
+      "properties": {
+        "campo": {
+          "$ref": "../common.schema.json#/$defs/nombre_campo"
+        },
+        "texto_antes": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        },
+        "texto_despues": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        }
+      }
+    }
+  }
+}

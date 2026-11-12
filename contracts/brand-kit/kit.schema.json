@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/brand-kit/kit.schema.json",
+  "$comment": "Kit de marca (B.8): paleta por roles, tipografías, logo, tono de voz y contraste precalculado. Mantiene todo parecido a una misma cuenta. El validador recalcula los contrastes y exige que coincidan con los declarados, de modo que el revisor solo compruebe.",
+  "title": "Kit de marca",
+  "type": "object",
+  "required": ["nombre", "version", "paleta", "contraste_precalculado", "tipografias", "logo", "tono_voz"],
+  "additionalProperties": false,
+  "properties": {
+    "nombre": { "type": "string", "minLength": 2, "description": "Nombre de la marca o cuenta." },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$", "description": "Versión del kit (semver)." },
+    "paleta": {
+      "$comment": "Paleta por roles (no una lista suelta de colores).",
+      "type": "object",
+      "required": ["fondo", "texto", "acento", "texto_sobre_acento"],
+      "additionalProperties": false,
+      "properties": {
+        "fondo": { "$ref": "../common.schema.json#/$defs/color_hex" },
+        "texto": { "$ref": "../common.schema.json#/$defs/color_hex" },
+        "acento": { "$ref": "../common.schema.json#/$defs/color_hex" },
+        "texto_sobre_acento": { "$ref": "../common.schema.json#/$defs/color_hex" }
+      }
+    },
+    "contraste_precalculado": {
+      "$comment": "Pares de color ya validados contra WCAG AA (4,5:1 texto normal). Cada par nombra los dos roles y la relación de contraste.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$comment": "Un par de roles con su relación de contraste.",
+        "type": "object",
+        "required": ["primero", "segundo", "ratio"],
+        "additionalProperties": false,
+        "properties": {
+          "primero": { "type": "string", "enum": ["fondo", "texto", "acento", "texto_sobre_acento"], "description": "Primer rol del par." },
+          "segundo": { "type": "string", "enum": ["fondo", "texto", "acento", "texto_sobre_acento"], "description": "Segundo rol del par." },
+          "ratio": { "type": "number", "minimum": 1, "maximum": 21, "description": "Relación de contraste WCAG entre ambos roles." }
+        }
+      }
+    },
+    "tipografias": {
+      "$comment": "Una familia para títulos, una para cuerpo y una monoespaciada para código.",
+      "type": "object",
+      "required": ["titulos", "cuerpo", "codigo"],
+      "additionalProperties": false,
+      "properties": {
+        "titulos": { "type": "string", "minLength": 2, "description": "Familia para títulos." },
+        "cuerpo": { "type": "string", "minLength": 2, "description": "Familia para el texto de apoyo." },
+        "codigo": { "type": "string", "minLength": 2, "description": "Familia monoespaciada para código." }
+      }
+    },
+    "logo": {
+      "$comment": "Archivo del logo y la zona de respeto a su alrededor. 'pendiente' mientras no exista el archivo.",
+      "type": "object",
+      "required": ["archivo", "zona_respeto_px"],
+      "additionalProperties": false,
+      "properties": {
+        "archivo": { "type": "string", "minLength": 1, "description": "Ruta del logo o 'pendiente'." },
+        "zona_respeto_px": { "type": "integer", "minimum": 0, "description": "Espacio libre mínimo alrededor del logo, en píxeles." }
+      }
+    },
+    "tono_voz": {
+      "$comment": "Tono de voz: descriptores, palabras a evitar y formalidad por idioma.",
+      "type": "object",
+      "required": ["descriptores", "evitar", "formalidad"],
+      "additionalProperties": false,
+      "properties": {
+        "descriptores": {
+          "$comment": "Lista de adjetivos que definen la voz de la marca.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 2 },
+          "description": "Adjetivos que definen la voz."
+        },
+        "evitar": {
+          "$comment": "Lista de palabras o giros prohibidos; puede estar vacía.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 2 },
+          "description": "Palabras o giros que no se usan."
+        },
+        "formalidad": {
+          "$comment": "Nivel de formalidad por idioma de salida.",
+          "type": "object",
+          "required": ["es", "pt-BR"],
+          "additionalProperties": false,
+          "properties": {
+            "es": { "type": "string", "enum": ["informal", "neutra", "formal"], "description": "Formalidad en español." },
+            "pt-BR": { "type": "string", "enum": ["informal", "neutra", "formal"], "description": "Formalidad en portugués de Brasil." }
+          }
+        }
+      }
+    }
+  }
+}

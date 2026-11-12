@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/colocar_fondo.schema.json",
+  "$comment": "El Director de arte coloca el fondo de un slide: un color o una imagen con licencia registrada. El lienzo solo dibuja lo que dice el evento.",
+  "title": "colocar_fondo",
+  "required": ["agente", "slide", "payload"],
+  "properties": {
+    "agente": { "const": "director_arte" },
+    "payload": {
+      "$comment": "Contenedor del fondo; el detalle depende de si es un color o una imagen.",
+      "type": "object",
+      "required": ["fondo"],
+      "additionalProperties": false,
+      "properties": {
+        "fondo": {
+          "$comment": "Un fondo es o un color sólido o una imagen con su licencia (exigida por el chequeo de atribución y licencias).",
+          "oneOf": [
+            {
+              "$comment": "Fondo de color sólido.",
+              "type": "object",
+              "required": ["tipo", "valor"],
+              "additionalProperties": false,
+              "properties": {
+                "tipo": { "const": "color" },
+                "valor": { "$ref": "../common.schema.json#/$defs/color_hex" }
+              }
+            },
+            {
+              "$comment": "Fondo de imagen; la licencia es obligatoria.",
+              "type": "object",
+              "required": ["tipo", "referencia", "licencia"],
+              "additionalProperties": false,
+              "properties": {
+                "tipo": { "const": "imagen" },
+                "referencia": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Identificador o ruta de la imagen."
+                },
+                "licencia": {
+                  "$ref": "../common.schema.json#/$defs/licencia_fuente"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/escribir_texto.schema.json",
+  "$comment": "El Director de arte escribe un texto en su campo del lienzo (el texto se anima al escribirse). Una corrección posterior referencia este evento mediante el evento 'corregir'.",
+  "title": "escribir_texto",
+  "required": ["agente", "slide", "payload"],
+  "properties": {
+    "agente": { "const": "director_arte" },
+    "payload": {
+      "$comment": "Campo de la plantilla y texto final a dibujar.",
+      "type": "object",
+      "required": ["campo", "texto"],
+      "additionalProperties": false,
+      "properties": {
+        "campo": {
+          "$ref": "../common.schema.json#/$defs/nombre_campo"
+        },
+        "texto": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+# Entornos y cachés de Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Dependencias y builds del frontend
+node_modules/
+dist/
+
+# Secretos y configuración local (nunca se versionan)
+.env
+.env.*
+
+# Artefactos de ejecución
+*.log
+chroma_db/
+renders/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db

@@ -1,0 +1,12 @@
+{
+  "$comment": "INVÁLIDO: estilo en modo auto pero con 'valor'. Si el usuario eligió un valor, el modo debe ser fijo.",
+  "fuente": {
+    "tipo": "documento",
+    "referencia": "guia.md",
+    "idioma_salida": "es",
+    "atribucion": "Autor de ejemplo",
+    "licencia": "CC BY 4.0"
+  },
+  "destino": { "red": "instagram", "formato": "carrusel_1080x1350" },
+  "diseno": { "estilo": { "modo": "auto", "valor": "minimalista" } }
+}

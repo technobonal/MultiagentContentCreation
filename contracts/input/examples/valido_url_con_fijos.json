@@ -1,0 +1,34 @@
+{
+  "$comment": "Entrada válida con parámetros fijos: plantilla de 6 slides y num_slides fijo en 6 (compatibles), paleta con roles propios, tipografía fija y una foto de producto.",
+  "fuente": {
+    "tipo": "url",
+    "referencia": "https://ejemplo.org/guia-scrum",
+    "idioma_salida": "pt-BR",
+    "atribucion": "Equipo de ejemplo",
+    "licencia": "CC BY 4.0"
+  },
+  "destino": {
+    "red": "instagram",
+    "formato": "carrusel_1080x1350",
+    "num_slides": { "modo": "fijo", "valor": 6 }
+  },
+  "diseno": {
+    "plantilla": { "modo": "fijo", "valor": "ig_carrusel_pasos_oscuro_6slides" },
+    "paleta": {
+      "modo": "fijo",
+      "valor": {
+        "fondo": "#0F172A",
+        "texto": "#F8FAFC",
+        "acento": "#38BDF8",
+        "texto_sobre_acento": "#0F172A"
+      }
+    },
+    "tipografia": { "modo": "fijo", "valor": "sans_mono_01" },
+    "estilo": { "modo": "auto" }
+  },
+  "recursos": {
+    "imagenes": [
+      { "archivo": "producto.png", "rol": "imagen_producto", "licencia": "usuario" }
+    ]
+  }
+}

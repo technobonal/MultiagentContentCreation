@@ -1,0 +1,379 @@
+{
+  "$comment": "Secuencia grabada (origen 'grabado'): la cifra inventada que el revisor atrapa. Generada por gen_grabacion.py; no editar a mano.",
+  "version": "0.1",
+  "descripcion": "Un carrusel de 6 slides donde el redactor inventa una cifra, el revisor la atrapa con la cita de la fuente, se corrige y el humano aprueba.",
+  "run_id": "run_b5_cifra_inventada",
+  "fuente_ref": "b5_cifra_inventada.fuente.txt",
+  "eventos": [
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 1,
+      "timestamp": "2026-11-11T20:00:00-03:00",
+      "origen": "grabado",
+      "agente": "sistema",
+      "tipo": "run_iniciada",
+      "payload": {
+        "entrada_ref": "b5_cifra_inventada.fuente.txt",
+        "plataforma": "instagram",
+        "idioma_salida": "es",
+        "num_slides": 6,
+        "verificacion": "verificada",
+        "fuente": {
+          "tipo": "documento",
+          "atribucion": "Texto de ejemplo escrito para pruebas",
+          "licencia": "Propio (uso libre en el proyecto)"
+        }
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 2,
+      "timestamp": "2026-11-11T20:00:02-03:00",
+      "origen": "grabado",
+      "agente": "sistema",
+      "tipo": "fuente_indexada",
+      "payload": {
+        "num_fragmentos": 7,
+        "num_caracteres": 720,
+        "sha256": "9443036626002b2da94286167535e7127d56f6668a150036f066012ec7148146"
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 3,
+      "timestamp": "2026-11-11T20:00:04-03:00",
+      "origen": "grabado",
+      "agente": "estratega",
+      "tipo": "brief_emitido",
+      "payload": {
+        "angulo": "Guía rápida de los eventos de Scrum con sus tiempos",
+        "tono": "Claro, directo y técnico",
+        "num_slides": 6,
+        "tipo_mensaje": "lista_de_pasos",
+        "roles": [
+          "gancho",
+          "segundo_gancho",
+          "desarrollo",
+          "desarrollo",
+          "cierre",
+          "fuentes"
+        ]
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 4,
+      "timestamp": "2026-11-11T20:00:06-03:00",
+      "origen": "grabado",
+      "agente": "director_arte",
+      "tipo": "plantilla_elegida",
+      "payload": {
+        "plantilla_id": "ig_carrusel_pasos_oscuro_6slides",
+        "modo": "auto",
+        "motivo": "Es la plantilla de lista de pasos del MVP y admite 6 slides",
+        "confianza": 0.92
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 5,
+      "timestamp": "2026-11-11T20:00:08-03:00",
+      "origen": "grabado",
+      "agente": "redactor",
+      "tipo": "texto_propuesto",
+      "slide": 1,
+      "payload": {
+        "campo": "titulo",
+        "texto": "Los eventos de Scrum y cuánto dura cada uno"
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 6,
+      "timestamp": "2026-11-11T20:00:10-03:00",
+      "origen": "grabado",
+      "agente": "redactor",
+      "tipo": "texto_propuesto",
+      "slide": 3,
+      "payload": {
+        "campo": "cuerpo",
+        "texto": "El Daily Scrum dura 30 minutos y se hace todos los días a la misma hora."
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 7,
+      "timestamp": "2026-11-11T20:00:12-03:00",
+      "origen": "grabado",
+      "agente": "redactor",
+      "tipo": "texto_propuesto",
+      "slide": 4,
+      "payload": {
+        "campo": "cuerpo",
+        "texto": "La Retrospective dura 45 minutos para un Sprint de una semana."
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 8,
+      "timestamp": "2026-11-11T20:00:14-03:00",
+      "origen": "grabado",
+      "agente": "director_arte",
+      "tipo": "colocar_fondo",
+      "slide": 1,
+      "payload": {
+        "fondo": {
+          "tipo": "color",
+          "valor": "#0F172A"
+        }
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 9,
+      "timestamp": "2026-11-11T20:00:16-03:00",
+      "origen": "grabado",
+      "agente": "director_arte",
+      "tipo": "escribir_texto",
+      "slide": 1,
+      "payload": {
+        "campo": "titulo",
+        "texto": "Los eventos de Scrum y cuánto dura cada uno"
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 10,
+      "timestamp": "2026-11-11T20:00:18-03:00",
+      "origen": "grabado",
+      "agente": "director_arte",
+      "tipo": "escribir_texto",
+      "slide": 3,
+      "payload": {
+        "campo": "cuerpo",
+        "texto": "El Daily Scrum dura 30 minutos y se hace todos los días a la misma hora."
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 11,
+      "timestamp": "2026-11-11T20:00:20-03:00",
+      "origen": "grabado",
+      "agente": "director_arte",
+      "tipo": "escribir_texto",
+      "slide": 4,
+      "payload": {
+        "campo": "cuerpo",
+        "texto": "La Retrospective dura 45 minutos para un Sprint de una semana."
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 12,
+      "timestamp": "2026-11-11T20:00:22-03:00",
+      "origen": "grabado",
+      "agente": "revisor",
+      "tipo": "verificacion_fidelidad",
+      "slide": 3,
+      "payload": {
+        "afirmacion_id": "a1",
+        "afirmacion": "El Daily Scrum dura 30 minutos.",
+        "clasificacion": "factual",
+        "veredicto": "contradice",
+        "cita": {
+          "fragmento": "El Daily Scrum dura como máximo 15 minutos.",
+          "inicio": 381,
+          "fin": 424
+        },
+        "motivo": "La fuente fija un máximo de 15 minutos; el pack dice 30."
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 13,
+      "timestamp": "2026-11-11T20:00:24-03:00",
+      "origen": "grabado",
+      "agente": "revisor",
+      "tipo": "verificacion_fidelidad",
+      "slide": 4,
+      "payload": {
+        "afirmacion_id": "a2",
+        "afirmacion": "La Retrospective dura 45 minutos para un Sprint de una semana.",
+        "clasificacion": "factual",
+        "veredicto": "respaldada",
+        "cita": {
+          "fragmento": "La Retrospective dura 45 minutos para un Sprint de una semana.",
+          "inicio": 602,
+          "fin": 664
+        },
+        "motivo": "La afirmación coincide literalmente con la fuente."
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 14,
+      "timestamp": "2026-11-11T20:00:26-03:00",
+      "origen": "grabado",
+      "agente": "revisor",
+      "tipo": "hallazgo_abierto",
+      "slide": 3,
+      "payload": {
+        "hallazgo_id": "h1",
+        "dimension": "fidelidad",
+        "gravedad": "bloqueante",
+        "evidencia": "La fuente dice: 'El Daily Scrum dura como máximo 15 minutos.'",
+        "explicacion": "La cifra de 30 minutos no aparece en la fuente y la contradice.",
+        "accion": "Reescribir el texto con la cifra de la fuente.",
+        "responsable": "redactor"
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 15,
+      "timestamp": "2026-11-11T20:00:28-03:00",
+      "origen": "grabado",
+      "agente": "redactor",
+      "tipo": "texto_propuesto",
+      "slide": 3,
+      "causa": 14,
+      "payload": {
+        "campo": "cuerpo",
+        "texto": "El Daily Scrum dura como máximo 15 minutos y se hace todos los días a la misma hora."
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 16,
+      "timestamp": "2026-11-11T20:00:30-03:00",
+      "origen": "grabado",
+      "agente": "director_arte",
+      "tipo": "corregir",
+      "slide": 3,
+      "causa": 10,
+      "payload": {
+        "motivo": "Reemplaza la cifra inventada por la de la fuente",
+        "operacion_nueva": {
+          "tipo": "escribir_texto",
+          "campo": "cuerpo",
+          "texto": "El Daily Scrum dura como máximo 15 minutos y se hace todos los días a la misma hora."
+        }
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 17,
+      "timestamp": "2026-11-11T20:00:32-03:00",
+      "origen": "grabado",
+      "agente": "revisor",
+      "tipo": "verificacion_fidelidad",
+      "slide": 3,
+      "payload": {
+        "afirmacion_id": "a1",
+        "afirmacion": "El Daily Scrum dura como máximo 15 minutos.",
+        "clasificacion": "factual",
+        "veredicto": "respaldada",
+        "cita": {
+          "fragmento": "El Daily Scrum dura como máximo 15 minutos.",
+          "inicio": 381,
+          "fin": 424
+        },
+        "motivo": "La nueva redacción coincide con la fuente."
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 18,
+      "timestamp": "2026-11-11T20:00:34-03:00",
+      "origen": "grabado",
+      "agente": "revisor",
+      "tipo": "hallazgo_corregido",
+      "slide": 3,
+      "causa": 14,
+      "payload": {
+        "hallazgo_id": "h1",
+        "resultado": "corregido",
+        "reevaluacion": "Reevaluada la fidelidad del slide 3: la cifra coincide con la fuente."
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 19,
+      "timestamp": "2026-11-11T20:00:36-03:00",
+      "origen": "grabado",
+      "agente": "sistema",
+      "tipo": "aprobacion_solicitada",
+      "payload": {
+        "estado_revision": "aprobada",
+        "hallazgos_abiertos": 0,
+        "sello": {
+          "afirmaciones_respaldadas": 2,
+          "afirmaciones_totales": 2
+        }
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 20,
+      "timestamp": "2026-11-11T20:00:38-03:00",
+      "origen": "grabado",
+      "agente": "humano",
+      "tipo": "editada",
+      "slide": 1,
+      "payload": {
+        "campo": "titulo",
+        "texto_antes": "Los eventos de Scrum y cuánto dura cada uno",
+        "texto_despues": "Eventos de Scrum: cuánto dura cada uno"
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 21,
+      "timestamp": "2026-11-11T20:00:40-03:00",
+      "origen": "grabado",
+      "agente": "humano",
+      "tipo": "aprobada",
+      "payload": {
+        "decision": "aprobada",
+        "comentario": "Listo para publicar"
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 22,
+      "timestamp": "2026-11-11T20:00:42-03:00",
+      "origen": "grabado",
+      "agente": "sistema",
+      "tipo": "run_finalizada",
+      "payload": {
+        "estado_final": "aprobada",
+        "fact_ledger_ref": "b5_cifra_inventada#verificacion_fidelidad",
+        "sello": {
+          "afirmaciones_respaldadas": 2,
+          "afirmaciones_totales": 2
+        }
+      }
+    }
+  ]
+}
