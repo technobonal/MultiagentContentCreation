@@ -30,7 +30,7 @@ Diferenciador a demostrar: **revisor editorial explicable + fidelidad a la fuent
 | Personalización | Cada parámetro es Auto o Fijo (sección 6) | Decidido |
 | Tipografía | 8 a 10 combinaciones curadas. Fuentes propias, después | Decidido |
 | "Trae tu plantilla" | Fase 5 | Decidido |
-| Caso estrella | Guía de Scrum (confirmar licencia y atribución antes de publicar la demo) | Propuesto |
+| Caso estrella | Guía de Scrum 2020, CC BY-SA 4.0 (atribución y compartir igual; ver `docs/licencias.md`) | Decidido |
 | Identificadores | ASCII (`ajustar_tamano`) | Decidido |
 | Versión del contrato | 0.x hasta cerrar la Fase 2 | Decidido |
 | Idioma de salida | ES y PT-BR, nativo, no traducción | Decidido |

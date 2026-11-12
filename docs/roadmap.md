@@ -20,8 +20,8 @@ Tope para la Fase 0: **3 días**. Más papel no baja el riesgo; ejecutar sí.
 - [x] Ficha de plantilla definida (`card.json` de la plantilla de pasos)
 - [x] Kit de marca del MVP definido
 - [x] `template.svg` renderizable de la plantilla de pasos
-- [ ] Reglas del canal acordadas: SSE, reanudación por `seq`, validación
-- [ ] Caso estrella elegido y licencia confirmada
+- [x] Reglas del canal acordadas: SSE, reanudación por `seq`, validación (pruebas de reanudación e idempotencia diferidas al reductor del frontend, Fase 1)
+- [x] Caso estrella elegido y licencia confirmada (Scrum Guide 2020, CC BY-SA 4.0; ver `docs/licencias.md`)
 
 ## Spike de fidelidad (en paralelo)
 
