@@ -5,7 +5,7 @@ Comprueba, en este orden:
   2. Que cada bloque de cada esquema tenga su `$comment` (explica qué hace).
   3. Que el catálogo de eventos sea coherente (envelope, despachador y un esquema por evento).
   4. Los ejemplos de entrada: los `valido_*` pasan y los `invalido_*` son rechazados.
-  5. La ficha de plantilla y el kit de marca (con los contrastes recalculados).
+  5. La ficha de plantilla, la tipografía de cada template.svg y el kit de marca (con los contrastes recalculados).
   6. La secuencia grabada: orden por seq, causas, citas literales, sello y estado final.
   7. Pruebas negativas: eventos mutados a propósito que DEBEN ser rechazados.
 
@@ -15,9 +15,11 @@ Uso:  python contracts/validate.py        (sale con código 1 si hay alguna fall
 import copy
 import hashlib
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import unquote
 
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
@@ -31,6 +33,14 @@ CLAVES_HOJA = {
     "type", "const", "enum", "$ref", "description", "$comment", "minimum", "maximum",
     "minLength", "maxLength", "pattern", "format", "minItems", "maxItems", "uniqueItems", "default",
 }
+
+# Tipografía que exigen las plantillas: familia -> pesos que sus @font-face deben cubrir.
+TIPOGRAFIA_REQUERIDA = {
+    "Inter": {400, 600, 700},   # .cuerpo (400), .sobre-acento (600) y .titulo (700)
+    "JetBrains Mono": {400},    # .mono (sello de revisión)
+}
+# Familias genéricas de CSS: el navegador las resuelve solo, no llevan @font-face.
+FAMILIAS_GENERICAS = {"sans-serif", "serif", "monospace", "cursive", "fantasy", "system-ui"}
 
 # Resultados acumulados: lista de (estado, título, detalles). Estado: OK, FALLA o aviso.
 RESULTADOS = []
@@ -290,6 +300,103 @@ def comprobar_fichas(registro, fichas):
     registrar("FALLA" if problemas else "OK", f"Fichas de plantilla ({len(fichas)})", problemas)
     for aviso in avisos:  # los avisos no hacen fallar el validador
         registrar("aviso", aviso)
+
+
+# --------------------------------------------------------------------------------------
+# 2b. Tipografía de las plantillas (template.svg)
+# --------------------------------------------------------------------------------------
+
+def leer_font_face(texto):
+    """Extrae los @font-face de un SVG.
+
+    Devuelve (caras, urls, resto):
+      caras: {familia: [(peso_min, peso_max), ...]} con los rangos de peso que cubre cada familia.
+      urls:  [(familia, url), ...] con cada url() declarada dentro de un @font-face.
+      resto: el texto del SVG sin los bloques @font-face (para buscar qué familias se usan).
+    """
+    caras = {}
+    urls = []
+    # Cada bloque @font-face { ... } (no tiene llaves anidadas, así que basta una regex no codiciosa).
+    for bloque in re.findall(r"@font-face\s*\{(.*?)\}", texto, flags=re.S):
+        familia = re.search(r"font-family\s*:\s*[\"']?([^\"';]+)[\"']?", bloque)
+        if not familia:  # un @font-face sin familia no sirve: se ignora y la familia quedará sin declarar
+            continue
+        nombre = familia.group(1).strip()
+        # font-weight puede ser un valor (400) o un rango de fuente variable (100 900).
+        peso = re.search(r"font-weight\s*:\s*(\d+)(?:\s+(\d+))?", bloque)
+        if peso:  # con peso declarado: rango [min, max] (si es un solo valor, min == max)
+            minimo, maximo = int(peso.group(1)), int(peso.group(2) or peso.group(1))
+        else:  # sin font-weight el CSS asume 400
+            minimo = maximo = 400
+        caras.setdefault(nombre, []).append((minimo, maximo))
+        # Cada url("...") del bloque (puede haber varias en una lista src).
+        for url in re.findall(r"url\(\s*[\"']?([^\"')]+?)[\"']?\s*\)", bloque):
+            urls.append((nombre, url.strip()))
+    # El resto del SVG, sin los @font-face, para detectar las familias y pesos que realmente se usan.
+    resto = re.sub(r"@font-face\s*\{.*?\}", "", texto, flags=re.S)
+    return caras, urls, resto
+
+
+def comprobar_tipografia():
+    """Comprueba que cada template.svg declare, enlace y licencie las fuentes que usa.
+
+    Por cada SVG del catálogo:
+      1. Cada familia usada en el CSS (la primera de cada font-family) tiene su @font-face.
+      2. Cada url() del @font-face apunta a un archivo que existe (sin URLs remotas).
+      3. Junto a cada archivo de fuente hay un OFL.txt (la licencia viaja con la fuente).
+      4. Los @font-face cubren los pesos de TIPOGRAFIA_REQUERIDA y el SVG no usa otros pesos.
+    Un SVG sin @font-face es FALLA, no aviso: sin él Chromium cae a la fuente de respaldo sin avisar.
+    """
+    svgs = sorted((PROYECTO / "templates" / "catalog").glob("*/template.svg"))
+    if not svgs:  # sin SVG no hay nada que comprobar (comprobar_fichas ya avisa de que falta)
+        return
+    problemas = []
+    for ruta in svgs:
+        carpeta = ruta.parent.name  # nombre de la plantilla, para encabezar cada mensaje
+        caras, urls, resto = leer_font_face(ruta.read_text(encoding="utf-8"))
+
+        # --- 1. Familias usadas y declaradas ---
+        usadas = set()
+        # Cada font-family del CSS o de un style="" (el valor llega hasta ; } o >).
+        for lista in re.findall(r"font-family\s*:\s*([^;}>]+)", resto):
+            primera = lista.split(",")[0].strip().strip("\"'")  # la primera es la que se quiere usar
+            if primera and primera.lower() not in FAMILIAS_GENERICAS:  # las genéricas no necesitan archivo
+                usadas.add(primera)
+        for familia in sorted(usadas):
+            if familia not in caras:  # se usa en el CSS pero nadie la declara: caerá al respaldo
+                problemas.append(f"{carpeta}: usa la familia '{familia}' sin @font-face (se dibujaría con la de respaldo)")
+
+        # --- 2 y 3. Archivos existentes y licencia ---
+        for familia, url in urls:
+            if url.startswith("data:"):  # fuente incrustada en base64: no hay archivo que comprobar
+                continue
+            if re.match(r"^[a-z]+://", url, flags=re.I):  # http(s)://: el render debe ser offline y determinista
+                problemas.append(f"{carpeta}: la fuente '{familia}' usa una URL remota ({url}); debe ser un archivo local")
+                continue
+            # La ruta se resuelve desde la carpeta del SVG (así la resuelve el navegador).
+            archivo = (ruta.parent / unquote(url.split("#")[0].split("?")[0])).resolve()
+            if not archivo.is_file():  # ruta rota: alguien movió o renombró la carpeta de tipografía
+                problemas.append(f"{carpeta}: la fuente '{familia}' apunta a un archivo que no existe: {url}")
+                continue
+            if not (archivo.parent / "OFL.txt").is_file():  # la licencia OFL exige distribuirla con la fuente
+                problemas.append(f"{carpeta}: falta OFL.txt junto a {archivo.name}")
+
+        # --- 4. Pesos cubiertos ---
+        for familia, requeridos in TIPOGRAFIA_REQUERIDA.items():
+            if familia not in caras:  # una familia exigida por el kit que el SVG ni declara
+                problemas.append(f"{carpeta}: falta el @font-face de '{familia}' (exigida por el kit de marca)")
+                continue
+            for peso in sorted(requeridos):
+                # Un peso está cubierto si algún @font-face de la familia lo incluye en su rango.
+                if not any(minimo <= peso <= maximo for minimo, maximo in caras[familia]):
+                    problemas.append(f"{carpeta}: el @font-face de '{familia}' no cubre el peso {peso}")
+        # Pesos que el SVG pide en su CSS: deben estar entre los de Inter (la familia de texto).
+        permitidos = TIPOGRAFIA_REQUERIDA["Inter"]
+        for peso in sorted({int(p) for p in re.findall(r"font-weight\s*:\s*(\d+)", resto)}):
+            if peso not in permitidos:  # un peso nuevo exige actualizar TIPOGRAFIA_REQUERIDA y el @font-face
+                problemas.append(f"{carpeta}: el SVG usa font-weight {peso}, que no está en TIPOGRAFIA_REQUERIDA")
+
+    registrar("FALLA" if problemas else "OK", f"Tipografía de plantillas ({len(svgs)} SVG)", problemas)
 
 
 # --------------------------------------------------------------------------------------
@@ -556,6 +663,7 @@ def main():
     fichas = cargar_fichas()
     comprobar_ejemplos_entrada(registro, fichas)
     comprobar_fichas(registro, fichas)
+    comprobar_tipografia()  # fuentes declaradas, existentes, con licencia y con los pesos que usa el CSS
     comprobar_kits(registro)
     comprobar_grabaciones(registro, fichas)
     comprobar_pruebas_negativas(registro)

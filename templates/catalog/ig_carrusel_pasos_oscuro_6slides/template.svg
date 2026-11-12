@@ -22,16 +22,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
   <title>Carrusel lista de pasos (fondo oscuro, 6 slides)</title>
   <style>
-    :root { --fondo:#0F172A; --texto:#F8FAFC; --acento:#38BDF8; --texto-sobre-acento:#0F172A; }
-    .slide { display: none; }
-    .slide.activo { display: inline; }
-    .t { margin:0; padding:0; overflow:hidden; overflow-wrap:break-word; color:var(--texto);
-         font-family:"Inter", "Segoe UI", Arial, sans-serif; }
-    .titulo { font-weight:700; }
-    .cuerpo { font-weight:400; }
-    .mono { font-family:"JetBrains Mono", Consolas, monospace; }
-    .sobre-acento { color:var(--texto-sobre-acento); font-weight:600; }
-  </style>
+  :root { --fondo:#0F172A; --texto:#F8FAFC; --acento:#38BDF8; --texto-sobre-acento:#0F172A; }
+
+  /* Inter (variable): un solo archivo cubre los pesos 400, 600 y 700 de la plantilla. */
+  @font-face {
+    font-family: "Inter";
+    src: url("../../typography/inter/Inter-Variable.ttf") format("truetype");
+    font-weight: 100 900;   /* rango de la fuente variable */
+    font-style: normal;
+    font-display: block;    /* no pintar con la fuente de respaldo mientras carga */
+  }
+
+  /* JetBrains Mono Regular: solo se usa en .mono (el sello de revisión), sin negrita. */
+  @font-face {
+    font-family: "JetBrains Mono";
+    src: url("../../typography/jetbrains-mono/JetBrainsMono-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: block;
+  }
+
+  .slide { display: none; }
+  .slide.activo { display: inline; }
+  .t { margin:0; padding:0; overflow:hidden; overflow-wrap:break-word; color:var(--texto);
+       font-family:"Inter", "Segoe UI", Arial, sans-serif; }
+  .titulo { font-weight:700; }
+  .cuerpo { font-weight:400; }
+  .mono { font-family:"JetBrains Mono", Consolas, monospace; }
+  .sobre-acento { color:var(--texto-sobre-acento); font-weight:600; }
+</style>
 
   <rect id="fondo" width="1080" height="1350" fill="#0F172A"/>
 

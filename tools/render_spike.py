@@ -3,8 +3,13 @@
 
 Abre template.svg en Chromium (Playwright), rellena los {{campos}} de cada slide con datos de
 ejemplo, mide el desborde de cada campo y exporta un PNG de 1080x1350 por slide.
-Corre dos casos: "ok" (textos dentro de longitud_max) y "desborde" (textos exagerados, para
-comprobar que el detector de desborde funciona).
+Corre tres casos: "ok" (textos dentro de longitud_max), "limite" (textos de longitud_max exacta)
+y "desborde" (textos exagerados, para comprobar que el detector de desborde funciona).
+
+Tipografía: antes de medir, el spike pide explícitamente cada familia y peso que usa la plantilla
+(Inter 400/600/700 y JetBrains Mono 400) y registra por campo si la fuente realmente cargó
+(`fuente_cargada`). Si no cargó, la medición se hizo con la fuente de respaldo y el script falla,
+para que un problema de fuente no se confunda con un desborde.
 
 No es el renderer del backend (eso es Fase 1). Sirve para calibrar plantilla, zona segura y
 tamaños, y para comprobar que el SVG y card.json no se desincronizaron.
@@ -82,10 +87,22 @@ def caso_limite(ficha: dict) -> dict[int, dict[str, str]]:
     }
 
 
-# Se ejecuta dentro de la página: activa un slide, rellena los campos y mide cada uno.
+# Se ejecuta dentro de la página: carga las fuentes, activa un slide, rellena los campos y mide cada uno.
 JS_RELLENAR_Y_MEDIR = """
 async ({n, datos}) => {
-  await document.fonts.ready;   // espera a que carguen las tipografías antes de medir
+  // --- Bloque de tipografía ---------------------------------------------------------------
+  // Las fuentes del @font-face se cargan de forma perezosa: sin pedirlas, Chromium puede medir con
+  // la fuente de respaldo. Se piden las combinaciones familia+peso que usa la plantilla.
+  const pedidas = ['400 36px "Inter"', '600 36px "Inter"', '700 36px "Inter"', '400 24px "JetBrains Mono"'];
+  // allSettled: si una falla, las demás se siguen cargando y el error queda registrado.
+  const resultados = await Promise.allSettled(pedidas.map(f => document.fonts.load(f)));
+  const erroresCarga = resultados.filter(r => r.status === 'rejected').map(r => String(r.reason));
+  await document.fonts.ready;   // espera a que termine cualquier carga pendiente antes de medir
+  // Familias que quedaron realmente cargadas (document.fonts.check no sirve: da true si la fuente no existe).
+  const cargadas = new Set(
+    [...document.fonts].filter(f => f.status === 'loaded').map(f => f.family.replace(/["']/g, ''))
+  );
+  // --- Bloque de slide --------------------------------------------------------------------
   // Muestra solo el slide n (los demás tienen display:none) y toma su grupo.
   document.querySelectorAll('.slide').forEach(g => g.classList.toggle('activo', g.id === 'slide-' + n));
   const g = document.getElementById('slide-' + n);
@@ -116,6 +133,10 @@ async ({n, datos}) => {
     fila.alto_contenido = alturaContenido;   // px que necesita el texto
     fila.alto_caja = alturaCaja;             // px que tiene la caja
     fila.fuente_usada = estilo.fontFamily;   // lista de fuentes pedidas (la primera instalada es la que se usa)
+    // Primera familia de la lista = la que se quiere usar; si no está cargada, el navegador usa el respaldo.
+    fila.fuente_primaria = estilo.fontFamily.split(',')[0].replace(/["']/g, '').trim();
+    fila.fuente_cargada = cargadas.has(fila.fuente_primaria);
+    fila.fuente_error = erroresCarga.join(' | ');   // vacío si document.fonts.load no rechazó nada
     fila.lineas = Math.round(alturaContenido / parseFloat(estilo.lineHeight));
     fila.lineas_max = Number(el.getAttribute('data-lineas-max'));
     fila.fuente_px = parseFloat(estilo.fontSize);
@@ -162,7 +183,7 @@ def desfases_con_ficha(ficha: dict, n: int, filas: list[dict]) -> list[str]:
 
 
 def main() -> int:
-    """Corre los dos casos sobre los 6 slides, guarda PNG + reporte y devuelve 0 (ok) o 1 (hay problemas)."""
+    """Corre los tres casos sobre los 6 slides, guarda PNG + reporte y devuelve 0 (ok) o 1 (hay problemas)."""
     # Evita errores de acentos al imprimir en la consola de Windows.
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -177,21 +198,25 @@ def main() -> int:
     ficha = json.loads(args.ficha.read_text(encoding="utf-8"))
     args.salida.mkdir(parents=True, exist_ok=True)
 
-    problemas: list[str] = []   # todo lo que haga fallar el script
-    avisos: list[str] = []      # hallazgos de calibración que no hacen fallar el script
-    reporte: list[dict] = []    # una fila por campo medido, para reporte.json
+    problemas: list[str] = []            # todo lo que haga fallar el script
+    avisos: list[str] = []               # hallazgos de calibración que no hacen fallar el script
+    reporte: list[dict] = []             # una fila por campo medido, para reporte.json
+    fuentes_reportadas: set[str] = set() # familias sin cargar ya anotadas (se reporta una vez por familia)
+    peticiones_fallidas: list[str] = []  # recursos que Chromium no pudo cargar (diagnóstico de rutas)
 
     with sync_playwright() as p:
         # Navegador con la ventana del tamaño exacto del carrusel.
         navegador = p.chromium.launch()
         pagina = navegador.new_page(viewport={"width": ANCHO, "height": ALTO})
+        # Anota cada recurso que falle (por ejemplo, un .ttf bloqueado por file:// o con ruta mala).
+        pagina.on("requestfailed", lambda r: peticiones_fallidas.append(f"{r.url} -> {r.failure}"))
         # ok: texto normal | limite: texto de longitud_max exacta | desborde: texto exagerado.
         for caso, datos_caso in (("ok", CASO_OK), ("limite", caso_limite(ficha)), ("desborde", CASO_DESBORDE)):
             print(f"\n== Caso: {caso} ==")
             for n in range(1, 7):
                 # Se recarga el SVG en cada slide para partir siempre de un estado limpio.
                 pagina.goto(args.svg.resolve().as_uri())
-                # Rellena y mide el slide n dentro de la página (ver JS_RELLENAR_Y_MEDIR).
+                # Carga fuentes, rellena y mide el slide n dentro de la página (ver JS_RELLENAR_Y_MEDIR).
                 filas = pagina.evaluate(JS_RELLENAR_Y_MEDIR, {"n": n, "datos": datos_caso[n]})
                 png = args.salida / f"slide-{n}_{caso}.png"
                 pagina.screenshot(path=str(png), clip={"x": 0, "y": 0, "width": ANCHO, "height": ALTO})
@@ -210,8 +235,16 @@ def main() -> int:
                         print(f"  slide {n} {f['campo']:<24} oculto (opcional)")
                     else:
                         marca = "DESBORDA" if f["desborda"] else "ok"
+                        # Si la fuente pedida no cargó, se marca para que nadie lea la medición como válida.
+                        fuente = f["fuente_primaria"] if f["fuente_cargada"] else f"{f['fuente_primaria']} (RESPALDO)"
                         print(f"  slide {n} {f['campo']:<24} {f['lineas']}/{f['lineas_max']} líneas  "
-                              f"{f['fuente_px']:.0f}px (min {f['fuente_min']:.0f})  {marca}")
+                              f"{f['fuente_px']:.0f}px (min {f['fuente_min']:.0f})  {fuente}  {marca}")
+                        # Fuente sin cargar: la medición no es confiable. Se reporta una vez por familia.
+                        if not f["fuente_cargada"] and f["fuente_primaria"] not in fuentes_reportadas:
+                            fuentes_reportadas.add(f["fuente_primaria"])
+                            detalle = f" ({f['fuente_error']})" if f["fuente_error"] else ""
+                            problemas.append(f"[{caso}] slide {n} {f['campo']}: la fuente '{f['fuente_primaria']}' "
+                                             f"no cargó; se midió con la de respaldo{detalle}")
                         # ok: con texto válido no debe desbordar. desborde: tiene que desbordar.
                         if caso == "ok" and f["desborda"]:
                             problemas.append(f"[ok] slide {n} {f['campo']}: desborda con texto dentro de longitud_max")
@@ -227,6 +260,11 @@ def main() -> int:
     # Guarda las mediciones y muestra el resumen; el código de salida refleja si hubo problemas.
     (args.salida / "reporte.json").write_text(json.dumps(reporte, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\nPNG y reporte.json en: {args.salida}")
+    # Recursos fallidos (sin repetir): suelen explicar por qué una fuente no cargó.
+    if peticiones_fallidas:
+        print("\nPeticiones fallidas (diagnóstico):")
+        for pf in sorted(set(peticiones_fallidas)):
+            print(f"  - {pf}")
     if avisos:
         print("\nAvisos (calibración):")
         for a in avisos:
