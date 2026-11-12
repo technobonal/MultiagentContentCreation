@@ -139,8 +139,8 @@ Ver el estado en `docs/roadmap.md`.
 - [x] Ficha de plantilla definida
 - [x] Kit de marca del MVP definido
 - [x] Plantilla de Instagram completa y renderizable (`template.svg`)
-- [ ] Reglas del canal acordadas: SSE, reanudación por `seq`, validación
-- [ ] Caso estrella elegido y licencia confirmada
+- [x] Reglas del canal acordadas: SSE, reanudación por `seq`, validación (pruebas de reanudación e idempotencia diferidas al reductor del frontend, Fase 1)   
+- [x] Caso estrella elegido y licencia confirmada (Scrum Guide 2020, CC BY-SA 4.0; ver `docs/licencias.md`)
 
 ## 10. Pendientes abiertos
 
