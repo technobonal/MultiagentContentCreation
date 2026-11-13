@@ -12,6 +12,11 @@
       "pattern": "^0\\.[0-9]+$",
       "description": "Versión del contrato con la que se grabó."
     },
+  "$comment": {
+      "type": "string",
+      "description": "Nota libre del autor de la grabación; el lienzo la ignora."
+    },
+
     "descripcion": {
       "type": "string",
       "minLength": 10,
