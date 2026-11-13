@@ -21,3 +21,4 @@ renders/
 # Archivos del sistema
 .DS_Store
 Thumbs.db
+eval/results/ 
