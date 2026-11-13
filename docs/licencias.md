@@ -28,11 +28,21 @@ Nota: es la lectura habitual de la licencia, no asesoría legal.
 
 ## Tipografías del kit de marca
 
-Pendiente (V10). Anotar aquí, por cada fuente: nombre, licencia, enlace y si permite incrustarse en el render.
+Las dos fuentes se publican bajo la SIL Open Font License 1.1 (OFL), que permite uso comercial e incrustarlas en el render. Los archivos de fuente van en `templates/typography/`, cada uno junto a su `OFL.txt`, porque la OFL pide conservar el texto de la licencia y el aviso de copyright cuando se redistribuyen los archivos (por ejemplo, al subir el repo a GitHub).
 
 | Fuente | Uso | Licencia | Enlace | Estado |
 | ------ | --- | -------- | ------ | ------ |
-|        |     |          |        | Pendiente |
+| Inter (variable) | Títulos, subtítulos, cuerpo, CTA y atribución (pesos 400, 600 y 700) | SIL OFL 1.1, copyright 2020 The Inter Project Authors | https://github.com/rsms/inter | Confirmada el 2026-11-13 en `templates/typography/inter/OFL.txt` |
+| JetBrains Mono Regular | Sello de revisión (clase `.mono`), solo peso 400 | SIL OFL 1.1, copyright 2020 The JetBrains Mono Project Authors | https://github.com/JetBrains/JetBrainsMono | Confirmada el 2026-11-13 en `templates/typography/jetbrains-mono/OFL.txt` |
+
+Archivos de fuente en el repo:
+
+- `templates/typography/inter/Inter-Variable.ttf`
+- `templates/typography/jetbrains-mono/JetBrainsMono-Regular.ttf`
+
+Si se agrega otra fuente o peso, hay que sumar su fila aquí y su `OFL.txt` (o la licencia que traiga) junto al archivo.
+
+Nota: es la lectura habitual de la licencia, no asesoría legal.
 
 ## Imágenes
 
