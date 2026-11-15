@@ -5,7 +5,7 @@ Tope para la Fase 0: **3 días**. Más papel no baja el riesgo; ejecutar sí.
 | Fase | Contenido | Criterio de salida | Estado |
 | ---- | --------- | ------------------ | ------ |
 | 0. Fundamentos | Contratos mínimos (15 eventos), esquema de entrada, ficha de plantilla, kit de marca, secuencia grabada, validador | `python contracts/validate.py` pasa sin fallas | Cerrada (2026-11-13) |
-| 1. Lienzo | Lienzo SVG que reproduce la secuencia grabada (marcada como desarrollo) y línea de tiempo | Se puede grabar un video del lienzo | Pendiente |
+| 1. Lienzo | Lienzo SVG que reproduce la secuencia grabada (marcada como desarrollo) y línea de tiempo | Se puede grabar un video del lienzo | En curso (pasos 1 a 3 cerrados) |
 | 2. Agentes reales | Backend con SSE; estratega, redactor, director de arte y revisor con corrección visible | Un carrusel de punta a punta desde una fuente real | Pendiente |
 | 3. Portfolio | 3 plantillas, caso estrella, README con demo en video y ejemplos antes y después, despliegue en OCI con HTTPS | Demo pública estable | Pendiente |
 | 4. Catálogo y segunda red | 10 a 15 plantillas, RAG con Chroma y Cohere, LinkedIn como configuración, bloques de código, PDF para LinkedIn | Panel de candidatas funcionando | Pendiente |
