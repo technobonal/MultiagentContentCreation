@@ -1,12 +1,13 @@
 /**
  * pintarLienzo.ts — Pinta el estado del reductor sobre el SVG de la plantilla.
- * Solo lee `estado.lienzo.textos` y `estado.slideActivo`. Es idempotente: se puede
- * llamar en cada cambio de estado. No recorta ni corrige texto: si no cabe en el
- * tamaño mínimo, lo marca como desborde visible.
+ * Lee `estado.lienzo.textos`, `estado.lienzo.fondos`, `estado.slideActivo` y, para el
+ * sello de revisión, el ledger. Es idempotente: se puede llamar en cada cambio de estado.
+ * No recorta ni corrige texto: si no cabe en el tamaño mínimo, lo marca como desborde.
  */
 import { ajustarTexto } from "./ajusteTexto.ts";
 import type { Medidor, ResultadoAjuste } from "./ajusteTexto.ts";
 import { crearMedidorDOM } from "./medidorDOM.ts";
+import { textoDelSello } from "./sello.ts";
 import type { Estado } from "../timeline/types.ts";
 
 // Crea el medidor de un campo; en pruebas se inyecta uno falso.
@@ -43,6 +44,29 @@ function limpiarMarcador(div: HTMLElement): void {
 }
 
 /**
+ * Pinta el fondo: el SVG tiene un solo <rect id="fondo">, así que se usa el fondo del
+ * slide activo. Un fondo de tipo imagen se ignora en el MVP (queda el color de la plantilla).
+ */
+function pintarFondo(raiz: ParentNode, estado: Estado): void {
+  const rect = raiz.querySelector("#fondo");
+  // Plantilla sin <rect id="fondo">: nada que pintar.
+  if (!rect) return;
+
+  // Se guarda el color original la primera vez, para poder restaurarlo.
+  if (rect.getAttribute("data-fondo-base") === null) {
+    rect.setAttribute("data-fondo-base", rect.getAttribute("fill") ?? "");
+  }
+  const base = rect.getAttribute("data-fondo-base") ?? "";
+
+  const fondo = estado.lienzo.fondos[estado.slideActivo];
+  const color = fondo !== undefined && fondo.tipo === "color" ? fondo.valor : base;
+
+  // Sin color que aplicar (ni propio ni de la plantilla), no se toca el atributo.
+  if (color === "") return;
+  rect.setAttribute("fill", color);
+}
+
+/**
  * Pinta todos los slides: marca el activo, escribe los textos y ajusta el tamaño
  * de los campos del slide activo. Devuelve el resultado por campo.
  */
@@ -52,6 +76,11 @@ export function pintarLienzo(
   fabrica: FabricaMedidor = crearMedidorDOM,
 ): CampoPintado[] {
   const resultados: CampoPintado[] = [];
+
+  pintarFondo(raiz, estado);
+
+  // El sello se calcula una vez por pintado (null si el ledger está vacío).
+  const selloTexto = textoDelSello(estado) ?? undefined;
 
   // Un ciclo por slide del SVG.
   for (const slide of Array.from(raiz.querySelectorAll<SVGElement>("g.slide"))) {
@@ -84,7 +113,10 @@ export function pintarLienzo(
       const fuenteBase = Number(div.dataset.baseFuente);
       const lineHeightBase = Number(div.dataset.baseLh);
 
-      const texto = estado.lienzo.textos[numero]?.[nombre];
+      // Texto dibujado; el sello de revisión no viene de eventos, lo calcula código.
+      const texto =
+        estado.lienzo.textos[numero]?.[nombre] ??
+        (nombre === "sello_revision" ? selloTexto : undefined);
 
       // Campo sin texto dibujado: se limpia; si es opcional se oculta del todo.
       if (texto === undefined) {
