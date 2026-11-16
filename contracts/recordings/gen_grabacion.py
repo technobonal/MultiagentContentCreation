@@ -30,6 +30,11 @@ INICIO = datetime(2026, 11, 11, 20, 0, 0, tzinfo=ZONA)
 RUN_ID = "run_b5_cifra_inventada"
 PLANTILLA_ID = "ig_carrusel_pasos_oscuro_6slides"
 
+# Fondo que coloca el Director de arte: distinto del azul base de la plantilla (#0F172A)
+# para que la transición de color se note en vivo. Se aplica a todos los slides que
+# se dibujan, porque el lienzo pinta el fondo del slide activo.
+COLOR_FONDO = "#1E1B4B"
+
 # Contador de secuencia y lista de eventos que se van acumulando.
 _eventos = []
 
@@ -70,7 +75,7 @@ def emitir(agente: str, tipo: str, payload: dict, slide: int | None = None, caus
 
 
 def construir() -> dict:
-    """Arma la secuencia completa (22 eventos) y devuelve el documento de la grabación."""
+    """Arma la secuencia completa (24 eventos) y devuelve el documento de la grabación."""
     # Fragmentos literales de la fuente que se usan como evidencia.
     frag_daily = "El Daily Scrum dura como máximo 15 minutos."
     frag_retro = "La Retrospective dura 45 minutos para un Sprint de una semana."
@@ -121,8 +126,13 @@ def construir() -> dict:
     emitir("redactor", "texto_propuesto", {"campo": "cuerpo", "texto": daily_mal}, slide=3)
     emitir("redactor", "texto_propuesto", {"campo": "cuerpo", "texto": retro}, slide=4)
 
-    # --- El Director de arte dibuja en el lienzo ---
-    emitir("director_arte", "colocar_fondo", {"fondo": {"tipo": "color", "valor": "#0F172A"}}, slide=1)
+    # --- El Director de arte coloca el fondo de cada slide que va a dibujar ---
+    # Mismo color en los tres: la transición se ve una vez (evento 8) y se mantiene.
+    fondo = {"fondo": {"tipo": "color", "valor": COLOR_FONDO}}
+    for slide_fondo in (1, 3, 4):  # un evento colocar_fondo por slide dibujado
+        emitir("director_arte", "colocar_fondo", fondo, slide=slide_fondo)
+
+    # --- El Director de arte escribe los textos en el lienzo ---
     emitir("director_arte", "escribir_texto", {"campo": "titulo", "texto": titulo}, slide=1)
     seq_texto_malo = emitir("director_arte", "escribir_texto", {"campo": "cuerpo", "texto": daily_mal}, slide=3)
     emitir("director_arte", "escribir_texto", {"campo": "cuerpo", "texto": retro}, slide=4)

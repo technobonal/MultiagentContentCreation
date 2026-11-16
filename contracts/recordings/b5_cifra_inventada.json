@@ -132,7 +132,7 @@
       "payload": {
         "fondo": {
           "tipo": "color",
-          "valor": "#0F172A"
+          "valor": "#1E1B4B"
         }
       }
     },
@@ -141,6 +141,38 @@
       "run_id": "run_b5_cifra_inventada",
       "seq": 9,
       "timestamp": "2026-11-11T20:00:16-03:00",
+      "origen": "grabado",
+      "agente": "director_arte",
+      "tipo": "colocar_fondo",
+      "slide": 3,
+      "payload": {
+        "fondo": {
+          "tipo": "color",
+          "valor": "#1E1B4B"
+        }
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 10,
+      "timestamp": "2026-11-11T20:00:18-03:00",
+      "origen": "grabado",
+      "agente": "director_arte",
+      "tipo": "colocar_fondo",
+      "slide": 4,
+      "payload": {
+        "fondo": {
+          "tipo": "color",
+          "valor": "#1E1B4B"
+        }
+      }
+    },
+    {
+      "version": "0.1",
+      "run_id": "run_b5_cifra_inventada",
+      "seq": 11,
+      "timestamp": "2026-11-11T20:00:20-03:00",
       "origen": "grabado",
       "agente": "director_arte",
       "tipo": "escribir_texto",
@@ -153,8 +185,8 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 10,
-      "timestamp": "2026-11-11T20:00:18-03:00",
+      "seq": 12,
+      "timestamp": "2026-11-11T20:00:22-03:00",
       "origen": "grabado",
       "agente": "director_arte",
       "tipo": "escribir_texto",
@@ -167,8 +199,8 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 11,
-      "timestamp": "2026-11-11T20:00:20-03:00",
+      "seq": 13,
+      "timestamp": "2026-11-11T20:00:24-03:00",
       "origen": "grabado",
       "agente": "director_arte",
       "tipo": "escribir_texto",
@@ -181,8 +213,8 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 12,
-      "timestamp": "2026-11-11T20:00:22-03:00",
+      "seq": 14,
+      "timestamp": "2026-11-11T20:00:26-03:00",
       "origen": "grabado",
       "agente": "revisor",
       "tipo": "verificacion_fidelidad",
@@ -203,8 +235,8 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 13,
-      "timestamp": "2026-11-11T20:00:24-03:00",
+      "seq": 15,
+      "timestamp": "2026-11-11T20:00:28-03:00",
       "origen": "grabado",
       "agente": "revisor",
       "tipo": "verificacion_fidelidad",
@@ -225,8 +257,8 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 14,
-      "timestamp": "2026-11-11T20:00:26-03:00",
+      "seq": 16,
+      "timestamp": "2026-11-11T20:00:30-03:00",
       "origen": "grabado",
       "agente": "revisor",
       "tipo": "hallazgo_abierto",
@@ -244,13 +276,13 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 15,
-      "timestamp": "2026-11-11T20:00:28-03:00",
+      "seq": 17,
+      "timestamp": "2026-11-11T20:00:32-03:00",
       "origen": "grabado",
       "agente": "redactor",
       "tipo": "texto_propuesto",
       "slide": 3,
-      "causa": 14,
+      "causa": 16,
       "payload": {
         "campo": "cuerpo",
         "texto": "El Daily Scrum dura como máximo 15 minutos y se hace todos los días a la misma hora."
@@ -259,13 +291,13 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 16,
-      "timestamp": "2026-11-11T20:00:30-03:00",
+      "seq": 18,
+      "timestamp": "2026-11-11T20:00:34-03:00",
       "origen": "grabado",
       "agente": "director_arte",
       "tipo": "corregir",
       "slide": 3,
-      "causa": 10,
+      "causa": 12,
       "payload": {
         "motivo": "Reemplaza la cifra inventada por la de la fuente",
         "operacion_nueva": {
@@ -278,8 +310,8 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 17,
-      "timestamp": "2026-11-11T20:00:32-03:00",
+      "seq": 19,
+      "timestamp": "2026-11-11T20:00:36-03:00",
       "origen": "grabado",
       "agente": "revisor",
       "tipo": "verificacion_fidelidad",
@@ -300,13 +332,13 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 18,
-      "timestamp": "2026-11-11T20:00:34-03:00",
+      "seq": 20,
+      "timestamp": "2026-11-11T20:00:38-03:00",
       "origen": "grabado",
       "agente": "revisor",
       "tipo": "hallazgo_corregido",
       "slide": 3,
-      "causa": 14,
+      "causa": 16,
       "payload": {
         "hallazgo_id": "h1",
         "resultado": "corregido",
@@ -316,8 +348,8 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 19,
-      "timestamp": "2026-11-11T20:00:36-03:00",
+      "seq": 21,
+      "timestamp": "2026-11-11T20:00:40-03:00",
       "origen": "grabado",
       "agente": "sistema",
       "tipo": "aprobacion_solicitada",
@@ -333,8 +365,8 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 20,
-      "timestamp": "2026-11-11T20:00:38-03:00",
+      "seq": 22,
+      "timestamp": "2026-11-11T20:00:42-03:00",
       "origen": "grabado",
       "agente": "humano",
       "tipo": "editada",
@@ -348,8 +380,8 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 21,
-      "timestamp": "2026-11-11T20:00:40-03:00",
+      "seq": 23,
+      "timestamp": "2026-11-11T20:00:44-03:00",
       "origen": "grabado",
       "agente": "humano",
       "tipo": "aprobada",
@@ -361,8 +393,8 @@
     {
       "version": "0.1",
       "run_id": "run_b5_cifra_inventada",
-      "seq": 22,
-      "timestamp": "2026-11-11T20:00:42-03:00",
+      "seq": 24,
+      "timestamp": "2026-11-11T20:00:46-03:00",
       "origen": "grabado",
       "agente": "sistema",
       "tipo": "run_finalizada",
