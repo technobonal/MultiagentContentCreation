@@ -2,7 +2,8 @@
 // reproductor.test.ts — Pruebas del reproductor (Paso 3, escritas antes que el código).
 // Usan el reloj falso (tiempo controlado a mano) y, para simular un navegador lento,
 // un reloj "tardío" cuyo temporizador llega con retraso. Si existe la grabación real
-// b5_cifra_inventada, se corre además un bloque con ella.
+// b5_cifra_inventada, se corre además un bloque con ella (el conteo sale de la propia
+// grabación; lo fija validar.test.ts).
 // En la secuencia de prueba los eventos van cada 2 s: instantes 0, 2000, 4000...
 // ---------------------------------------------------------------------------
 import { describe, expect, it } from "vitest";
@@ -439,16 +440,19 @@ describe.skipIf(!hayGrabacion)("reproductor con la grabación real b5_cifra_inve
     reloj.avanzar(10 * 60 * 1000);
     const v = r.obtener();
     expect(v.terminado).toBe(true);
-    expect(v.aplicados).toBe(22);
+    // Se aplican todos los eventos de la grabación (validar.test.ts fija cuántos son).
+    expect(v.aplicados).toBe(grabacion.eventos.length);
     expect(v.estado).toEqual(reducirTodos(crearEstadoInicial(), grabacion.eventos));
   });
 
   it("los instantes no decrecen y respetan el tope de 3 s por brecha", () => {
     const grabacion = cargarGrabacion("b5_cifra_inventada");
     const instantes = calcularInstantes(grabacion.eventos, 3000);
-    expect(instantes).toHaveLength(22);
+    // Un instante por evento.
+    expect(instantes).toHaveLength(grabacion.eventos.length);
     expect(instantes.every((valor, i) => i === 0 || valor >= (instantes[i - 1] ?? 0))).toBe(true);
-    // 21 brechas de, como máximo, 3000 ms.
-    expect(instantes[instantes.length - 1] ?? 0).toBeLessThanOrEqual(21 * 3000);
+    // Hay una brecha menos que eventos, y cada una mide como máximo 3000 ms.
+    const brechas = instantes.length - 1;
+    expect(instantes[instantes.length - 1] ?? 0).toBeLessThanOrEqual(brechas * 3000);
   });
 });

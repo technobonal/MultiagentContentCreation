@@ -1,7 +1,9 @@
 // ---------------------------------------------------------------------------
 // validar.test.ts — Pruebas de la validación ajv y de la carga de grabaciones.
-// Cubre: carga de los 19 esquemas, eventos válidos, mutaciones que deben rechazarse
-// (una por regla del contrato) y todas las grabaciones reales de contracts/recordings.
+// Cubre: carga de los esquemas del contrato, eventos válidos, mutaciones que deben
+// rechazarse (una por regla del contrato) y todas las grabaciones reales de
+// contracts/recordings. Es el ÚNICO archivo que fija el número de eventos de la
+// grabación b5_cifra_inventada (EVENTOS_ESPERADOS): si cambia, se nota aquí.
 // ---------------------------------------------------------------------------
 import { describe, expect, it } from "vitest";
 import { ESQUEMAS } from "./esquemas.ts";
@@ -14,6 +16,15 @@ import {
 } from "./validar.ts";
 
 // --- Utilidades --------------------------------------------------------------
+
+// Cantidad de eventos que debe tener la grabación b5_cifra_inventada (22 + 2 fondos).
+const EVENTOS_ESPERADOS = 24;
+
+// Color de fondo que coloca el Director de arte en gen_grabacion.py.
+const COLOR_FONDO_ESPERADO = "#1E1B4B";
+
+// Slides que el Director de arte dibuja en la grabación (uno colocar_fondo por cada uno).
+const SLIDES_DIBUJADOS = [1, 3, 4];
 
 // Sobre común válido; cada prueba le suma lo propio del tipo.
 const BASE = {
@@ -74,7 +85,7 @@ const FACTUAL = {
 
 // --- Esquemas cargados -------------------------------------------------------
 describe("esquemas del contrato", () => {
-  it("se empaquetan los 19 esquemas con $id único", () => {
+  it("se empaquetan los esquemas del contrato (mínimo 19) con $id único", () => {
     expect(ESQUEMAS.length).toBeGreaterThanOrEqual(19);
     const ids = ESQUEMAS.map((e) => e.$id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -192,12 +203,27 @@ describe.skipIf(nombres.length === 0)("grabaciones de contracts/recordings", () 
 });
 
 describe.skipIf(!nombres.includes("b5_cifra_inventada"))("b5_cifra_inventada", () => {
-  it("trae los 22 eventos y todos pasan ajv", () => {
+  it(`trae los ${EVENTOS_ESPERADOS} eventos y todos pasan ajv`, () => {
     const g = cargarGrabacion("b5_cifra_inventada");
-    expect(g.eventos).toHaveLength(22);
+    // Única aserción del repo que fija el conteo: si cambia el fixture, falla aquí.
+    expect(g.eventos).toHaveLength(EVENTOS_ESPERADOS);
     // Revalida cada evento por separado: es lo que hará el canal en vivo (SSE).
     for (const e of g.eventos) {
       expect(validarEvento(e)).toEqual({ ok: true });
+    }
+  });
+
+  it("coloca un fondo de color por cada slide dibujado (1, 3 y 4)", () => {
+    const g = cargarGrabacion("b5_cifra_inventada");
+    // Vista mínima de cada evento para leer slide y payload sin depender del tipo exacto.
+    const fondos = g.eventos
+      .map((e) => e as unknown as { tipo: string; slide?: number; payload: { fondo: unknown } })
+      .filter((e) => e.tipo === "colocar_fondo");
+    // Un colocar_fondo por slide dibujado, en ese orden.
+    expect(fondos.map((e) => e.slide)).toEqual(SLIDES_DIBUJADOS);
+    for (const e of fondos) {
+      // Todos usan el mismo color, para que la transición se vea una vez y se mantenga.
+      expect(e.payload.fondo).toEqual({ tipo: "color", valor: COLOR_FONDO_ESPERADO });
     }
   });
 });

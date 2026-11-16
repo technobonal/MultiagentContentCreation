@@ -2,7 +2,8 @@
 // ordenador.test.ts — Pruebas del ordenador (Paso 3, escritas antes que el código).
 // Cubre: orden, idempotencia, duplicados con contenido distinto, huecos, inicio
 // distinto de 1, run mezclado, seq inválido y no mutación de la entrada.
-// Si existe la grabación real b5_cifra_inventada, se corre además un bloque con ella.
+// Si existe la grabación real b5_cifra_inventada, se corre además un bloque con ella
+// (el conteo sale de la propia grabación; lo fija validar.test.ts).
 // ---------------------------------------------------------------------------
 import { describe, expect, it } from "vitest";
 import { cargarGrabacion, listarGrabaciones } from "../lib/grabacion.ts";
@@ -146,11 +147,13 @@ describe("ordenar", () => {
 const hayGrabacion = listarGrabaciones().includes("b5_cifra_inventada");
 
 describe.skipIf(!hayGrabacion)("ordenar con la grabación real b5_cifra_inventada", () => {
-  it("la acepta tal cual: 22 eventos, sin problemas y en el mismo orden", () => {
+  it("la acepta tal cual: sin problemas, los mismos eventos y en el mismo orden", () => {
     const grabacion = cargarGrabacion("b5_cifra_inventada");
     const r = ordenar(grabacion.eventos);
     expect(r.ok).toBe(true);
-    expect(r.eventos).toHaveLength(22);
+    expect(r.problemas).toEqual([]);
+    // El conteo sale de la propia grabación (validar.test.ts fija cuántos son).
+    expect(r.eventos).toHaveLength(grabacion.eventos.length);
     expect(r.eventos.map((e) => e.seq)).toEqual(grabacion.eventos.map((e) => e.seq));
   });
 

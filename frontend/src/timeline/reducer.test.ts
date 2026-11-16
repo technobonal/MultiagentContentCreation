@@ -492,9 +492,13 @@ const rutaReal = Object.keys(grabaciones).find((r) => r.includes("b5_cifra_inven
 const real = rutaReal ? grabaciones[rutaReal]?.eventos : undefined;
 
 describe.skipIf(!real)("grabación real b5_cifra_inventada", () => {
-  it("los 22 eventos dan seq 22, h1 corregido, sello 2/2 y cero anomalías", () => {
-    const final = reducirTodos(crearEstadoInicial(), real ?? []);
-    expect(final.ultimoSeq).toBe(22);
+  it("todos sus eventos dan seq = total, h1 corregido, sello 2/2 y cero anomalías", () => {
+    const eventos = real ?? [];
+    // El total sale de la propia grabación (validar.test.ts fija cuántos son).
+    const total = eventos.length;
+    const final = reducirTodos(crearEstadoInicial(), eventos);
+    expect(total).toBeGreaterThan(0);
+    expect(final.ultimoSeq).toBe(total);
     expect(final.hueco).toBeNull();
     expect(final.anomalias).toEqual([]);
     expect(final.hallazgos.h1?.estado).toBe("corregido");
