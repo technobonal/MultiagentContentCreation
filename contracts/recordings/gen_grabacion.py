@@ -35,7 +35,7 @@ PLANTILLA_ID = "ig_carrusel_pasos_oscuro_6slides"
 # se dibujan, porque el lienzo pinta el fondo del slide activo.
 COLOR_FONDO = "#1E1B4B"
 
-# Contador de secuencia y lista de eventos que se van acumulando.
+# Lista de eventos que se van acumulando (el seq sale de su largo + 1).
 _eventos = []
 
 
