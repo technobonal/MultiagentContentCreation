@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "copiar-plantillas": "node scripts/copiar-plantillas.mjs",
+    "predev": "npm run copiar-plantillas",
     "dev": "vite",
+    "prebuild": "npm run copiar-plantillas",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
@@ -18,7 +21,6 @@
     "happy-dom": "^21.0.4",
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
-    "vite-plugin-static-copy": "^4.1.1",
     "vitest": "^5.1.0"
   },
   "dependencies": {

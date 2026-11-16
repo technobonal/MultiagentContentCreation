@@ -1,17 +1,26 @@
 /**
  * pintarLienzo.ts — Pinta el estado del reductor sobre el SVG de la plantilla.
- * Lee `estado.lienzo.textos`, `estado.lienzo.fondos`, `estado.slideActivo` y, para el
- * sello de revisión, el ledger. Es idempotente: se puede llamar en cada cambio de estado.
- * No recorta ni corrige texto: si no cabe en el tamaño mínimo, lo marca como desborde.
+ * Lee `estado.lienzo.textos`, `estado.lienzo.fondos`, `estado.slideActivo` y los campos
+ * calculados (sello, atribución y licencia de la fuente). Opcionalmente muestra los
+ * borradores del redactor (`estado.propuestas`) en los campos que aún no tienen texto
+ * dibujado, marcados con data-borrador="true". Es idempotente: se puede llamar
+ * en cada cambio de estado. No recorta ni corrige texto: si no cabe en el tamaño mínimo,
+ * lo marca como desborde visible.
  */
 import { ajustarTexto } from "./ajusteTexto.ts";
 import type { Medidor, ResultadoAjuste } from "./ajusteTexto.ts";
+import { textoCampoCalculado } from "./camposCalculados.ts";
 import { crearMedidorDOM } from "./medidorDOM.ts";
-import { textoDelSello } from "./sello.ts";
 import type { Estado } from "../timeline/types.ts";
 
 // Crea el medidor de un campo; en pruebas se inyecta uno falso.
 export type FabricaMedidor = (div: HTMLElement) => Medidor;
+
+// Opciones de pintado.
+export interface OpcionesPintado {
+  // Si es true, los campos sin texto dibujado muestran el borrador del redactor.
+  readonly borradores?: boolean;
+}
 
 // Resultado por campo; `resultado` es null si no se ajustó (sin texto o slide inactivo).
 export interface CampoPintado {
@@ -41,6 +50,15 @@ function limpiarMarcador(div: HTMLElement): void {
   div.style.outline = "";
   div.style.outlineOffset = "";
   delete div.dataset.estado;
+}
+
+// Marca o desmarca un div como borrador (el estilo atenuado vive en style.css).
+function marcarBorrador(div: HTMLElement, esBorrador: boolean): void {
+  if (esBorrador) {
+    div.dataset.borrador = "true";
+  } else {
+    delete div.dataset.borrador;
+  }
 }
 
 /**
@@ -74,13 +92,11 @@ export function pintarLienzo(
   raiz: ParentNode,
   estado: Estado,
   fabrica: FabricaMedidor = crearMedidorDOM,
+  opciones: OpcionesPintado = {},
 ): CampoPintado[] {
   const resultados: CampoPintado[] = [];
 
   pintarFondo(raiz, estado);
-
-  // El sello se calcula una vez por pintado (null si el ledger está vacío).
-  const selloTexto = textoDelSello(estado) ?? undefined;
 
   // Un ciclo por slide del SVG.
   for (const slide of Array.from(raiz.querySelectorAll<SVGElement>("g.slide"))) {
@@ -113,12 +129,17 @@ export function pintarLienzo(
       const fuenteBase = Number(div.dataset.baseFuente);
       const lineHeightBase = Number(div.dataset.baseLh);
 
-      // Texto dibujado; el sello de revisión no viene de eventos, lo calcula código.
-      const texto =
-        estado.lienzo.textos[numero]?.[nombre] ??
-        (nombre === "sello_revision" ? selloTexto : undefined);
+      // Un evento de texto tiene prioridad; si no hay, se usa el campo calculado por código.
+      const dibujado = estado.lienzo.textos[numero]?.[nombre] ?? textoCampoCalculado(estado, nombre);
+      // Sin texto dibujado, y si se pidió, se muestra el borrador del redactor.
+      const borrador =
+        opciones.borradores === true && dibujado === undefined
+          ? estado.propuestas[numero]?.[nombre]
+          : undefined;
+      const texto = dibujado ?? borrador;
+      marcarBorrador(div, dibujado === undefined && borrador !== undefined);
 
-      // Campo sin texto dibujado: se limpia; si es opcional se oculta del todo.
+      // Campo sin texto: se limpia; si es opcional se oculta del todo.
       if (texto === undefined) {
         div.textContent = "";
         div.style.fontSize = `${fuenteBase}px`;

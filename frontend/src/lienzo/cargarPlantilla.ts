@@ -17,7 +17,7 @@ function conBarraFinal(base: string): string {
 
 /**
  * Reemplaza las rutas relativas de las tipografías por rutas absolutas desde la base
- * del sitio, donde vite-plugin-static-copy deja los archivos.
+ * del sitio, donde scripts/copiar-plantillas.mjs deja los archivos (public/plantillas).
  */
 export function reescribirRutasDeFuentes(texto: string, base: string): string {
   return texto
@@ -37,7 +37,17 @@ export async function cargarPlantillaSvg(
   if (!respuesta.ok) {
     throw new Error(`No se pudo cargar la plantilla ${id} (${url}): HTTP ${respuesta.status}`);
   }
-  return reescribirRutasDeFuentes(await respuesta.text(), base);
+
+  const texto = await respuesta.text();
+
+  // Vite responde con index.html (estado 200) cuando no encuentra el archivo:
+  // se detecta aquí para dar un error claro en vez de un fallo de parseo.
+  if (!texto.includes("<svg")) {
+    throw new Error(
+      `La ruta ${url} no devolvió un SVG (¿el servidor respondió con index.html?). Empieza con: ${texto.slice(0, 40)}`,
+    );
+  }
+  return reescribirRutasDeFuentes(texto, base);
 }
 
 /** Convierte el texto del SVG en un elemento; lanza un error claro si no es XML válido. */
