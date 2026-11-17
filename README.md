@@ -28,7 +28,11 @@ Al final, una persona edita y aprueba.
 
 ### Estado
 
-Listos: el contrato de eventos y el frontend, que reproduce una secuencia grabada de 24 eventos (`contracts/recordings/b5_cifra_inventada.json`). En construcción: el backend tiene su esqueleto de carpetas, pero los agentes, el revisor y el flujo en vivo aún no están implementados. Ver `SPEC.md` para decisiones, esquema de entrada y estructura de carpetas, y `docs/roadmap.md` para las fases.
+- **Fase 0 (Fundamentos):** cerrada. Contratos, esquemas, plantilla, kit de marca y validador.
+- **Fase 1 (Lienzo):** en curso. El frontend ya reproduce una secuencia grabada de 24 eventos (`contracts/recordings/b5_cifra_inventada.json`) con agentes animados, corrección visible del revisor y tarjeta de hallazgos. Faltan los controles definitivos, las miniaturas y el video de demostración.
+- **Fase 2 (Agentes reales):** pendiente. Hoy el backend solo tiene el esqueleto de carpetas.
+
+Ver `SPEC.md` para decisiones, esquema de entrada y estructura de carpetas, y `docs/roadmap.md` para las fases.
 
 ### Estructura
 
@@ -99,7 +103,11 @@ A human edits and approves at the end.
 
 ### Status
 
-Done: the event contract and the frontend, which replays a recorded 24-event sequence (`contracts/recordings/b5_cifra_inventada.json`). In progress: the backend has its folder skeleton, but the agents, the reviewer and live streaming are not implemented yet. See `SPEC.md` for decisions, input schema and folder structure, and `docs/roadmap.md` for the phases.
+- **Phase 0 (Foundations):** closed. Contracts, schemas, template, brand kit and validator.
+- **Phase 1 (Canvas):** in progress. The frontend already replays a recorded 24-event sequence (`contracts/recordings/b5_cifra_inventada.json`) with animated agents, a visible reviewer correction and a findings card. Final controls, thumbnails and the demo video are still missing.
+- **Phase 2 (Real agents):** pending. The backend currently has only the folder skeleton.
+
+See `SPEC.md` for decisions, input schema and folder structure, and `docs/roadmap.md` for the phases.
 
 ### Structure
 
@@ -145,3 +153,4 @@ python contracts/validate.py
 ### License
 
 MIT. Fonts keep their own OFL license (see `templates/typography/` and `docs/licencias.md`).
+
