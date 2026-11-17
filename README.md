@@ -29,7 +29,7 @@ Al final, una persona edita y aprueba.
 ### Estado
 
 - **Fase 0 (Fundamentos):** cerrada. Contratos, esquemas, plantilla, kit de marca y validador.
-- **Fase 1 (Lienzo):** en curso. El frontend ya reproduce una secuencia grabada de 24 eventos (`contracts/recordings/b5_cifra_inventada.json`) con agentes animados, corrección visible del revisor y tarjeta de hallazgos. Faltan los controles definitivos, las miniaturas y el video de demostración.
+- **Fase 1 (Lienzo):** cerrada. El frontend reproduce una secuencia grabada de 24 eventos (`contracts/recordings/b5_cifra_inventada.json`) con agentes animados, corrección visible del revisor y tarjeta de hallazgos. Incluye controles definitivos (reproducir/pausar, reiniciar, velocidad 1x/2x/3x y seek), tira de miniaturas con salto por clic y video de demostración.
 - **Fase 2 (Agentes reales):** pendiente. Hoy el backend solo tiene el esqueleto de carpetas.
 
 Ver `SPEC.md` para decisiones, esquema de entrada y estructura de carpetas, y `docs/roadmap.md` para las fases.
@@ -104,7 +104,7 @@ A human edits and approves at the end.
 ### Status
 
 - **Phase 0 (Foundations):** closed. Contracts, schemas, template, brand kit and validator.
-- **Phase 1 (Canvas):** in progress. The frontend already replays a recorded 24-event sequence (`contracts/recordings/b5_cifra_inventada.json`) with animated agents, a visible reviewer correction and a findings card. Final controls, thumbnails and the demo video are still missing.
+- **Phase 1 (Canvas):** closed. The frontend replays a recorded 24-event sequence (`contracts/recordings/b5_cifra_inventada.json`) with animated agents, a visible reviewer correction and a findings card. It includes the final controls (play/pause, restart, 1x/2x/3x speed and seek), a slide thumbnail strip with click-to-seek, and a demo video.
 - **Phase 2 (Real agents):** pending. The backend currently has only the folder skeleton.
 
 See `SPEC.md` for decisions, input schema and folder structure, and `docs/roadmap.md` for the phases.
