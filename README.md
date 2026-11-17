@@ -28,17 +28,18 @@ Al final, una persona edita y aprueba.
 
 ### Estado
 
-El contrato y el frontend están listos: el frontend reproduce una secuencia grabada de 24 eventos (`contracts/recordings/b5_cifra_inventada.json`). El backend y el flujo en vivo de los agentes aún no están conectados. Ver `SPEC.md` para decisiones, esquema de entrada y estructura de carpetas, y `docs/roadmap.md` para las fases.
+Listos: el contrato de eventos y el frontend, que reproduce una secuencia grabada de 24 eventos (`contracts/recordings/b5_cifra_inventada.json`). En construcción: el backend tiene su esqueleto de carpetas, pero los agentes, el revisor y el flujo en vivo aún no están implementados. Ver `SPEC.md` para decisiones, esquema de entrada y estructura de carpetas, y `docs/roadmap.md` para las fases.
 
 ### Estructura
 
 * `contracts/`: esquemas compartidos (eventos, entrada, ficha de plantilla, kit de marca), secuencias grabadas y `validate.py`
 * `templates/`: plantillas, paletas, tipografías (Inter y JetBrains Mono, ambas OFL), estilos y kit de marca
 * `frontend/`: app Vite + React + TypeScript (lienzo, avatares, línea de tiempo)
-* `backend/`: API, agentes, grafo, fuentes, revisor, render (planificado)
-* `eval/`: conjunto de prueba del revisor y resultados
-* `deploy/`: Nginx y OCI
+* `backend/`: esqueleto para API, agentes, grafo, fuentes, RAG, revisor y render (aún sin código)
+* `eval/`: conjunto de prueba del revisor y resultados (estructura lista, sin datos aún)
+* `deploy/`: Nginx y OCI (estructura lista, sin configuración aún)
 * `docs/`: decisiones, roadmap y licencias
+* `tools/`: herramientas de apoyo (`render_spike.py`, experimento de renderizado)
 
 ### Regla de dependencia
 
@@ -72,7 +73,7 @@ python contracts\validate.py
 
 ### Licencia
 
-MIT. Las fuentes conservan su propia licencia OFL (ver `templates/typography/`).
+MIT. Las fuentes conservan su propia licencia OFL (ver `templates/typography/` y `docs/licencias.md`).
 
 ---
 
@@ -98,17 +99,18 @@ A human edits and approves at the end.
 
 ### Status
 
-The contract and the frontend are done: the frontend replays a recorded 24-event sequence (`contracts/recordings/b5_cifra_inventada.json`). The backend and live agent streaming are not connected yet. See `SPEC.md` for decisions, input schema and folder structure, and `docs/roadmap.md` for the phases.
+Done: the event contract and the frontend, which replays a recorded 24-event sequence (`contracts/recordings/b5_cifra_inventada.json`). In progress: the backend has its folder skeleton, but the agents, the reviewer and live streaming are not implemented yet. See `SPEC.md` for decisions, input schema and folder structure, and `docs/roadmap.md` for the phases.
 
 ### Structure
 
 * `contracts/`: shared schemas (events, input, template sheet, brand kit), recorded sequences and `validate.py`
 * `templates/`: templates, palettes, typography (Inter and JetBrains Mono, both OFL), styles and brand kit
 * `frontend/`: Vite + React + TypeScript app (canvas, avatars, timeline)
-* `backend/`: API, agents, graph, sources, reviewer, render (planned)
-* `eval/`: reviewer test set and results
-* `deploy/`: Nginx and OCI
+* `backend/`: skeleton for API, agents, graph, sources, RAG, reviewer and render (no code yet)
+* `eval/`: reviewer test set and results (structure ready, no data yet)
+* `deploy/`: Nginx and OCI (structure ready, no configuration yet)
 * `docs/`: decisions, roadmap and licenses
+* `tools/`: support tools (`render_spike.py`, a rendering experiment)
 
 ### Dependency rule
 
@@ -142,4 +144,4 @@ python contracts/validate.py
 
 ### License
 
-MIT. Fonts keep their own OFL license (see `templates/typography/`).
+MIT. Fonts keep their own OFL license (see `templates/typography/` and `docs/licencias.md`).
