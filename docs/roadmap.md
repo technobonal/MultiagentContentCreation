@@ -5,7 +5,7 @@ Tope para la Fase 0: **3 días**. Más papel no baja el riesgo; ejecutar sí.
 | Fase | Contenido | Criterio de salida | Estado |
 | ---- | --------- | ------------------ | ------ |
 | 0. Fundamentos | Contratos mínimos (15 eventos), esquema de entrada, ficha de plantilla, kit de marca, secuencia grabada, validador | `python contracts/validate.py` pasa sin fallas | Cerrada (2026-11-13) |
-| 1. Lienzo | Lienzo SVG que reproduce la secuencia grabada (marcada como desarrollo) y línea de tiempo | Se puede grabar un video del lienzo | En curso (pasos 1 a 3 cerrados) |
+| 1. Lienzo | Lienzo SVG que reproduce la secuencia grabada (marcada como desarrollo) y línea de tiempo | Se puede grabar un video del lienzo | Cerrada (2026-11-17) |
 | 2. Agentes reales | Backend con SSE; estratega, redactor, director de arte y revisor con corrección visible | Un carrusel de punta a punta desde una fuente real | Pendiente |
 | 3. Portfolio | 3 plantillas, caso estrella, README con demo en video y ejemplos antes y después, despliegue en OCI con HTTPS | Demo pública estable | Pendiente |
 | 4. Catálogo y segunda red | 10 a 15 plantillas, RAG con Chroma y Cohere, LinkedIn como configuración, bloques de código, PDF para LinkedIn | Panel de candidatas funcionando | Pendiente |
@@ -22,6 +22,19 @@ Tope para la Fase 0: **3 días**. Más papel no baja el riesgo; ejecutar sí.
 - [x] `template.svg` renderizable de la plantilla de pasos
 - [x] Reglas del canal acordadas: SSE, reanudación por `seq`, validación (pruebas de reanudación e idempotencia diferidas al reductor del frontend, Fase 1)
 - [x] Caso estrella elegido y licencia confirmada (Scrum Guide 2020, CC BY-SA 4.0; ver `docs/licencias.md`)
+
+## Checklist de la Fase 1
+
+- [x] Paso 1: tipos, estado y reductor (`frontend/src/timeline`)
+- [x] Paso 2: validación con ajv y carga de la grabación (`frontend/src/lib`)
+- [x] Paso 3: ordenador por `seq`, reloj inyectable y reproductor
+- [x] Paso 4a: ajuste de texto, fondo, sello, carga de plantilla, componente `Lienzo`, avatares vivos y mesa de agentes
+- [x] Grabación `b5_cifra_inventada` con 24 eventos (un `colocar_fondo` por slide, fondo `#1E1B4B`) y pruebas alineadas
+- [x] Tarjeta de hallazgos del revisor montada y verificada en pantalla
+- [x] Paso 4b: controles definitivos (reproducir/pausar, reiniciar, velocidad 1x/2x/3x, seek) y tira de miniaturas (clic en miniatura salta al último evento de ese slide; slides sin eventos atenuados y no clicables)
+- [x] Retoques visuales: margen entre la tarjeta de hallazgos y el indicador de progreso; texto legible en la burbuja del revisor
+- [x] Segunda grabación, más completa, para el video (cerrada: el video de demostración ya está hecho con `b5_cifra_inventada`)
+- [x] Criterio de salida: grabar el video del lienzo
 
 ## Spike de fidelidad (en paralelo)
 
