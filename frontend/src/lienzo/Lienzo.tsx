@@ -24,7 +24,7 @@ import { TarjetaRevisorVista } from "./TarjetaRevisorVista.tsx";
 import type { Estado } from "../timeline/types.ts";
 import type { VistaReproductor } from "../timeline/reproductor.ts";
 
-// Caracteres por segundo al escribir a 1x (a 2x es el doble).
+// CAMBIO: caracteres por segundo al escribir a 1x (se multiplican por la velocidad: 2x, 3x...).
 const CPS_BASE = 40;
 // Duración base de la transición del fondo (s); se divide por la velocidad.
 const DURACION_FONDO_S = 0.8;
@@ -266,6 +266,8 @@ export function Lienzo({ vista, svg, idioma }: PropsLienzo) {
             texto: campo.texto,
             textoPrevio: previo === undefined ? null : previo.texto,
             caracteresPorSegundo: CPS_BASE * vista.velocidad,
+            // NUEVO: la velocidad también acorta el borrado, la pausa final y el desvanecimiento.
+            velocidad: vista.velocidad,
             etiqueta,
             marco: marcoEl,
             nombreAgente: nombre,

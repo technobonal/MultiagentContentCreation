@@ -12,8 +12,12 @@ import { relojReal } from "./reloj.ts";
 import type { Cancelar, Reloj } from "./reloj.ts";
 import type { Estado, Evento } from "./types.ts";
 
-// Velocidades de reproducción permitidas.
-export type Velocidad = 1 | 2;
+// NUEVO: única fuente de verdad de las velocidades. La interfaz (App.tsx) y la
+// validación de velocidad() leen esta lista; para añadir una velocidad se toca solo aquí.
+export const VELOCIDADES = [1, 2, 3] as const;
+
+// CAMBIO: el tipo se deriva de la lista (antes era `1 | 2` escrito a mano).
+export type Velocidad = (typeof VELOCIDADES)[number];
 
 // Tope por defecto de la espera entre dos eventos (ms de grabación).
 export const MAX_ESPERA_POR_DEFECTO_MS = 3000;
@@ -54,7 +58,7 @@ export interface Reproductor {
   pausar(): void;
   // Vuelve al inicio y queda en pausa.
   reiniciar(): void;
-  // Cambia la velocidad (1 o 2); funciona también durante la reproducción.
+  // CAMBIO: cambia la velocidad (cualquiera de VELOCIDADES); funciona también durante la reproducción.
   velocidad(valor: Velocidad): void;
   // Salta a un punto con `indice` eventos aplicados (0..total); RangeError si no es válido.
   irA(indice: number): void;
@@ -81,6 +85,7 @@ export function calcularInstantes(eventos: readonly Evento[], maxEsperaMs: numbe
   const instantes: number[] = [];
   let acumulado = 0;
   let anterior: number | null = null;
+  // Un ciclo por evento: acumula la brecha respecto al anterior.
   for (const evento of eventos) {
     const marca = Date.parse(evento.timestamp);
     // El primer evento siempre está en el instante 0.
@@ -172,6 +177,7 @@ export function crearReproductor(
   // Aplica, en orden, todos los eventos cuyo instante ya llegó; devuelve true si aplicó alguno.
   function aplicarVencidos(posicion: number): boolean {
     let huboCambio = false;
+    // Ciclo: sigue mientras queden eventos pendientes y su instante ya haya llegado.
     while (aplicadosCuenta < total) {
       const instante = instantes[aplicadosCuenta];
       const evento = lista[aplicadosCuenta];
@@ -275,9 +281,11 @@ export function crearReproductor(
     },
 
     velocidad(valor) {
-      // Solo se admiten 1x y 2x.
-      if (valor !== 1 && valor !== 2) {
-        throw new RangeError(`La velocidad debe ser 1 o 2; recibió ${String(valor)}.`);
+      // CAMBIO: solo se admiten las velocidades de VELOCIDADES (el mensaje sale de la misma lista).
+      if (!VELOCIDADES.includes(valor)) {
+        throw new RangeError(
+          `La velocidad debe ser una de ${VELOCIDADES.join(", ")}; recibió ${String(valor)}.`,
+        );
       }
       if (destruido || valor === factor) return;
       const posicion = posicionActual();
@@ -286,6 +294,7 @@ export function crearReproductor(
         aplicarVencidos(posicion);
         cerrarSiTermino();
       }
+      // Si sigue reproduciendo (no terminó), la nueva referencia parte de la posición actual.
       if (reproduciendo) anclar(posicion);
       factor = valor;
       // En pausa programarSiguiente no hace nada; reproduciendo, recalcula la espera.

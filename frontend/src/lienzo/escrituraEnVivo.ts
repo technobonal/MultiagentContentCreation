@@ -8,9 +8,11 @@
 // ---------------------------------------------------------------------------
 import gsap from "gsap";
 
-// Pausa con el cursor al final antes de retirarlo (s).
+// Pausa con el cursor al final antes de retirarlo (s, a 1x; se divide por la velocidad).
 const PAUSA_FINAL_S = 0.5;
-// Velocidad y tope del borrado del texto anterior.
+// Duración del desvanecimiento de la etiqueta (s, a 1x; se divide por la velocidad).
+const DESVANECER_S = 0.25;
+// Velocidad y tope del borrado del texto anterior (a 1x; el tiempo se divide por la velocidad).
 const CPS_BORRADO = 160;
 const MAX_BORRADO_S = 0.45;
 // Duración base de la solidificación (s); se divide por la velocidad.
@@ -25,6 +27,10 @@ export interface OpcionesEscritura {
   readonly textoPrevio: string | null;
   // Caracteres por segundo ya multiplicados por la velocidad.
   readonly caracteresPorSegundo: number;
+  // NUEVO: velocidad de reproducción (1, 2, 3...). Acorta el borrado, la pausa final
+  // y el desvanecimiento para que la animación quepa antes del siguiente evento.
+  // Opcional: si falta se asume 1x, así que no rompe a quien ya llamaba sin ella.
+  readonly velocidad?: number;
   // Etiqueta flotante y contenedor sobre el que se posiciona.
   readonly etiqueta: HTMLElement;
   readonly marco: HTMLElement;
@@ -58,6 +64,8 @@ function colocarEtiqueta(etiqueta: HTMLElement, marco: HTMLElement, x: number, y
 export function escribirEnVivo(o: OpcionesEscritura): gsap.core.Timeline {
   const { div, texto, textoPrevio, etiqueta, marco, nombreAgente } = o;
   const velocidad = Math.max(1, o.caracteresPorSegundo);
+  // NUEVO: factor de aceleración para los tiempos fijos (nunca 0 ni negativo).
+  const factor = Math.max(0.1, o.velocidad ?? 1);
   const letrasNuevas = partir(texto);
   const letrasPrevias = textoPrevio !== null ? partir(textoPrevio) : [];
   const hayPrevio = letrasPrevias.length > 0;
@@ -103,7 +111,8 @@ export function escribirEnVivo(o: OpcionesEscritura): gsap.core.Timeline {
       { n: letrasPrevias.length },
       {
         n: 0,
-        duration: Math.min(MAX_BORRADO_S, letrasPrevias.length / CPS_BORRADO),
+        // CAMBIO: la duración del borrado se divide por la velocidad.
+        duration: Math.min(MAX_BORRADO_S, letrasPrevias.length / CPS_BORRADO) / factor,
         ease: "power1.in",
         immediateRender: false,
         onUpdate: () => pintar(progreso.n),
@@ -130,8 +139,9 @@ export function escribirEnVivo(o: OpcionesEscritura): gsap.core.Timeline {
   );
 
   // Cursor parpadeando un momento, luego se retira la etiqueta y se deja el texto limpio.
-  tl.to({}, { duration: PAUSA_FINAL_S });
-  tl.to(etiqueta, { opacity: 0, duration: 0.25 });
+  // CAMBIO: la pausa final y el desvanecimiento se dividen por la velocidad.
+  tl.to({}, { duration: PAUSA_FINAL_S / factor });
+  tl.to(etiqueta, { opacity: 0, duration: DESVANECER_S / factor });
   tl.add(() => {
     div.textContent = texto;
   });
@@ -159,7 +169,8 @@ export function solidificar(o: OpcionesSolidificar): gsap.core.Timeline {
   const tl = gsap.timeline();
   tl.set(etiqueta, { opacity: 1 });
   tl.to({}, { duration: 0.8 / velocidad });
-  tl.to(etiqueta, { opacity: 0, duration: 0.25 });
+  // CAMBIO: el desvanecimiento también se divide por la velocidad.
+  tl.to(etiqueta, { opacity: 0, duration: DESVANECER_S / velocidad });
   tl.add(() => div.classList.remove("solidificando"));
   return tl;
 }

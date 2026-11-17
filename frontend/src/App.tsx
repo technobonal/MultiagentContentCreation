@@ -12,11 +12,9 @@ import type { EleccionIdioma, IdiomaFase } from "./lienzo/fase.ts";
 import { Lienzo } from "./lienzo/Lienzo.tsx";
 import { MesaAgentes } from "./lienzo/MesaAgentes.tsx";
 import { useReproductor } from "./lienzo/useReproductor.ts";
-import { crearReproductor } from "./timeline/reproductor.ts";
-import type { Reproductor, Velocidad } from "./timeline/reproductor.ts";
-
-// Velocidades que ofrece el reproductor.
-const VELOCIDADES: readonly Velocidad[] = [1, 2];
+// CAMBIO: las velocidades salen del reproductor (única fuente de verdad); ya no hay lista local.
+import { VELOCIDADES, crearReproductor } from "./timeline/reproductor.ts";
+import type { Reproductor } from "./timeline/reproductor.ts";
 
 // Convierte cualquier error en un texto legible.
 function mensaje(e: unknown): string {
@@ -73,7 +71,7 @@ function Pantalla({
             Reiniciar
           </button>
 
-          {/* Un botón por velocidad; el activo se marca con aria-pressed. */}
+          {/* Un botón por velocidad (1x, 2x, 3x); el activo se marca con aria-pressed. */}
           {VELOCIDADES.map((v) => (
             <button
               key={v}

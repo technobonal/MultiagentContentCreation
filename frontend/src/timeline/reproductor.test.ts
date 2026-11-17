@@ -12,7 +12,7 @@ import { crearSecuencia } from "./eventosPrueba.ts";
 import { crearEstadoInicial, reducirTodos } from "./reducer.ts";
 import { crearRelojFalso } from "./reloj.ts";
 import type { Reloj } from "./reloj.ts";
-import { ErrorSecuencia, calcularInstantes, crearReproductor } from "./reproductor.ts";
+import { ErrorSecuencia, VELOCIDADES, calcularInstantes, crearReproductor } from "./reproductor.ts";
 import type { Reproductor, VistaReproductor } from "./reproductor.ts";
 import type { Evento } from "./types.ts";
 
@@ -248,6 +248,11 @@ describe("reproducir y pausar", () => {
 
 // --- Velocidad -------------------------------------------------------------------
 describe("velocidad", () => {
+  // NUEVO: la lista es la fuente de verdad; si cambia, esta prueba avisa.
+  it("VELOCIDADES ofrece 1x, 2x y 3x", () => {
+    expect([...VELOCIDADES]).toEqual([1, 2, 3]);
+  });
+
   it("a 2x los eventos llegan en la mitad del tiempo", () => {
     const reloj = crearRelojFalso();
     const r = crearReproductor(crearSecuencia(5), { reloj });
@@ -258,6 +263,22 @@ describe("velocidad", () => {
     expect(aplicados(r)).toBe(2);
     reloj.avanzar(1000);
     expect(aplicados(r)).toBe(3);
+  });
+
+  // NUEVO: a 3x una brecha de 2000 ms dura ~667 ms reales; se usan márgenes
+  // (600 / 700 ms) para no depender de cómo redondea el reloj falso.
+  it("a 3x los eventos llegan en un tercio del tiempo", () => {
+    const reloj = crearRelojFalso();
+    const r = crearReproductor(crearSecuencia(5), { reloj });
+    r.velocidad(3);
+    r.reproducir();
+    expect(aplicados(r)).toBe(1);
+    reloj.avanzar(600);
+    // A 600 ms reales (1800 de grabación) todavía no llega el segundo evento.
+    expect(aplicados(r)).toBe(1);
+    reloj.avanzar(100);
+    // A 700 ms reales (2100 de grabación) ya se aplicó.
+    expect(aplicados(r)).toBe(2);
   });
 
   it("cambiar la velocidad a mitad de reproducción re-ancla el tiempo", () => {
@@ -275,9 +296,42 @@ describe("velocidad", () => {
     expect(aplicados(r)).toBe(3);
   });
 
-  it("rechaza velocidades que no sean 1 o 2", () => {
+  // NUEVO: de 1x a 3x en pleno play. Tras el cambio, el segundo evento llega
+  // a ~333 ms reales y el tercero a ~1000 ms reales (con márgenes seguros).
+  it("cambiar de 1x a 3x a mitad de reproducción continúa sin saltarse eventos", () => {
+    const reloj = crearRelojFalso();
+    const r = crearReproductor(crearSecuencia(5), { reloj });
+    r.reproducir();
+    reloj.avanzar(1000); // posición 1000 a 1x
+    r.velocidad(3); // faltan 1000 ms de grabación = ~333 ms reales
+    reloj.avanzar(300);
+    expect(aplicados(r)).toBe(1);
+    reloj.avanzar(40);
+    expect(aplicados(r)).toBe(2);
+    // El tercer evento llega ~1000 ms reales después del cambio (340 ya pasaron).
+    reloj.avanzar(600);
+    expect(aplicados(r)).toBe(2);
+    reloj.avanzar(70);
+    expect(aplicados(r)).toBe(3);
+  });
+
+  // CAMBIO: antes probaba 3 (que ahora es válida); ahora prueba valores fuera de la lista.
+  it("rechaza velocidades que no estén en VELOCIDADES", () => {
     const r = crearReproductor(crearSecuencia(3), { reloj: crearRelojFalso() });
-    expect(() => r.velocidad(3 as never)).toThrow(RangeError);
+    expect(() => r.velocidad(4 as never)).toThrow(RangeError);
+    expect(() => r.velocidad(0 as never)).toThrow(RangeError);
+  });
+
+  // NUEVO: la velocidad solo cambia el ritmo, nunca el resultado.
+  it.each(VELOCIDADES)("a %sx el estado final es idéntico al del reductor", (v) => {
+    const reloj = crearRelojFalso();
+    const eventos = crearSecuencia(8);
+    const r = crearReproductor(eventos, { reloj });
+    r.velocidad(v);
+    r.reproducir();
+    reloj.avanzar(100000);
+    expect(r.obtener().terminado).toBe(true);
+    expect(r.obtener().estado).toEqual(reducirTodos(crearEstadoInicial(), eventos));
   });
 });
 
@@ -431,18 +485,20 @@ describe("suscripción y vista", () => {
 const hayGrabacion = listarGrabaciones().includes("b5_cifra_inventada");
 
 describe.skipIf(!hayGrabacion)("reproductor con la grabación real b5_cifra_inventada", () => {
-  it("reproducida de principio a fin da el mismo estado que el reductor", () => {
+  // CAMBIO: se repite para cada velocidad; el resultado no debe depender del ritmo.
+  it.each(VELOCIDADES)("reproducida a %sx de principio a fin da el mismo estado que el reductor", (v) => {
     const grabacion = cargarGrabacion("b5_cifra_inventada");
     const reloj = crearRelojFalso();
     const r = crearReproductor(grabacion.eventos, { reloj });
+    r.velocidad(v);
     r.reproducir();
     // 10 minutos de reloj falso: sobra para toda la grabación.
     reloj.avanzar(10 * 60 * 1000);
-    const v = r.obtener();
-    expect(v.terminado).toBe(true);
+    const vista = r.obtener();
+    expect(vista.terminado).toBe(true);
     // Se aplican todos los eventos de la grabación (validar.test.ts fija cuántos son).
-    expect(v.aplicados).toBe(grabacion.eventos.length);
-    expect(v.estado).toEqual(reducirTodos(crearEstadoInicial(), grabacion.eventos));
+    expect(vista.aplicados).toBe(grabacion.eventos.length);
+    expect(vista.estado).toEqual(reducirTodos(crearEstadoInicial(), grabacion.eventos));
   });
 
   it("los instantes no decrecen y respetan el tope de 3 s por brecha", () => {
