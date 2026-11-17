@@ -2,7 +2,7 @@
  * App.tsx — Pantalla provisional del paso 4a: elige una grabación, carga la plantilla,
  * crea el reproductor y muestra la mesa de agentes, el lienzo y controles mínimos.
  * El idioma de las etiquetas es el de la guía salvo que el usuario elija otro.
- * Los controles definitivos y las miniaturas llegan en el paso 4b.
+ * Los controles definitivos llegan en el paso 4b.
  */
 import { useEffect, useMemo, useState } from "react";
 import { cargarGrabacion, listarGrabaciones } from "./lib/grabacion.ts";
@@ -11,25 +11,32 @@ import { idiomaDeGuia, leerEleccion } from "./lienzo/fase.ts";
 import type { EleccionIdioma, IdiomaFase } from "./lienzo/fase.ts";
 import { Lienzo } from "./lienzo/Lienzo.tsx";
 import { MesaAgentes } from "./lienzo/MesaAgentes.tsx";
+// NUEVO: tira de miniaturas, una por slide.
+import { TiraMiniaturas } from "./lienzo/TiraMiniaturas.tsx";
 import { useReproductor } from "./lienzo/useReproductor.ts";
-// CAMBIO: las velocidades salen del reproductor (única fuente de verdad); ya no hay lista local.
+// Las velocidades salen del reproductor (única fuente de verdad); no hay lista local.
 import { VELOCIDADES, crearReproductor } from "./timeline/reproductor.ts";
 import type { Reproductor } from "./timeline/reproductor.ts";
+// NUEVO: tipo de los eventos, para pasarlos a la tira.
+import type { Evento } from "./timeline/types.ts";
 
 // Convierte cualquier error en un texto legible.
 function mensaje(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-// Mesa de agentes, lienzo y controles de un reproductor ya creado.
+// Mesa de agentes, lienzo, miniaturas y controles de un reproductor ya creado.
 function Pantalla({
   reproductor,
   svg,
   idiomaGuia,
+  eventos,
 }: {
   reproductor: Reproductor;
   svg: string;
   idiomaGuia: IdiomaFase;
+  // NUEVO: eventos de la grabación (la tira calcula a dónde saltar con ellos).
+  eventos: readonly Evento[];
 }) {
   const vista = useReproductor(reproductor);
 
@@ -57,6 +64,15 @@ function Pantalla({
       <MesaAgentes estado={vista.estado} idioma={idioma} />
 
       <Lienzo vista={vista} svg={svg} idioma={idioma} />
+
+      {/* NUEVO: miniaturas; al hacer clic se salta al punto donde ese slide ya tiene contenido. */}
+      <TiraMiniaturas
+        svg={svg}
+        estado={vista.estado}
+        eventos={eventos}
+        idioma={idioma}
+        onIrA={(indice) => reproductor.irA(indice)}
+      />
 
       <div className="controles">
         <div className="fila">
@@ -111,6 +127,8 @@ export function App() {
   const [svg, setSvg] = useState<string | null>(null);
   const [errorSvg, setErrorSvg] = useState<string | null>(null);
   const [reproductor, setReproductor] = useState<Reproductor | null>(null);
+  // NUEVO: eventos de la grabación elegida (se pasan a la tira de miniaturas).
+  const [eventos, setEventos] = useState<readonly Evento[]>([]);
   const [errorGrabacion, setErrorGrabacion] = useState<string | null>(null);
   // Idioma de la guía de la grabación elegida (por defecto español).
   const [idiomaGuia, setIdiomaGuia] = useState<IdiomaFase>("es");
@@ -138,15 +156,17 @@ export function App() {
     let creado: Reproductor | null = null;
 
     try {
-      const eventos = cargarGrabacion(nombre).eventos;
-      creado = crearReproductor(eventos);
+      const lista = cargarGrabacion(nombre).eventos;
+      creado = crearReproductor(lista);
       // El idioma de la guía sale de los eventos, así el evento 0 ya lo muestra bien.
-      setIdiomaGuia(idiomaDeGuia(eventos));
+      setIdiomaGuia(idiomaDeGuia(lista));
+      setEventos(lista);
       setReproductor(creado);
       setErrorGrabacion(null);
     } catch (e) {
       // Una grabación inválida o una secuencia con problemas se muestra, no se oculta.
       setReproductor(null);
+      setEventos([]);
       setIdiomaGuia("es");
       setErrorGrabacion(mensaje(e));
     }
@@ -178,7 +198,13 @@ export function App() {
 
       {/* La clave por nombre reinicia el lienzo completo al cambiar de grabación. */}
       {svg && reproductor && (
-        <Pantalla key={nombre} reproductor={reproductor} svg={svg} idiomaGuia={idiomaGuia} />
+        <Pantalla
+          key={nombre}
+          reproductor={reproductor}
+          svg={svg}
+          idiomaGuia={idiomaGuia}
+          eventos={eventos}
+        />
       )}
     </main>
   );

@@ -655,3 +655,71 @@ input[type="range"] {
     animation: none !important;
   }
 }
+
+/* ===== Tira de miniaturas ===== */
+
+/* Fila con una miniatura por slide (6 columnas iguales). */
+.tira-miniaturas {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Cada miniatura es un botón: sin relleno, con borde que marca el estado. */
+.miniatura {
+  position: relative;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  background: transparent;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s, opacity 0.2s;
+}
+
+/* Foco visible para quien navega con teclado. */
+.miniatura:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+/* Miniatura del slide que se ve en el lienzo principal. */
+.miniatura-activa {
+  border-color: #38bdf8;
+}
+
+/* Slide aún vacío: atenuada y sin cursor de clic. */
+.miniatura:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Contenedor del SVG: bloque (no inline) para que ocupe todo el ancho. */
+.miniatura-svg {
+  display: block;
+  pointer-events: none; /* el clic lo recibe el botón, no el SVG */
+  user-select: none;
+}
+
+/* Número del slide en la esquina inferior izquierda. */
+.miniatura-numero {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* Respeta "reducir movimiento": sin transiciones en las miniaturas. */
+@media (prefers-reduced-motion: reduce) {
+  .miniatura {
+    transition: none;
+  }
+}
