@@ -22,3 +22,9 @@ renders/
 .DS_Store
 Thumbs.db
 eval/results/ 
+
+# Descargas de Google Fonts (las usadas viven en templates/typography/)
+/Inter/
+/Inter,JetBrains_Mono/
+/Inter.zip
+/Inter,JetBrains_Mono.zip
