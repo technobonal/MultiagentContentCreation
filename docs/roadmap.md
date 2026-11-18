@@ -31,7 +31,7 @@ Tope para la Fase 0: **3 días**. Más papel no baja el riesgo; ejecutar sí.
 - [x] Paso 4a: ajuste de texto, fondo, sello, carga de plantilla, componente `Lienzo`, avatares vivos y mesa de agentes
 - [x] Grabación `b5_cifra_inventada` con 24 eventos (un `colocar_fondo` por slide, fondo `#1E1B4B`) y pruebas alineadas
 - [x] Tarjeta de hallazgos del revisor montada y verificada en pantalla
-- [x] Paso 4b: controles definitivos (reproducir/pausar, reiniciar, velocidad 1x/2x/3x, seek) y tira de miniaturas (clic en miniatura salta al último evento de ese slide; slides sin eventos atenuados y no clicables)
+- [x] Paso 4b: controles definitivos (reproducir/pausar, reiniciar, velocidad 1x/2x/3x, seek) y tira de miniaturas (clic en miniatura salta al primer evento que le da contenido a ese slide; slides sin eventos atenuados y no clicables)
 - [x] Retoques visuales: margen entre la tarjeta de hallazgos y el indicador de progreso; texto legible en la burbuja del revisor
 - [x] Segunda grabación, más completa, para el video (cerrada: el video de demostración ya está hecho con `b5_cifra_inventada`)
 - [x] Criterio de salida: grabar el video del lienzo
