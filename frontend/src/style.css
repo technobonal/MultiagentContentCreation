@@ -31,12 +31,19 @@ h1 {
   margin: 0 0 16px;
 }
 
-/* Selector de grabación. */
+/* Selector de grabación / fuente / run. */
 .selector {
   display: flex;
   gap: 8px;
   align-items: center;
   margin-bottom: 16px;
+}
+
+/* El texto de la etiqueta y su control van en fila con separación. */
+.selector label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 select,
@@ -48,6 +55,27 @@ button {
   border-radius: 8px;
   padding: 8px 12px;
   cursor: pointer;
+}
+
+/* Fondo sólido en los select: con "transparent" la lista desplegable no se leía. */
+select {
+  background: var(--fondo);
+}
+
+/* Las opciones de la lista llevan su propio fondo y color. */
+select option {
+  background: var(--fondo);
+  color: var(--texto);
+}
+
+/* Campos de texto con la misma apariencia que los select (se excluye el deslizador). */
+input:not([type="range"]) {
+  font: inherit;
+  color: var(--texto);
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 8px 12px;
 }
 
 button:hover {
@@ -81,6 +109,7 @@ input:focus-visible {
 }
 
 /* ---------- Mesa de agentes ---------- */
+/* Cinco fichas iguales; las celdas de una misma fila se estiran a la misma altura. */
 .mesa {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
@@ -88,16 +117,20 @@ input:focus-visible {
   margin-bottom: 12px;
 }
 
-/* Ficha de agente: mini-avatar y texto; apagada hasta que interviene. */
+/* CAMBIO (A): ficha en columna, con el avatar arriba y el texto centrado debajo.
+   Así el texto usa todo el ancho de la ficha (antes solo ~50 px junto al avatar). */
 .agente {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
-  padding: 6px 8px;
+  padding: 8px 6px;
   border: 1px solid var(--borde);
   border-radius: 8px;
   font-size: 0.72rem;
+  line-height: 1.2;
+  text-align: center;
   opacity: 0.5;
   transition: opacity 0.3s, border-color 0.3s;
 }
@@ -106,7 +139,9 @@ input:focus-visible {
   flex: none;
 }
 
+/* CAMBIO (A): el bloque de texto ocupa el ancho completo de la ficha. */
 .agente-texto {
+  width: 100%;
   min-width: 0;
 }
 
@@ -121,16 +156,23 @@ input:focus-visible {
   animation: pulso 1.6s ease-in-out infinite;
 }
 
+/* CAMBIO: el nombre puede partirse en dos líneas ("Director de arte") sin salirse. */
 .agente-nombre {
   display: block;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
+/* CAMBIO (B): el estado admite hasta 2 líneas (con "…" si hay más) y reserva siempre
+   la altura de 2 líneas, para que las cinco fichas queden parejas. */
 .agente-estado {
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  min-height: 2.4em; /* 2 líneas × line-height 1.2 */
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   opacity: 0.8;
 }
 

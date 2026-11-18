@@ -1,6 +1,6 @@
 """Rutas HTTP del backend. Por ahora: el canal SSE de eventos de una ejecución."""
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 
 from app import config
@@ -19,11 +19,18 @@ def obtener_brecha_max() -> float:
 async def eventos_de_run(
     run_id: str,
     last_event_id: str | None = Header(default=None),  # llega como cabecera Last-Event-ID
+    # EventSource no permite fijar cabeceras a mano: el cliente usa ?desde=N para pedir de nuevo lo que falta.
+    desde: int | None = Query(default=None, ge=0),
     brecha_max: float = Depends(obtener_brecha_max),
 ):
-    """Emite por SSE los eventos de una ejecución; con Last-Event-ID reenvía solo los faltantes."""
-    # Interpreta el último seq recibido por el cliente (0 si es la primera conexión).
-    desde_seq = 0
+    """Emite por SSE los eventos de una ejecución.
+
+    Reanudación: manda la cabecera Last-Event-ID si viene; si no, el parámetro ?desde=N.
+    Solo se reenvían los eventos con seq mayor que ese valor.
+    """
+    desde_seq = 0  # 0 = primera conexión, se envía todo
+
+    # La cabecera tiene prioridad: es lo que envía el navegador al reconectar solo.
     if last_event_id is not None:
         try:
             desde_seq = int(last_event_id)
@@ -32,6 +39,9 @@ async def eventos_de_run(
         # Un seq negativo no existe en el contrato (empieza en 1).
         if desde_seq < 0:
             raise HTTPException(status_code=400, detail="Last-Event-ID no puede ser negativo")
+    # Sin cabecera, se usa ?desde=N (FastAPI ya validó que sea entero >= 0).
+    elif desde is not None:
+        desde_seq = desde
 
     try:
         eventos = cargar_eventos(run_id)
