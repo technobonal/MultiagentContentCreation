@@ -3,12 +3,18 @@
  * La del slide activo va resaltada; las que aún no tienen contenido quedan
  * deshabilitadas. Al hacer clic se salta (irA) al primer punto donde ese slide
  * ya tiene contenido. El número de slides sale de la propia plantilla.
+ * CAMBIO: un slide sin ningún evento pero con campos calculados por código (el de
+ * fuentes y sello) también se habilita; como no hay punto de salto, al hacer clic
+ * se ve a mano (onVerSlide) sin mover el tiempo de la reproducción.
  */
 import { useEffect, useMemo, useState } from "react";
 import { esperarFuentes, parsearPlantilla } from "./cargarPlantilla.ts";
 import type { IdiomaFase } from "./fase.ts";
 import { indiceDeSalto, slideTieneContenido } from "./indiceDeSalto.ts";
 import { MiniaturaSlide } from "./MiniaturaSlide.tsx";
+// NUEVO: campos de cada slide y regla de contenido calculado.
+import { camposPorSlide, slideTieneCalculado } from "./slideManual.ts";
+import type { CamposPorSlide } from "./slideManual.ts";
 import type { Estado, Evento } from "../timeline/types.ts";
 
 // Textos accesibles por idioma.
@@ -17,17 +23,26 @@ const TEXTOS: Record<IdiomaFase, { nav: string; ir: string }> = {
   "pt-BR": { nav: "Slides do carrossel", ir: "Ir para o slide" },
 };
 
+// Datos de la plantilla que usa la tira: cuántos slides tiene y qué campos lleva cada uno.
+interface DatosPlantilla {
+  readonly numeroSlides: number;
+  readonly campos: CamposPorSlide;
+}
+
 interface PropsTira {
   readonly svg: string;
+  // Estado que se está viendo (con el slide manual ya aplicado, si lo hay).
   readonly estado: Estado;
   // Eventos de la grabación (para calcular a dónde saltar).
   readonly eventos: readonly Evento[];
   readonly idioma: IdiomaFase;
   // Salta a un punto con `indice` eventos aplicados.
   readonly onIrA: (indice: number) => void;
+  // NUEVO: muestra a mano un slide sin punto de salto (por ejemplo el de fuentes y sello).
+  readonly onVerSlide: (slide: number) => void;
 }
 
-export function TiraMiniaturas({ svg, estado, eventos, idioma, onIrA }: PropsTira) {
+export function TiraMiniaturas({ svg, estado, eventos, idioma, onIrA, onVerSlide }: PropsTira) {
   const [fuentesListas, setFuentesListas] = useState(false);
 
   // Espera las tipografías una vez: sin ellas las miniaturas se medirían con la fuente de respaldo.
@@ -42,13 +57,17 @@ export function TiraMiniaturas({ svg, estado, eventos, idioma, onIrA }: PropsTir
     };
   }, []);
 
-  // Cantidad de slides: cuenta los <g class="slide"> de la plantilla.
-  const numeroSlides = useMemo(() => {
+  // Cantidad de slides y campos de cada uno: se leen de la plantilla una sola vez por svg.
+  const { numeroSlides, campos } = useMemo<DatosPlantilla>(() => {
     try {
-      return parsearPlantilla(svg).querySelectorAll("g.slide").length;
+      const raiz = parsearPlantilla(svg);
+      return {
+        numeroSlides: raiz.querySelectorAll("g.slide").length,
+        campos: camposPorSlide(raiz),
+      };
     } catch {
       // Plantilla inválida: sin miniaturas (el lienzo principal muestra el error).
-      return 0;
+      return { numeroSlides: 0, campos: {} };
     }
   }, [svg]);
 
@@ -65,6 +84,12 @@ export function TiraMiniaturas({ svg, estado, eventos, idioma, onIrA }: PropsTir
       {/* Un ciclo por slide: crea su miniatura. */}
       {saltos.map((salto, i) => {
         const slide = i + 1;
+        // NUEVO: ¿el slide ya tiene texto calculado por código (atribución, licencia, sello)?
+        const tieneCalculado = slideTieneCalculado(estado, campos[slide] ?? []);
+        // Deshabilitada si aún no hay contenido o ningún evento le da contenido,
+        // salvo que tenga contenido calculado que se pueda ver a mano.
+        const deshabilitada =
+          (salto === null || !slideTieneContenido(estado, slide)) && !tieneCalculado;
         return (
           <MiniaturaSlide
             key={slide}
@@ -72,13 +97,17 @@ export function TiraMiniaturas({ svg, estado, eventos, idioma, onIrA }: PropsTir
             estado={estado}
             slide={slide}
             activa={estado.slideActivo === slide}
-            // Deshabilitada si aún no hay contenido o si ningún evento le da contenido.
-            deshabilitada={salto === null || !slideTieneContenido(estado, slide)}
+            deshabilitada={deshabilitada}
             etiqueta={`${textos.ir} ${slide}`}
             fuentesListas={fuentesListas}
             onSeleccionar={() => {
-              // Solo se salta si existe un punto de salto para este slide.
-              if (salto !== null) onIrA(salto);
+              // Con punto de salto se mueve el tiempo, como siempre.
+              if (salto !== null) {
+                onIrA(salto);
+                return;
+              }
+              // Sin punto de salto (solo contenido calculado): se ve a mano, sin mover el tiempo.
+              onVerSlide(slide);
             }}
           />
         );

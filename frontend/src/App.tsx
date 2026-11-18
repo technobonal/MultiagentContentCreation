@@ -1,8 +1,10 @@
 /**
- * App.tsx — Pantalla provisional del paso 4a: elige una grabación, carga la plantilla,
- * crea el reproductor y muestra la mesa de agentes, el lienzo y controles mínimos.
- * El idioma de las etiquetas es el de la guía salvo que el usuario elija otro.
- * Los controles definitivos llegan en el paso 4b.
+ * App.tsx — Pantalla principal: elige la fuente de eventos (grabación local o servidor SSE),
+ * carga la plantilla y muestra la mesa de agentes, el lienzo, las miniaturas y los controles.
+ * Lienzo no cambia entre fuentes: ambas cumplen la interfaz Reproductor.
+ * En modo Servidor el ritmo lo marca el backend, así que no se muestran las velocidades.
+ * CAMBIO: el slide que se mira puede elegirse a mano (miniatura sin eventos, como el de
+ * fuentes y sello); la elección se suelta sola cuando llega un evento nuevo o se salta en el tiempo.
  */
 import { useEffect, useMemo, useState } from "react";
 import { cargarGrabacion, listarGrabaciones } from "./lib/grabacion.ts";
@@ -11,14 +13,35 @@ import { idiomaDeGuia, leerEleccion } from "./lienzo/fase.ts";
 import type { EleccionIdioma, IdiomaFase } from "./lienzo/fase.ts";
 import { Lienzo } from "./lienzo/Lienzo.tsx";
 import { MesaAgentes } from "./lienzo/MesaAgentes.tsx";
-// NUEVO: tira de miniaturas, una por slide.
+// NUEVO: reglas del slide elegido a mano.
+import { aplicarSlideManual, slideManualVigente } from "./lienzo/slideManual.ts";
+import type { SeleccionManual } from "./lienzo/slideManual.ts";
 import { TiraMiniaturas } from "./lienzo/TiraMiniaturas.tsx";
+// NUEVO: estado de la conexión SSE.
+import { useEnVivo } from "./lienzo/useEnVivo.ts";
 import { useReproductor } from "./lienzo/useReproductor.ts";
+// NUEVO: fuente de eventos por SSE (misma interfaz que Reproductor).
+import { crearFuenteEnVivo } from "./timeline/fuenteEnVivo.ts";
+import type { EstadoConexion, FuenteEnVivo } from "./timeline/fuenteEnVivo.ts";
 // Las velocidades salen del reproductor (única fuente de verdad); no hay lista local.
 import { VELOCIDADES, crearReproductor } from "./timeline/reproductor.ts";
-import type { Reproductor } from "./timeline/reproductor.ts";
-// NUEVO: tipo de los eventos, para pasarlos a la tira.
+import type { Reproductor, VistaReproductor } from "./timeline/reproductor.ts";
 import type { Evento } from "./timeline/types.ts";
+
+// De dónde vienen los eventos.
+type ModoFuente = "grabacion" | "servidor";
+
+// Run que se propone por defecto en modo Servidor (la grabación b5 servida por el backend).
+const RUN_POR_DEFECTO = "run_b5_cifra_inventada";
+
+// Texto que se muestra para cada estado de la conexión.
+const ETIQUETA_CONEXION: Record<EstadoConexion, string> = {
+  conectando: "Conectando…",
+  abierta: "Conectada",
+  reconectando: "Reconectando…",
+  cerrada: "Finalizada",
+  error: "Error",
+};
 
 // Convierte cualquier error en un texto legible.
 function mensaje(e: unknown): string {
@@ -31,19 +54,39 @@ function Pantalla({
   svg,
   idiomaGuia,
   eventos,
+  enVivo = false,
 }: {
   reproductor: Reproductor;
   svg: string;
   idiomaGuia: IdiomaFase;
-  // NUEVO: eventos de la grabación (la tira calcula a dónde saltar con ellos).
+  // Eventos de la secuencia (la tira calcula a dónde saltar con ellos).
   eventos: readonly Evento[];
+  // NUEVO: en modo Servidor se ocultan las velocidades (el ritmo lo marca el backend).
+  enVivo?: boolean;
 }) {
   const vista = useReproductor(reproductor);
 
   // "auto" = idioma de la guía; si el usuario elige otro, manda su elección.
-  // Esta pantalla se remonta al cambiar de grabación (key), así que vuelve a "auto".
+  // Esta pantalla se remonta al cambiar de fuente (key), así que vuelve a "auto".
   const [eleccion, setEleccion] = useState<EleccionIdioma>("auto");
   const idioma: IdiomaFase = eleccion === "auto" ? idiomaGuia : eleccion;
+
+  // NUEVO: slide elegido a mano (con el último seq del reductor en ese momento).
+  const [manual, setManual] = useState<SeleccionManual | null>(null);
+  // Sigue vigente solo mientras no llegue un evento nuevo ni se salte a otro punto.
+  const slideManual = slideManualVigente(manual, vista.estado.ultimoSeq);
+  // Estado que se muestra: el del reductor con el slide manual aplicado (misma referencia si no hay).
+  const estadoVista = useMemo(
+    () => aplicarSlideManual(vista.estado, slideManual),
+    [vista.estado, slideManual],
+  );
+  // Vista para el lienzo: igual que la del reproductor pero con el estado que se muestra.
+  const vistaLienzo = useMemo<VistaReproductor>(
+    () => ({ ...vista, estado: estadoVista }),
+    [vista, estadoVista],
+  );
+  // Suelta la elección manual; se llama antes de cualquier acción que mueva la reproducción.
+  const soltarManual = () => setManual(null);
 
   return (
     <div className="pantalla">
@@ -63,15 +106,20 @@ function Pantalla({
 
       <MesaAgentes estado={vista.estado} idioma={idioma} />
 
-      <Lienzo vista={vista} svg={svg} idioma={idioma} />
+      <Lienzo vista={vistaLienzo} svg={svg} idioma={idioma} />
 
-      {/* NUEVO: miniaturas; al hacer clic se salta al punto donde ese slide ya tiene contenido. */}
+      {/* Miniaturas; al hacer clic se salta al punto donde ese slide ya tiene contenido,
+          o, si ningún evento lo toca (fuentes y sello), se ve a mano. */}
       <TiraMiniaturas
         svg={svg}
-        estado={vista.estado}
+        estado={estadoVista}
         eventos={eventos}
         idioma={idioma}
-        onIrA={(indice) => reproductor.irA(indice)}
+        onIrA={(indice) => {
+          soltarManual();
+          reproductor.irA(indice);
+        }}
+        onVerSlide={(slide) => setManual({ slide, seq: vista.estado.ultimoSeq })}
       />
 
       <div className="controles">
@@ -79,28 +127,43 @@ function Pantalla({
           {/* Alterna entre reproducir y pausar según el estado actual. */}
           <button
             type="button"
-            onClick={() => (vista.reproduciendo ? reproductor.pausar() : reproductor.reproducir())}
+            onClick={() => {
+              soltarManual();
+              // Reproduciendo: pausa; en pausa: reproduce.
+              if (vista.reproduciendo) {
+                reproductor.pausar();
+              } else {
+                reproductor.reproducir();
+              }
+            }}
           >
             {vista.reproduciendo ? "Pausar" : "Reproducir"}
           </button>
-          <button type="button" onClick={() => reproductor.reiniciar()}>
+          <button
+            type="button"
+            onClick={() => {
+              soltarManual();
+              reproductor.reiniciar();
+            }}
+          >
             Reiniciar
           </button>
 
-          {/* Un botón por velocidad (1x, 2x, 3x); el activo se marca con aria-pressed. */}
-          {VELOCIDADES.map((v) => (
-            <button
-              key={v}
-              type="button"
-              aria-pressed={vista.velocidad === v}
-              onClick={() => reproductor.velocidad(v)}
-            >
-              {v}x
-            </button>
-          ))}
+          {/* Un botón por velocidad (1x, 2x, 3x), solo con grabación local. */}
+          {!enVivo &&
+            VELOCIDADES.map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={vista.velocidad === v}
+                onClick={() => reproductor.velocidad(v)}
+              >
+                {v}x
+              </button>
+            ))}
         </div>
 
-        {/* Seek por índice de evento: 0 = inicio, total = todo aplicado. */}
+        {/* Seek por índice de evento: 0 = inicio, total = todo aplicado (en vivo, total crece). */}
         <input
           type="range"
           aria-label="Posición en la secuencia de eventos"
@@ -108,10 +171,13 @@ function Pantalla({
           max={vista.total}
           value={vista.aplicados}
           disabled={vista.total === 0}
-          onChange={(e) => reproductor.irA(Number(e.currentTarget.value))}
+          onChange={(e) => {
+            soltarManual();
+            reproductor.irA(Number(e.currentTarget.value));
+          }}
         />
         <p className="estado">
-          Evento {vista.aplicados} de {vista.total} · slide {vista.estado.slideActivo}
+          Evento {vista.aplicados} de {vista.total} · slide {estadoVista.slideActivo}
           {vista.terminado ? " · terminado" : ""}
         </p>
       </div>
@@ -119,35 +185,18 @@ function Pantalla({
   );
 }
 
-export function App() {
+// Modo "Grabación local": elige un archivo de contracts/recordings y lo reproduce.
+function ModoGrabacion({ svg }: { svg: string }) {
   // Los nombres de grabación se leen una sola vez.
   const nombres = useMemo(() => listarGrabaciones(), []);
   const [nombre, setNombre] = useState(nombres[0] ?? "");
 
-  const [svg, setSvg] = useState<string | null>(null);
-  const [errorSvg, setErrorSvg] = useState<string | null>(null);
   const [reproductor, setReproductor] = useState<Reproductor | null>(null);
-  // NUEVO: eventos de la grabación elegida (se pasan a la tira de miniaturas).
+  // Eventos de la grabación elegida (se pasan a la tira de miniaturas).
   const [eventos, setEventos] = useState<readonly Evento[]>([]);
   const [errorGrabacion, setErrorGrabacion] = useState<string | null>(null);
   // Idioma de la guía de la grabación elegida (por defecto español).
   const [idiomaGuia, setIdiomaGuia] = useState<IdiomaFase>("es");
-
-  // Carga la plantilla una vez.
-  useEffect(() => {
-    let cancelado = false;
-    cargarPlantillaSvg()
-      .then((texto) => {
-        // Si el componente se desmontó mientras llegaba la respuesta, se descarta.
-        if (!cancelado) setSvg(texto);
-      })
-      .catch((e: unknown) => {
-        if (!cancelado) setErrorSvg(mensaje(e));
-      });
-    return () => {
-      cancelado = true;
-    };
-  }, []);
 
   // Crea el reproductor al elegir una grabación y lo destruye al cambiar o desmontar.
   useEffect(() => {
@@ -177,9 +226,7 @@ export function App() {
   }, [nombre]);
 
   return (
-    <main className="app">
-      <h1>Lienzo de carruseles</h1>
-
+    <>
       <label className="selector">
         Grabación
         <select value={nombre} onChange={(e) => setNombre(e.currentTarget.value)}>
@@ -192,12 +239,10 @@ export function App() {
       </label>
 
       {nombres.length === 0 && <p role="alert">No hay grabaciones en contracts/recordings.</p>}
-      {errorSvg && <p role="alert">No se pudo cargar la plantilla: {errorSvg}</p>}
       {errorGrabacion && <pre role="alert">{errorGrabacion}</pre>}
-      {!svg && !errorSvg && <p>Cargando plantilla…</p>}
 
       {/* La clave por nombre reinicia el lienzo completo al cambiar de grabación. */}
-      {svg && reproductor && (
+      {reproductor && (
         <Pantalla
           key={nombre}
           reproductor={reproductor}
@@ -206,6 +251,107 @@ export function App() {
           eventos={eventos}
         />
       )}
+    </>
+  );
+}
+
+// Pantalla de una fuente en vivo ya creada: estado de la conexión y el lienzo.
+function PantallaServidor({ fuente, svg }: { fuente: FuenteEnVivo; svg: string }) {
+  const vivo = useEnVivo(fuente);
+  // Con el buffer vacío todavía no hay guía de la cual sacar el idioma.
+  const idiomaGuia: IdiomaFase = vivo.eventos.length === 0 ? "es" : idiomaDeGuia(vivo.eventos);
+
+  return (
+    <>
+      <p className="estado" role="status">
+        Conexión: {ETIQUETA_CONEXION[vivo.conexion]}
+      </p>
+      {/* Errores y avisos del canal: visibles, nunca ocultos. */}
+      {vivo.mensaje && <pre role="alert">{vivo.mensaje}</pre>}
+      <Pantalla reproductor={fuente} svg={svg} idiomaGuia={idiomaGuia} eventos={vivo.eventos} enVivo />
+    </>
+  );
+}
+
+// Modo "Servidor": se conecta por SSE a /api/runs/{run_id}/eventos.
+function ModoServidor({ svg }: { svg: string }) {
+  // Lo que el usuario escribe y el run al que realmente se conecta (solo cambia al enviar).
+  const [runEscrito, setRunEscrito] = useState(RUN_POR_DEFECTO);
+  const [runActivo, setRunActivo] = useState(RUN_POR_DEFECTO);
+  const [fuente, setFuente] = useState<FuenteEnVivo | null>(null);
+
+  // Abre la conexión al cambiar de run y la cierra al cambiar o desmontar.
+  useEffect(() => {
+    // Sin run no hay nada a lo que conectarse.
+    if (runActivo === "") return;
+    const creada = crearFuenteEnVivo(`/api/runs/${encodeURIComponent(runActivo)}/eventos`);
+    setFuente(creada);
+    return () => {
+      creada.destruir();
+    };
+  }, [runActivo]);
+
+  return (
+    <>
+      <form
+        className="selector"
+        onSubmit={(e) => {
+          e.preventDefault(); // evita recargar la página
+          setRunActivo(runEscrito.trim());
+        }}
+      >
+        <label>
+          Run ID
+          <input value={runEscrito} onChange={(e) => setRunEscrito(e.currentTarget.value)} />
+        </label>
+        <button type="submit">Conectar</button>
+      </form>
+
+      {/* La clave por run reinicia el lienzo completo al cambiar de ejecución. */}
+      {fuente && runActivo !== "" && <PantallaServidor key={runActivo} fuente={fuente} svg={svg} />}
+    </>
+  );
+}
+
+export function App() {
+  const [modo, setModo] = useState<ModoFuente>("grabacion");
+  const [svg, setSvg] = useState<string | null>(null);
+  const [errorSvg, setErrorSvg] = useState<string | null>(null);
+
+  // Carga la plantilla una vez.
+  useEffect(() => {
+    let cancelado = false;
+    cargarPlantillaSvg()
+      .then((texto) => {
+        // Si el componente se desmontó mientras llegaba la respuesta, se descarta.
+        if (!cancelado) setSvg(texto);
+      })
+      .catch((e: unknown) => {
+        if (!cancelado) setErrorSvg(mensaje(e));
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  return (
+    <main className="app">
+      <h1>Lienzo de carruseles</h1>
+
+      <label className="selector">
+        Fuente
+        <select value={modo} onChange={(e) => setModo(e.currentTarget.value as ModoFuente)}>
+          <option value="grabacion">Grabación local</option>
+          <option value="servidor">Servidor</option>
+        </select>
+      </label>
+
+      {errorSvg && <p role="alert">No se pudo cargar la plantilla: {errorSvg}</p>}
+      {!svg && !errorSvg && <p>Cargando plantilla…</p>}
+
+      {/* Cada modo vive en su componente; al cambiar de modo el otro se desmonta y libera su fuente. */}
+      {svg && modo === "grabacion" && <ModoGrabacion svg={svg} />}
+      {svg && modo === "servidor" && <ModoServidor svg={svg} />}
     </main>
   );
 }
