@@ -5,6 +5,8 @@ Reglas del contrato que implementa:
   - Cada evento se valida antes de emitirse; uno inválido produce un evento SSE
     `evento_invalido` (visible) y el flujo se detiene. Nunca se omite en silencio.
   - Los eventos válidos salen tal cual, sin tocar `origen`.
+
+Dos flujos: `flujo_sse` para listas cerradas (grabaciones) y `flujo_vivo` para ejecuciones en curso.
 """
 
 import asyncio
@@ -13,6 +15,10 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import datetime
 
 from app.events.validador import comprobar_evento
+from app.runs.registro import Ejecucion, EstadoRun
+
+# Comentario SSE: lo ignora EventSource, pero mantiene viva la conexión a través de Nginx.
+LATIDO_SSE = ": ping\n\n"
 
 
 def formatear_sse(datos: dict, id_evento: int | None = None, nombre: str | None = None) -> str:
@@ -83,3 +89,27 @@ async def flujo_sse(
             await dormir(espera)
         yield formatear_sse(evento, id_evento=evento["seq"])
         timestamp_anterior = evento["timestamp"]
+
+
+async def flujo_vivo(ejecucion: Ejecucion, desde_seq: int, latido_seg: float) -> AsyncIterator[str]:
+    """Genera los mensajes SSE de una ejecución en curso, esperando los eventos que aún no llegan.
+
+    Los eventos del buffer ya están validados al emitirse y su ritmo lo marca el orquestador, así que
+    aquí no se revalida ni se espacia. Termina cuando la ejecución se cierra y no queda nada pendiente.
+    """
+    indice = desde_seq  # el seq es consecutivo desde 1: el evento siguiente a desde_seq está en ese índice
+    while True:  # sigue hasta que la ejecución se cierre y se agote el buffer
+        # Hay eventos pendientes: se entregan en orden.
+        if indice < len(ejecucion.eventos):
+            evento = ejecucion.eventos[indice]
+            indice += 1
+            yield formatear_sse(evento, id_evento=evento["seq"])
+            continue
+        # Sin pendientes y la ejecución cerrada: se entrega el error si lo hubo y termina el flujo.
+        if ejecucion.estado != EstadoRun.EN_CURSO:
+            if ejecucion.fallo is not None:  # el error no lleva id: no mueve el Last-Event-ID
+                yield formatear_sse(ejecucion.fallo["datos"], nombre=ejecucion.fallo["nombre"])
+            return
+        # La ejecución sigue en curso: se espera un evento nuevo o se manda un latido.
+        if not await ejecucion.esperar_cambio(indice, latido_seg):
+            yield LATIDO_SSE
