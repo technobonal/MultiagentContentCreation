@@ -48,3 +48,15 @@ RITMO_RELLENO_SEG = float(os.environ.get("RITMO_RELLENO_SEG", "0.6"))
 
 # Cada cuántos segundos sin eventos se envía un latido ": ping" (Nginx corta a los 60 s sin tráfico).
 LATIDO_SEG = float(os.environ.get("LATIDO_SEG", "15"))
+
+# --- Paso 2 (fase 2): carga de la fuente ---
+
+# Carpeta del servidor donde viven las fuentes (.md y .txt). La `referencia` de la
+# entrada se resuelve solo por nombre de archivo dentro de esta carpeta.
+FUENTES_DIR = Path(os.environ.get("FUENTES_DIR", str(RAIZ_PROYECTO / "backend" / "fuentes")))
+
+# Tamaño máximo de un archivo de fuente, en bytes (200 KB por defecto).
+FUENTE_MAX_BYTES = int(os.environ.get("FUENTE_MAX_BYTES", str(200 * 1024)))
+
+# Tamaño máximo, en caracteres, de cada fragmento en que se indexa la fuente.
+FRAGMENTO_MAX_CHARS = int(os.environ.get("FRAGMENTO_MAX_CHARS", "1000"))

@@ -1,0 +1,41 @@
+GUÍA SCRUM SINTÉTICA (DOCUMENTO DE PRUEBA)
+Versión 1.0 - noviembre de 2026
+
+AVISO
+Este texto es un documento sintético, redactado para probar herramientas de verificación de contenido. No es la Guía Scrum oficial ni la guía de ninguna organización. Para la prueba, lo que cuenta es lo que dice este texto, aunque difiera de otras fuentes.
+
+1. QUÉ ES SCRUM
+Scrum es un marco de trabajo ligero para que equipos pequeños entreguen valor de forma incremental. Organiza el trabajo en ciclos de duración fija llamados Sprints y define roles, artefactos y eventos. No es una metodología cerrada: no explica cómo se hace el trabajo técnico, solo cómo se organiza el equipo para hacerlo.
+
+2. VALORES
+Scrum se apoya en seis valores: Compromiso, Coraje, Enfoque, Apertura, Respeto y Transparencia. Esta guía los trata como un conjunto: sin transparencia no es posible inspeccionar el trabajo, y sin apertura el equipo no puede adaptarse.
+
+3. ROLES Y TAMAÑO DEL EQUIPO
+Un Scrum Team tiene tres tipos de integrantes: un Product Owner, un Scrum Master y el equipo de desarrollo. El Scrum Team completo reúne de 5 a 11 personas. El equipo de desarrollo, sin contar al Product Owner ni al Scrum Master, es de 3 a 9 personas.
+
+- Product Owner: es responsable del Product Backlog, es decir, de su contenido, su orden y su disponibilidad. Representa a los interesados y decide qué se construye primero.
+- Scrum Master: facilita los eventos y ayuda al equipo a remover impedimentos. No es un jefe ni un supervisor. Esta guía desaconseja que una misma persona sea Product Owner y Scrum Master.
+- Equipo de desarrollo: es autoorganizado y multifuncional. Construye el Incremento y estima el esfuerzo de cada elemento.
+
+4. ARTEFACTOS
+El Product Backlog es la lista ordenada de todo lo que el producto podría necesitar. El Sprint Backlog contiene los elementos elegidos para el Sprint más el plan para entregarlos. El Incremento es la suma de todo lo terminado hasta el momento y debe cumplir la Definición de Hecho acordada por el equipo.
+
+5. EL SPRINT
+Un Sprint es un período de duración fija de 1 a 4 semanas. La duración más común es de 2 semanas. La duración no se cambia mientras el Sprint está en curso, y el equipo la elige en conjunto antes de empezar.
+
+Sprint 0: algunos equipos dedican un período previo a preparar una propuesta y un Product Backlog inicial. En esta guía el Sprint 0 es opcional y no es un evento obligatorio de Scrum.
+
+6. SPRINT PLANNING
+Abre el Sprint. El equipo decide qué elementos del Product Backlog entran, define el objetivo del Sprint y acuerda cómo los va a entregar. El Sprint Planning dura hasta 8 horas para un Sprint de un mes. Para Sprints más cortos, la duración se reduce de forma proporcional.
+
+7. DAILY SCRUM
+Es una reunión diaria del equipo de desarrollo para sincronizarse. Dura 15 minutos, sin importar la duración del Sprint. En ella se responden tres preguntas: qué se hizo ayer, qué se hará hoy y qué obstáculos hay. El Scrum Master la facilita, pero no la dirige. El Product Owner puede asistir, aunque no participa de forma activa.
+
+8. SPRINT REVIEW
+Al final del Sprint, el equipo muestra el Incremento a los interesados y recoge sus opiniones para ajustar el Product Backlog. La Sprint Review dura hasta 4 horas para un Sprint de un mes. En la práctica, para Sprints de dos semanas suele bastar entre 1 y 3 horas.
+
+9. SPRINT RETROSPECTIVE
+Ocurre después de la Sprint Review y antes del siguiente Sprint Planning. El equipo analiza cómo trabajó y acuerda mejoras concretas para el próximo Sprint. La Retrospective dura hasta 3 horas para un Sprint de un mes y 45 minutos para un Sprint de una semana. Una técnica frecuente es ordenar la conversación en tres columnas: qué funcionó, qué no funcionó y qué se probará.
+
+10. REFINEMENT DEL PRODUCT BACKLOG
+Es una actividad continua para aclarar, estimar y ordenar los elementos del Product Backlog. Se recomienda dedicarle entre el 5 y el 10 % de la duración del Sprint. En un Sprint de un mes, eso equivale a entre 8 y 16 horas. El Product Owner dirige la actividad y el equipo de desarrollo aporta detalles técnicos y estimaciones.
