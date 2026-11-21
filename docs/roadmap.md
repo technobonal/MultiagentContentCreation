@@ -11,6 +11,9 @@ Tope para la Fase 0: **3 días**. Más papel no baja el riesgo; ejecutar sí.
 | 4. Catálogo y segunda red | 10 a 15 plantillas, RAG con Chroma y Cohere, LinkedIn como configuración, bloques de código, PDF para LinkedIn | Panel de candidatas funcionando | Pendiente |
 | 5. Producto | Kit de marca por usuario, "trae tu plantilla", exportación a Penpot, publicación como borrador vía intermediario | Señales de validación positivas | Pendiente |
 | 6. Ciclo cerrado | Analítica de vuelta al estratega, programación, más redes, aprendizaje desde las ediciones del humano | Uso y pago medidos | Pendiente |
+## LangGraph: cuándo entra
+
+LangGraph entra en la **Fase 2, después de que existan el revisor y el ciclo de corrección**, y no antes: mientras el flujo es lineal (estratega, redactor, director de arte) un grafo solo añade capas. Reemplaza únicamente el pegamento del orquestador: cada agente actual (`generar_brief`, `redactar_slide`, `componer_carrusel`, revisor) se envuelve como un nodo, y el ciclo revisar, corregir y re-revisar pasa a ser una arista condicional con tope de 3 rondas. El contrato de eventos, `ClienteLLM` (limitador y fallback), el emisor SSE y los tests existentes no cambian, y solo se agrega la dependencia `langgraph`. Se activa con `ORQUESTADOR=grafo`, con `lineal` como valor por defecto, y se da por válido cuando una prueba de paridad con cliente falso produce la misma secuencia de eventos en ambos modos.
 
 ## Checklist de la Fase 0
 
@@ -41,6 +44,10 @@ Tope para la Fase 0: **3 días**. Más papel no baja el riesgo; ejecutar sí.
 
 - [x] Modo Servidor en el lienzo (2026-11-18): conexión por SSE a `/api/runs/{run_id}/eventos`, estado de la conexión visible y error claro si el run no existe
 - [x] Verificado a mano en pantalla (2026-11-18), con servidor y con grabación local: sello 2 de 2 en el slide de fuentes, reiniciar con el flujo terminado, pausar con el flujo en curso (el contador se detiene y el total sigue creciendo) y run inexistente
+- [x] Paso 1: orquestador, POST /api/runs, SSE en vivo y run_error (19 nov, 254 tests)
+- [x] Paso 2, tramo 1: cargador de fuentes con OCR
+- [x] Paso 2, tramo 2: cliente Groq con fallback y limitador de tokens (75 passed, 1 skipped)
+Borrar o reemplazar “Completar la grabación demo para que escriba los 6 slides”. Ya decidiste que los agentes reales llenan los 6 slides.
 - [ ] Letrero y avatares con el slide real del evento (hoy dicen el slide elegido a mano, por ejemplo "Editando slide 6..." en el evento 22)
 - [ ] Verificar la tarjeta del revisor al mirar un slide a mano entre los eventos 14 y 19
 - [ ] Completar la grabación demo para que escriba los 6 slides (hoy los slides 2 y 5 quedan vacíos y atenuados)
