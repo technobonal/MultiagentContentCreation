@@ -29,3 +29,10 @@ eval/results/
 /Inter.zip
 /Inter,JetBrains_Mono.zip
 contexto_*.zip
+
+# Temporales, dumps y notas de trabajo
+*.txt
+backend/dump_firmas.py
+diseno_paso2.md
+resumen_sesion_revisor.md
+retomar_paso2.md
