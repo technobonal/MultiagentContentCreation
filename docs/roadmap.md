@@ -94,6 +94,24 @@ LangGraph entra en la **Fase 2, después de que existan el revisor y el ciclo de
 - [ ] Prefiltro del revisor en código y recorte de `redactor.md`/`revisor.md`: solo si hace falta más de un run por minuto o el run con 3 rondas de corrección vuelve a pasar los ~21K tokens
 - [ ] Medir el run completo con el log de tiempos y comparar con el objetivo (30-60 s, estimado)
 
+### Para retomar (anotado el 2026-11-25)
+
+Dónde quedamos: las fotos del PDF ya salen en el lienzo (5 huecos, una foto distinta por slide) y la escena «el avatar del director de arte lleva la foto» funciona en vivo, verificada con un navegador real (Playwright) y por Frank. El detalle de cada paso está en las líneas «Fotos 1» a «Fotos 13» de la lista de Pendiente.
+
+Cómo levantar todo para seguir probando:
+- Backend (desde `backend/`): `MODO_RUN=real FOTOS_LICENCIA="Uso autorizado por el titular" uvicorn app.main:app --port 8000`. Sin `FOTOS_LICENCIA` no se coloca ninguna foto (bloqueada por defecto). Las fuentes de prueba (`salud.pdf`, `CTRL_BROCHURE_muestra.pdf`, del amigo de Frank, puede ser público) están en `backend/fuentes/` y fuera de git.
+- Frontend (desde `frontend/`): `npm run dev`. Si cambia la plantilla de `templates/`, recopiarla con `node scripts/copiar-plantillas.mjs` o reiniciar `npm run dev`.
+- Si «no se ve la animación»: revisar primero que Windows tenga encendidos los **Efectos de animación** (Configuración → Accesibilidad → Efectos visuales) y reiniciar el navegador. Con eso apagado el navegador pide reducir movimiento y el lienzo apaga todas las animaciones.
+
+Lo que sigue, en este orden:
+- [ ] Interruptor de animaciones en el lienzo («según el sistema / siempre») con un aviso cuando el sistema las tiene apagadas, y una versión suave para quien reduce movimiento (fundidos, cartel por pasos y foco, sin vuelos ni zoom)
+- [ ] Foto más grande en las manos del avatar, si al verla se ve chica (`FRACCION_FOTO_EN_MANOS` y `FOTO_EN_MANOS_MAX_PX` en `colocarImagenEnVivo.ts`)
+- [ ] Centrar mejor la foto en su hueco y asegurar el contraste del texto sobre o junto a la foto (capa oscura suave o color de texto según el brillo de la foto, con chequeo WCAG en `revisor_codigo.py`)
+- [ ] Reusar el OCR que ya hizo el cargador al elegir las fotos (hoy se lee el PDF dos veces y suma ~15 s al run)
+- [ ] Texto alternativo descriptivo de cada foto con la cascada de visión (opcional; manda las imágenes a OpenRouter)
+- [ ] Recorte en vivo con la página original (opcional; cambia el contrato)
+- [ ] Subir a GitHub los 46 commits locales (todos con autor `technobonal <technobonal@gmail.com>`) y borrar la rama `backup-antes-de-autor` cuando Frank lo confirme
+
 ### Pendiente
 
 - [ ] Un carrusel de punta a punta desde una fuente real con tiempos aceptables: backend con `MODO_RUN=real` y `GROQ_API_KEY`, frontend en modo Servidor, fuente `.md` o `.txt`
