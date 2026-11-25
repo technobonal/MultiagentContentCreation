@@ -90,7 +90,7 @@ async def iniciar_run(
         try:
             # Va en un hilo aparte: leer y fragmentar un archivo grande no debe bloquear el bucle de asyncio.
             fuente = await asyncio.to_thread(cargar_fuente, entrada["fuente"]["referencia"])
-        except FuenteError as exc:  # referencia inválida, PDF, archivo inexistente, vacío, etc.
+        except FuenteError as exc:  # referencia inválida, PDF sin texto o protegido, archivo inexistente, vacío, etc.
             return _rechazo(422, [exc.mensaje])
 
     origen = ORIGEN_REAL if contexto is not None else ORIGEN_RELLENO

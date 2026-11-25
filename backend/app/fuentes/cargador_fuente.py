@@ -6,7 +6,9 @@ Reglas que importan al resto del sistema:
   y las posiciones `inicio`/`fin` de cada fragmento se calculan sobre él, y se cumple
   siempre `texto[f.inicio:f.fin] == f.texto`. Así la `cita` del revisor puede apuntar a
   un rango exacto.
-- Solo se aceptan `.md` y `.txt`. El PDF (escaneado o no) se rechaza con un error claro.
+- Se aceptan `.md`, `.txt` y `.pdf` con texto. El PDF se convierte a texto plano (un párrafo por bloque,
+  separados por una línea en blanco) y desde ahí es igual que cualquier otra fuente: el texto extraído es
+  la referencia de las citas. El PDF escaneado (sin texto) se rechaza con un error claro.
 - La `referencia` es solo un nombre de archivo: nada de rutas, para no salirse de la carpeta.
 - Todo problema se informa con `FuenteError`, que el endpoint convierte en un 422.
 """
@@ -20,7 +22,10 @@ from pathlib import Path
 from app import config
 
 # Extensiones aceptadas (en minúsculas).
-EXTENSIONES_OK = (".md", ".txt")
+EXTENSIONES_OK = (".md", ".txt", ".pdf")
+
+# Guion de fin de línea entre dos letras (la segunda en minúscula): palabra cortada por el ajuste de línea del PDF.
+_GUION_DE_CORTE = re.compile(r"(\w)-\n(?=[a-záéíóúüñ])")
 
 # Separador entre bloques: una o más líneas en blanco (se admiten espacios en ellas).
 _SEPARADOR_BLOQUES = re.compile(r"\n[ \t]*\n\s*")
@@ -75,21 +80,65 @@ def _validar_referencia(referencia: str) -> str:
 
 
 def _validar_extension(nombre: str) -> None:
-    """Acepta solo .md y .txt; da un mensaje específico para PDF."""
+    """Acepta solo .md, .txt y .pdf."""
     sufijo = Path(nombre).suffix.lower()
-    # PDF: por ahora no se lee (escaneado o con texto); se explica el camino.
-    if sufijo == ".pdf":
-        raise FuenteError(
-            "pdf_no_soportado",
-            "Los PDF no se cargan directamente. Conviértelo antes a .md o .txt "
-            "(si es un PDF escaneado, con el script de OCR) y revisa el texto.",
-        )
-    # Cualquier otra extensión fuera de la lista.
     if sufijo not in EXTENSIONES_OK:
         raise FuenteError(
             "extension_no_soportada",
-            f"Extensión no soportada ({sufijo or 'sin extensión'}). Solo se aceptan .md y .txt.",
+            f"Extensión no soportada ({sufijo or 'sin extensión'}). Solo se aceptan .md, .txt y .pdf.",
         )
+
+
+def _texto_de_pdf(datos: bytes, nombre: str) -> str:
+    """Extrae el texto de un PDF con texto: un párrafo por bloque, separados por una línea en blanco.
+
+    Lanza FuenteError si el archivo no es un PDF legible, está protegido, tiene demasiadas páginas
+    o no trae texto (PDF escaneado: el OCR todavía no está conectado).
+    """
+    try:
+        # PyMuPDF; se importa aquí para que el resto del módulo no dependa de él. `fitz` es el nombre antiguo.
+        try:
+            import pymupdf as fitz
+        except ImportError:
+            import fitz
+    except ImportError as exc:  # pragma: no cover - depende del entorno
+        raise FuenteError("pdf_no_disponible", "El servidor no tiene instalado el lector de PDF (pymupdf).") from exc
+
+    try:
+        doc = fitz.open(stream=datos, filetype="pdf")
+    except Exception as exc:  # PyMuPDF lanza varios tipos según el daño del archivo
+        raise FuenteError("pdf_invalido", f"«{nombre}» no es un PDF válido o está dañado.") from exc
+
+    with doc:
+        if doc.needs_pass:
+            raise FuenteError("pdf_protegido", f"«{nombre}» está protegido con contraseña.")
+        if doc.page_count > config.PDF_MAX_PAGINAS:
+            raise FuenteError(
+                "pdf_demasiadas_paginas",
+                f"El PDF tiene {doc.page_count} páginas y el máximo es {config.PDF_MAX_PAGINAS}.",
+            )
+        parrafos: list[str] = []
+        for pagina in doc:
+            # sort=True ordena los bloques en el orden de lectura; el tipo 0 es texto (el 1 es imagen).
+            for bloque in pagina.get_text("blocks", sort=True):
+                if bloque[6] != 0:
+                    continue
+                texto = bloque[4].replace("\xad", "")  # guion blando
+                texto = _GUION_DE_CORTE.sub(r"\1", texto)  # «organi-\nzado» -> «organizado»
+                texto = " ".join(texto.split())  # el salto de línea dentro de un párrafo es solo ajuste
+                if texto:
+                    parrafos.append(texto)
+        paginas = doc.page_count
+
+    texto = "\n\n".join(parrafos)
+    # Un PDF escaneado casi no trae texto: se avisa en vez de seguir con una fuente vacía.
+    if len(texto) < config.PDF_MIN_CARACTERES_POR_PAGINA * max(1, paginas):
+        raise FuenteError(
+            "pdf_sin_texto",
+            f"«{nombre}» casi no tiene texto (¿PDF escaneado?). El OCR todavía no está conectado: "
+            "convierte el PDF a .md o .txt y revisa el texto.",
+        )
+    return texto
 
 
 def _decodificar(datos: bytes) -> str:
@@ -247,12 +296,15 @@ def cargar_fuente(
     if not ruta.is_file():
         raise FuenteError("no_encontrada", f"No existe la fuente «{nombre}» en la carpeta del servidor.")
 
-    # Se comprueba el tamaño antes de leer.
+    # Se comprueba el tamaño antes de leer. Un PDF pesa mucho más que su texto: su tope de archivo es propio
+    # (el tope de `limite` se aplica después, al texto extraído).
+    es_pdf = Path(nombre).suffix.lower() == ".pdf"
+    limite_archivo = (max_bytes if max_bytes is not None else config.PDF_MAX_BYTES) if es_pdf else limite
     tam = ruta.stat().st_size
-    if tam > limite:
+    if tam > limite_archivo:
         raise FuenteError(
             "demasiado_grande",
-            f"La fuente pesa {tam} bytes y el máximo es {limite}.",
+            f"La fuente pesa {tam} bytes y el máximo es {limite_archivo}.",
         )
 
     try:
@@ -260,7 +312,16 @@ def cargar_fuente(
     except OSError as exc:
         raise FuenteError("no_legible", f"No se pudo leer la fuente «{nombre}».") from exc
 
-    texto = _normalizar(_decodificar(datos))
+    if es_pdf:
+        texto = _normalizar(_texto_de_pdf(datos, nombre))
+        # El tope de tamaño del texto es el mismo que para .md y .txt: lo que viaja a los agentes es el texto.
+        if len(texto.encode("utf-8")) > limite:
+            raise FuenteError(
+                "demasiado_grande",
+                f"El texto del PDF pesa {len(texto.encode('utf-8'))} bytes y el máximo es {limite}.",
+            )
+    else:
+        texto = _normalizar(_decodificar(datos))
     # Sin contenido útil, no hay nada que redactar.
     if not texto.strip():
         raise FuenteError("vacia", f"La fuente «{nombre}» está vacía.")

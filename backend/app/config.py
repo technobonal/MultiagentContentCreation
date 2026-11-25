@@ -80,6 +80,13 @@ FUENTE_MAX_BYTES = int(os.environ.get("FUENTE_MAX_BYTES", str(200 * 1024)))
 # Tamaño máximo, en caracteres, de cada fragmento en que se indexa la fuente.
 FRAGMENTO_MAX_CHARS = int(os.environ.get("FRAGMENTO_MAX_CHARS", "1000"))
 
+# PDF con texto (tanda de fuentes en PDF): páginas máximas y texto mínimo por página. Por debajo del mínimo el
+# PDF se considera escaneado y se rechaza (el OCR todavía no está conectado). El tope de tamaño del texto
+# extraído es FUENTE_MAX_BYTES, igual que para .md y .txt.
+PDF_MAX_BYTES = int(os.environ.get("PDF_MAX_BYTES", str(10 * 1024 * 1024)))  # peso del ARCHIVO (un PDF pesa mucho más que su texto)
+PDF_MAX_PAGINAS = int(os.environ.get("PDF_MAX_PAGINAS", "40"))
+PDF_MIN_CARACTERES_POR_PAGINA = int(os.environ.get("PDF_MIN_CARACTERES_POR_PAGINA", "80"))
+
 # --- Paso 2 (fase 2): cliente LLM (Groq) ---
 
 # Clave de Groq. Vacía = sin clave (el modo real no arranca; MODO_RUN=relleno sigue disponible).

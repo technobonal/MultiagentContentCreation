@@ -155,18 +155,9 @@ def test_exactamente_en_el_limite_pasa(tmp_path):
 
 # ---------------------------------------------------------------- extensión y referencia
 
-def test_pdf_tiene_mensaje_propio(tmp_path):
-    """El PDF se rechaza con pdf_no_soportado, exista o no."""
-    _escribir(tmp_path, "x.pdf", b"%PDF-1.7", binario=True)
-    with pytest.raises(FuenteError) as e:
-        cargar_fuente("x.pdf", carpeta=tmp_path)
-    assert _codigo(e) == "pdf_no_soportado"
-    assert "OCR" in e.value.mensaje
-
-
 @pytest.mark.parametrize("nombre", ["x.docx", "x", "x.md.exe"])
 def test_otras_extensiones_se_rechazan(tmp_path, nombre):
-    """Cualquier extensión que no sea .md o .txt da extension_no_soportada."""
+    """Cualquier extensión que no sea .md, .txt o .pdf da extension_no_soportada."""
     with pytest.raises(FuenteError) as e:
         cargar_fuente(nombre, carpeta=tmp_path)
     assert _codigo(e) == "extension_no_soportada"
@@ -303,3 +294,117 @@ def test_cargar_usa_el_maximo_por_defecto_de_config(tmp_path):
     f = cargar_fuente("larga.txt", carpeta=tmp_path)
     assert all(len(fr.texto) <= config.FRAGMENTO_MAX_CHARS for fr in f.fragmentos)
     assert len(f.fragmentos) > 1
+
+# ---------------------------------------------------------------- PDF con texto
+
+PARRAFO_1 = "El Sprint es un evento de duracion fija de un mes o menos para crear consistencia."
+PARRAFO_2 = "El Scrum Team es lo bastante pequeno para seguir siendo agil y lo bastante grande para completar trabajo."
+
+
+def _pdf(carpeta, nombre, paginas):
+    """Crea un PDF real con PyMuPDF: `paginas` es una lista de listas de párrafos (un cuadro de texto por párrafo)."""
+    fitz = pytest.importorskip("pymupdf")
+    doc = fitz.open()
+    for parrafos in paginas:
+        pagina = doc.new_page()
+        y = 60
+        for parrafo in parrafos:
+            pagina.insert_textbox(fitz.Rect(50, y, 550, y + 80), parrafo, fontsize=11)
+            y += 100
+    ruta = carpeta / nombre
+    doc.save(ruta)
+    doc.close()
+    return ruta
+
+
+def test_pdf_con_texto_se_carga_con_un_parrafo_por_bloque(tmp_path):
+    """Cada bloque del PDF es un párrafo separado por línea en blanco, y las citas caen en el texto extraído."""
+    _pdf(tmp_path, "guia.pdf", [[PARRAFO_1, PARRAFO_2]])
+    f = cargar_fuente("guia.pdf", carpeta=tmp_path)
+    assert f.referencia == "guia.pdf"
+    partes = f.texto.split("\n\n")
+    assert len(partes) == 2
+    # El ajuste de línea del PDF no deja saltos dentro del párrafo.
+    assert all("\n" not in p for p in partes)
+    assert partes[0].startswith("El Sprint es un evento") and partes[1].startswith("El Scrum Team")
+    # Se cumple la regla de siempre: cada fragmento es una porción exacta del texto y el sha256 es el del texto.
+    assert all(f.texto[fr.inicio:fr.fin] == fr.texto for fr in f.fragmentos)
+    assert f.sha256 == hashlib.sha256(f.texto.encode("utf-8")).hexdigest()
+
+
+def test_pdf_con_varias_paginas_junta_los_parrafos_en_orden(tmp_path):
+    _pdf(tmp_path, "g.pdf", [[PARRAFO_1], [PARRAFO_2]])
+    texto = cargar_fuente("g.pdf", carpeta=tmp_path).texto
+    assert texto.index("El Sprint") < texto.index("El Scrum Team")
+
+
+def test_pdf_une_las_palabras_cortadas_por_el_ajuste_de_linea(tmp_path):
+    """«autoorga-» al final de una línea y «nizado» al inicio de la siguiente se leen como una palabra."""
+    from app.fuentes import cargador_fuente as cf
+    assert cf._GUION_DE_CORTE.sub(r"\1", "equipo autoorga-\nnizado y agil") == "equipo autoorganizado y agil"
+    # Un guion real (la palabra siguiente empieza con mayúscula o número) se conserva.
+    assert cf._GUION_DE_CORTE.sub(r"\1", "Scrum-\nMaster") == "Scrum-\nMaster"
+
+
+def test_pdf_escaneado_sin_texto_se_rechaza_con_mensaje_claro(tmp_path):
+    fitz = pytest.importorskip("pymupdf")
+    doc = fitz.open()
+    doc.new_page()  # una página en blanco se comporta como un escaneo sin capa de texto
+    doc.save(tmp_path / "escaneo.pdf")
+    doc.close()
+    with pytest.raises(FuenteError) as e:
+        cargar_fuente("escaneo.pdf", carpeta=tmp_path)
+    assert _codigo(e) == "pdf_sin_texto" and "OCR" in e.value.mensaje
+
+
+def test_pdf_dañado_da_pdf_invalido(tmp_path):
+    _escribir(tmp_path, "roto.pdf", b"esto no es un pdf", binario=True)
+    with pytest.raises(FuenteError) as e:
+        cargar_fuente("roto.pdf", carpeta=tmp_path)
+    assert _codigo(e) == "pdf_invalido"
+
+
+def test_pdf_protegido_con_contrasena_se_rechaza(tmp_path):
+    fitz = pytest.importorskip("pymupdf")
+    doc = fitz.open()
+    doc.new_page().insert_text((50, 60), PARRAFO_1)
+    doc.save(tmp_path / "secreto.pdf", encryption=fitz.PDF_ENCRYPT_AES_256, user_pw="clave", owner_pw="clave")
+    doc.close()
+    with pytest.raises(FuenteError) as e:
+        cargar_fuente("secreto.pdf", carpeta=tmp_path)
+    assert _codigo(e) == "pdf_protegido"
+
+
+def test_pdf_con_demasiadas_paginas_se_rechaza(tmp_path, monkeypatch):
+    from app import config
+    monkeypatch.setattr(config, "PDF_MAX_PAGINAS", 1)
+    _pdf(tmp_path, "largo.pdf", [[PARRAFO_1], [PARRAFO_2]])
+    with pytest.raises(FuenteError) as e:
+        cargar_fuente("largo.pdf", carpeta=tmp_path)
+    assert _codigo(e) == "pdf_demasiadas_paginas"
+
+
+def test_pdf_mas_grande_que_el_tope_se_rechaza(tmp_path):
+    _pdf(tmp_path, "g.pdf", [[PARRAFO_1, PARRAFO_2]])
+    with pytest.raises(FuenteError) as e:
+        cargar_fuente("g.pdf", carpeta=tmp_path, max_bytes=150)  # el PDF pesa más que 150 bytes: salta por el tamaño del archivo
+    assert _codigo(e) == "demasiado_grande"
+
+
+def test_pdf_escaneado_pesado_falla_por_falta_de_texto_y_no_por_tamano(tmp_path):
+    """Un escaneo pesa mucho más que 200 KB: no debe rechazarse por el tope de texto de .md y .txt."""
+    fitz = pytest.importorskip("pymupdf")
+    doc = fitz.open()
+    pagina = doc.new_page()
+    # Una imagen casi incompresible (ruido) hace que el archivo pese más que el tope de texto.
+    pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 600, 600), False)
+    pix.set_rect(pix.irect, (200, 30, 90))
+    pagina.insert_image(pagina.rect, pixmap=pix)
+    doc.save(tmp_path / "escaneo.pdf")
+    doc.close()
+    ruta = tmp_path / "escaneo.pdf"
+    ruta.write_bytes(ruta.read_bytes() + os.urandom(300_000))  # relleno al final: el PDF sigue siendo válido
+    assert ruta.stat().st_size > 204_800
+    with pytest.raises(FuenteError) as e:
+        cargar_fuente("escaneo.pdf", carpeta=tmp_path)
+    assert _codigo(e) == "pdf_sin_texto"
