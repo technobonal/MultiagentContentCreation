@@ -30,7 +30,7 @@ Al final, una persona edita y aprueba.
 
 - **Fase 0 (Fundamentos):** cerrada. Contratos, esquemas, plantilla, kit de marca y validador.
 - **Fase 1 (Lienzo):** cerrada. El frontend reproduce una secuencia grabada de 24 eventos 
-- **Fase 2 (Agentes reales):** pendiente. Hoy el backend solo tiene el esqueleto de carpetas.
+- **Fase 2 (Agentes reales):** en marcha. El backend (FastAPI + Groq) corre los cuatro agentes sobre fuentes `.md`, `.txt` y `.pdf`, emite los eventos por SSE y el lienzo los dibuja en vivo. Incluye aprobación humana con edición de textos. Pendientes: OCR, fuentes por URL y fotos (ver `docs/roadmap.md`).
 
 Ver `SPEC.md` para decisiones, esquema de entrada y estructura de carpetas, y `docs/roadmap.md` para las fases.
 
@@ -39,7 +39,7 @@ Ver `SPEC.md` para decisiones, esquema de entrada y estructura de carpetas, y `d
 * `contracts/`: esquemas compartidos (eventos, entrada, ficha de plantilla, kit de marca), secuencias grabadas y `validate.py`
 * `templates/`: plantillas, paletas, tipografías (Inter y JetBrains Mono, ambas OFL), estilos y kit de marca
 * `frontend/`: app Vite + React + TypeScript (lienzo, avatares, línea de tiempo)
-* `backend/`: esqueleto para API, agentes, grafo, fuentes, RAG, revisor y render (aún sin código)
+* `backend/`: API FastAPI, agentes, fuentes, eventos y aprobación (ver `backend/README.md`); `graph`, `rag` y `render` siguen reservados
 * `eval/`: conjunto de prueba del revisor y resultados (estructura lista, sin datos aún)
 * `deploy/`: Nginx y OCI (estructura lista, sin configuración aún)
 * `docs/`: decisiones, roadmap y licencias
@@ -56,11 +56,17 @@ Ver `SPEC.md` para decisiones, esquema de entrada y estructura de carpetas, y `d
 pip install -r requirements.txt
 python contracts\validate.py
 
+# Backend (desde backend/; modo real: MODO_RUN=real y GROQ_API_KEY en .env)
+cd backend
+pytest
+uvicorn app.main:app --port 8000
+cd ..
+
 # Frontend
 cd frontend
 npm install
 npm run dev      # servidor de desarrollo (Vite, normalmente http://localhost:5173)
-npm test         # 195 pruebas
+npm test         # 260 pruebas
 npx tsc --noEmit # chequeo de tipos
 ```
 
@@ -105,7 +111,7 @@ A human edits and approves at the end.
 
 - **Phase 0 (Foundations):** closed. Contracts, schemas, template, brand kit and validator.
 - **Phase 1 (Canvas):** closed. The frontend replays a recorded 24-event sequence.
-- **Phase 2 (Real agents):** pending. The backend currently has only the folder skeleton.
+- **Phase 2 (Real agents):** in progress. The backend (FastAPI + Groq) runs the four agents on `.md`, `.txt` and `.pdf` sources, streams events over SSE and the canvas draws them live. It includes human approval with text editing. Pending: OCR, URL sources and photos (see `docs/roadmap.md`).
 
 See `SPEC.md` for decisions, input schema and folder structure, and `docs/roadmap.md` for the phases.
 
@@ -114,7 +120,7 @@ See `SPEC.md` for decisions, input schema and folder structure, and `docs/roadma
 * `contracts/`: shared schemas (events, input, template sheet, brand kit), recorded sequences and `validate.py`
 * `templates/`: templates, palettes, typography (Inter and JetBrains Mono, both OFL), styles and brand kit
 * `frontend/`: Vite + React + TypeScript app (canvas, avatars, timeline)
-* `backend/`: skeleton for API, agents, graph, sources, RAG, reviewer and render (no code yet)
+* `backend/`: FastAPI API, agents, sources, events and approval (see `backend/README.md`); `graph`, `rag` and `render` are still reserved
 * `eval/`: reviewer test set and results (structure ready, no data yet)
 * `deploy/`: Nginx and OCI (structure ready, no configuration yet)
 * `docs/`: decisions, roadmap and licenses
@@ -135,7 +141,7 @@ python contracts/validate.py
 cd frontend
 npm install
 npm run dev      # dev server (Vite, usually http://localhost:5173)
-npm test         # 195 tests
+npm test         # 260 tests
 npx tsc --noEmit # type check
 ```
 
