@@ -43,6 +43,11 @@ log = logging.getLogger(__name__)
 # Tokens de salida que se piden (y se reservan en el límite por minuto).
 MAX_TOKENS_REDACTOR = 2000
 
+# Reintentos de CONTENIDO del redactor (campo que se pasa del límite, cita no literal): el mensaje de cada reintento le dice
+# al modelo qué corregir, y con una fuente larga (PDF) uno solo no alcanzaba (`titulo` 66 de 60 y `cta` 117 de 100 abortaron
+# dos runs seguidos). El último intento es el tolerante. Cada reintento extra cuesta ~1.400 tokens y solo ocurre si hace falta.
+REINTENTOS_CONTENIDO_REDACTOR = 2
+
 # Temperatura del primer intento y del reintento tras una respuesta vacía o cortada.
 TEMPERATURA_REDACTOR = 0.2
 TEMPERATURA_REINTENTO = 0.5
@@ -198,6 +203,7 @@ async def _pedir_redaccion(
                 max_tokens=MAX_TOKENS_REDACTOR,
                 permitir_fallback=True,
                 temperatura=TEMPERATURA_REDACTOR if intento == 0 else TEMPERATURA_REINTENTO,
+                reintentos=REINTENTOS_CONTENIDO_REDACTOR,
                 validar_ultimo=validar_ultimo,
             )
         except AgenteError as exc:

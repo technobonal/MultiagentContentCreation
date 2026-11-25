@@ -252,15 +252,15 @@ def test_reintento_tras_cita_inventada_pide_corregirla():
 
 def test_cita_no_literal_en_ambos_intentos_se_descarta_sin_abortar():
     """Antes esto tumbaba el run (salida_invalida); ahora se conserva el texto y se descarta la cita."""
-    c = ClienteFalso([_resp(hechos=["inventada"]), _resp(hechos=["inventada"])])
+    c = ClienteFalso([_resp(hechos=["inventada"])] * 3)
     r = _redactar(c)
-    assert len(c.llamadas) == 2  # intento inicial más un reintento, sin tercera llamada
+    assert len(c.llamadas) == 3  # intento inicial más dos reintentos, sin cuarta llamada
     assert r.hechos == () and r.campos["titulo"] == "Sprints de un mes"  # cita descartada, texto intacto
 
 
 def test_el_ultimo_intento_conserva_solo_las_citas_literales():
     buena = "El Sprint dura un mes como máximo."
-    c = ClienteFalso([_resp(hechos=["inventada"]), _resp(hechos=["inventada", buena])])
+    c = ClienteFalso([_resp(hechos=["inventada"]), _resp(hechos=["inventada"]), _resp(hechos=["inventada", buena])])
     r = _redactar(c)
     assert [h.texto for h in r.hechos] == [buena]  # la mala se descarta y la buena queda ubicada
 
@@ -269,16 +269,16 @@ def test_cita_demasiado_larga_en_ambos_intentos_se_descarta_sin_abortar(caplog):
     """Con una fuente larga (PDF) el modelo copia pasajes enteros: la cita larga se descarta, el slide se conserva."""
     buena = "El Sprint dura un mes como máximo."
     larga = "x" * (HECHO_MAX_CHARS + 1)
-    c = ClienteFalso([_resp(hechos=[larga]), _resp(hechos=[larga, buena])])
+    c = ClienteFalso([_resp(hechos=[larga]), _resp(hechos=[larga]), _resp(hechos=[larga, buena])])
     with caplog.at_level(logging.WARNING, logger="app.agentes.redactor"):
         r = _redactar(c)
-    assert len(c.llamadas) == 2
+    assert len(c.llamadas) == 3
     assert [h.texto for h in r.hechos] == [buena] and r.campos["titulo"] == "Sprints de un mes"
     assert "descartada" in caplog.text
 
 
 def test_cita_descartada_deja_aviso_en_el_log(caplog):
-    c = ClienteFalso([_resp(hechos=["inventada"]), _resp(hechos=["inventada"])])
+    c = ClienteFalso([_resp(hechos=["inventada"])] * 3)
     with caplog.at_level(logging.WARNING, logger="app.agentes.redactor"):
         _redactar(c)
     # El aviso dice qué slide y qué cita se descartó, para poder revisarlo en el log del servidor.
@@ -301,10 +301,10 @@ def test_salida_truncada_falla_tras_un_reintento():
 def test_salida_invalida_tras_agotar_reintentos():
     """La estructura inválida sigue abortando el run aunque el último intento sea tolerante con las citas."""
     mala = json.dumps({"campos": {}, "hechos": []})
-    c = ClienteFalso([mala, mala])
+    c = ClienteFalso([mala, mala, mala])
     with pytest.raises(AgenteError) as e:
         _redactar(c)
-    assert e.value.codigo == "salida_invalida" and len(c.llamadas) == 2
+    assert e.value.codigo == "salida_invalida" and len(c.llamadas) == 3
     assert "respuesta válida" in e.value.mensaje  # el mensaje ya no dice «JSON válido» (el JSON sí era válido)
 
 
@@ -316,3 +316,16 @@ def test_hechos_repetidos_se_ubican_una_sola_vez():
 def test_registra_modelo_y_fallback():
     r = _redactar(ClienteFalso([_resp()], modelo="otro", fallback=True))
     assert r.modelo == "otro" and r.fallback is True
+
+def test_campo_que_se_pasa_del_limite_se_corrige_en_un_reintento_con_el_motivo():
+    """Con una fuente larga el modelo se pasa del límite; el reintento le dice cuánto y lo corrige sin abortar el run."""
+    c = ClienteFalso([_resp(campos={"titulo": "x" * 66, "cuerpo": "Duran un mes."}), _resp()])
+    r = _redactar(c)
+    assert len(c.llamadas) == 2 and r.campos["titulo"] == "Sprints de un mes"
+    assert "supera 60 caracteres (66)" in c.llamadas[1]["mensajes"][-1]["content"]
+
+
+def test_campo_que_se_pasa_del_limite_dos_veces_se_corrige_en_el_tercer_intento():
+    mala = _resp(campos={"titulo": "x" * 66, "cuerpo": "Duran un mes."})
+    c = ClienteFalso([mala, mala, _resp()])
+    assert _redactar(c).campos["titulo"] == "Sprints de un mes" and len(c.llamadas) == 3

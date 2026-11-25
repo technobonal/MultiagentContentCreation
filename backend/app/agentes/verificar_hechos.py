@@ -39,18 +39,56 @@ def _patron(hecho: str) -> re.Pattern[str] | None:
     return re.compile(r"\s+".join(re.escape(p) for p in palabras))
 
 
-def ubicar_hecho(hecho: str, fragmentos: tuple[Fragmento, ...] | list[Fragmento]) -> HechoUbicado | None:
-    """Busca el hecho en los fragmentos dados; devuelve su ubicación o None si no aparece."""
-    patron = _patron(hecho)
-    if patron is None:
+def _patron_sin_blancos(hecho: str) -> re.Pattern[str] | None:
+    """Patrón que casa las mismas LETRAS del hecho permitiendo blancos en cualquier posición, incluso dentro de una palabra.
+
+    Existe por los PDF: el texto justificado deja espacios falsos dentro de las palabras («Protección So cial»)
+    y el modelo copia la cita «arreglada» («Protección Social»). Es el segundo intento: solo se usa si el patrón
+    estricto no encontró nada, y el trozo que devuelve es siempre el de la fuente, con su ruido.
+    """
+    letras = "".join(hecho.split())
+    if not letras:
         return None
-    # Se recorren los fragmentos en orden y se devuelve la primera aparición.
+    return re.compile(r"\s*".join(re.escape(c) for c in letras))
+
+
+# Blancos, comillas y puntos suspensivos que el modelo suele poner en los EXTREMOS de una cita («"Toda persona…"»,
+# «...el Seguro Popular…»). No forman parte de la fuente: se quitan solo si la búsqueda directa no encontró nada.
+_BORDE = re.compile(r"^(?:[\s\"'“”‘’«»…]|\.\.\.)+|(?:[\s\"'“”‘’«»…]|\.\.\.)+$")
+
+
+def quitar_bordes(hecho: str) -> str:
+    """Quita comillas, blancos y puntos suspensivos de los extremos del hecho (lo de adentro no se toca)."""
+    return _BORDE.sub("", hecho)
+
+
+def _buscar(patron: re.Pattern[str], fragmentos: tuple[Fragmento, ...] | list[Fragmento]) -> HechoUbicado | None:
+    """Primera aparición del patrón en los fragmentos, con posiciones absolutas."""
     for f in fragmentos:
         m = patron.search(f.texto)
         if m:
             inicio = f.inicio + m.start()  # posición absoluta: inicio del fragmento + desplazamiento interno
             return HechoUbicado(texto=m.group(0), inicio=inicio, fin=f.inicio + m.end(), fragmento=f.indice)
     return None
+
+
+def ubicar_hecho(hecho: str, fragmentos: tuple[Fragmento, ...] | list[Fragmento]) -> HechoUbicado | None:
+    """Busca el hecho en los fragmentos dados; devuelve su ubicación o None si no aparece.
+
+    Primero la búsqueda literal (blancos flexibles entre palabras); si falla, ignora los blancos dentro de las
+    palabras (PDF con espacios falsos). Se recorren los fragmentos en orden y gana la primera aparición.
+    """
+    patron = _patron(hecho)
+    if patron is None:
+        return None
+    ubicado = _buscar(patron, fragmentos) or _buscar(_patron_sin_blancos(hecho), fragmentos)
+    if ubicado is not None:
+        return ubicado
+    # Último intento: sin las comillas y los puntos suspensivos de los extremos.
+    limpio = quitar_bordes(hecho)
+    if not limpio or limpio == hecho.strip():
+        return None
+    return _buscar(_patron(limpio), fragmentos) or _buscar(_patron_sin_blancos(limpio), fragmentos)
 
 
 def ubicar_hechos(

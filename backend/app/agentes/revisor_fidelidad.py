@@ -40,7 +40,7 @@ from app.agentes.comun import AgenteError, cargar_prompt, pedir_json
 from app.agentes.estratega import Brief
 from app.agentes.revisor_codigo import (
     Hallazgo, crear_hallazgo, leer_campo, nombre_campo, ordenar_hallazgos, recortar_texto)
-from app.agentes.verificar_hechos import ubicar_hecho
+from app.agentes.verificar_hechos import quitar_bordes, ubicar_hecho
 from app.fuentes.cargador_fuente import Fragmento, FuenteCargada
 
 # TextoSlide solo se usa en anotaciones: así este módulo no depende de que redactor.py importe.
@@ -280,9 +280,10 @@ def _localizar_cita(cita: object, fragmentos: Sequence[Fragmento]) -> dict | Non
     # Solo se aceptan cadenas con contenido y dentro del tope.
     if not isinstance(cita, str) or not cita.strip() or len(cita.strip()) > CITA_MAX_CHARS:
         return None
-    cita = cita.strip()
-    # La cita estricta es un único trozo: nada de puntos suspensivos.
-    if "..." in cita or "…" in cita:
+    # Las comillas y los «...» de los extremos no son parte de la cita (el modelo los suele agregar al recortar).
+    cita = quitar_bordes(cita)
+    # La cita estricta es un único trozo: nada de puntos suspensivos EN EL MEDIO (unir trozos no es citar).
+    if not cita or "..." in cita or "…" in cita:
         return None
     ubicado = ubicar_hecho(cita, fragmentos)
     # El fragmento guardado es el trozo exacto de la fuente (cumple fuente.texto[inicio:fin]).

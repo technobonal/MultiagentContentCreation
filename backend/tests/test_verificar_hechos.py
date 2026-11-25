@@ -117,3 +117,70 @@ def test_ubicar_hechos_todos_cumplen_el_contrato_de_rango():
     # Cada hecho ubicado debe poder recortarse de la fuente con su rango.
     for u in ubicados:
         assert TEXTO[u.inicio:u.fin] == u.texto
+
+# ---------------------------- PDF: espacios falsos dentro de las palabras ----------------------------
+
+# Texto como lo deja un PDF justificado: «So cial», «inter venciones».
+P_PDF = "VI. Conocer el informe anual del Sistema de Protección So cial en Salud;\n\nVII. Se atienden más de 284 inter venciones médicas;"
+TEXTO_PDF = P_PDF
+FRAGMENTOS_PDF = (_frag(0, P_PDF, 0),)
+
+
+def test_cita_arreglada_por_el_modelo_se_ubica_en_el_trozo_real_con_su_ruido():
+    # El modelo escribió «Social» pero la fuente dice «So cial»: se ubica y se guarda el trozo de la fuente.
+    h = ubicar_hecho("Sistema de Protección Social en Salud", FRAGMENTOS_PDF)
+    assert h is not None
+    assert h.texto == "Sistema de Protección So cial en Salud"
+    assert TEXTO_PDF[h.inicio:h.fin] == h.texto  # el contrato sigue valiendo
+
+
+def test_cita_con_el_ruido_copiado_tambien_se_ubica():
+    h = ubicar_hecho("más de 284 inter venciones médicas", FRAGMENTOS_PDF)
+    assert h is not None and TEXTO_PDF[h.inicio:h.fin] == h.texto
+
+
+def test_sin_blancos_sigue_distinguiendo_letras_y_mayusculas():
+    # Perdonar el espaciado no vuelve laxo el contenido: una letra distinta o una mayúscula siguen sin casar.
+    assert ubicar_hecho("Sistema de Protección Socal en Salud", FRAGMENTOS_PDF) is None
+    assert ubicar_hecho("sistema de protección social en salud", FRAGMENTOS_PDF) is None
+    assert ubicar_hecho("más de 285 intervenciones médicas", FRAGMENTOS_PDF) is None
+
+
+def test_la_busqueda_estricta_tiene_prioridad():
+    # Si el hecho aparece literal, gana ese trozo aunque otro, sin blancos, también casara antes en el texto.
+    frags = (_frag(0, "abc def. a bcdef", 0),)
+    h = ubicar_hecho("abc def", frags)
+    assert (h.inicio, h.fin) == (0, 7)
+
+
+def test_un_hecho_sin_blancos_no_cruza_fragmentos():
+    frags = (_frag(0, "El Sprint dura un", 0), _frag(1, "mes como máximo.", 19))
+    assert ubicar_hecho("El Sprint dura un mes", frags) is None
+
+
+# ---------------------------- comillas y puntos suspensivos en los extremos de la cita ----------------------------
+
+@pytest.mark.parametrize("cita", [
+    '"El Sprint dura un mes como máximo."',
+    "“El Sprint dura un mes como máximo.”",
+    "«El Sprint dura un mes como máximo.»",
+    "...El Sprint dura un mes como máximo...",
+    "… El Sprint dura un mes como máximo …",
+    '"...El Sprint dura un mes como máximo."',
+])
+def test_quita_comillas_y_puntos_suspensivos_de_los_extremos(cita):
+    h = ubicar_hecho(cita, FRAGMENTOS)
+    # Sin el punto final si los «...» de cierre lo tapaban; en todo caso, lo guardado es el trozo real de la fuente.
+    assert h is not None and h.texto in ("El Sprint dura un mes como máximo.", "El Sprint dura un mes como máximo")
+    assert TEXTO[h.inicio:h.fin] == h.texto
+
+
+def test_los_extremos_no_vuelven_laxo_el_contenido():
+    assert ubicar_hecho('"El Sprint dura dos meses."', FRAGMENTOS) is None
+    assert ubicar_hecho("...una frase inventada...", FRAGMENTOS) is None
+    assert ubicar_hecho('""', FRAGMENTOS) is None and ubicar_hecho("...", FRAGMENTOS) is None
+
+
+def test_una_cita_que_ya_es_literal_con_comillas_internas_no_se_toca():
+    frags = (_frag(0, 'Dijo "hola" y se fue.', 0),)
+    assert ubicar_hecho('Dijo "hola" y se fue.', frags).texto == 'Dijo "hola" y se fue.'
