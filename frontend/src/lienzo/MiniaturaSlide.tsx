@@ -73,6 +73,7 @@ export function MiniaturaSlide({
   // Referencias de lo que afecta a este slide: si no cambian, no se repinta.
   const textos = estado.lienzo.textos[slide];
   const fondo = estado.lienzo.fondos[slide];
+  const imagenes = estado.lienzo.imagenes[slide];
   const borradores = estado.propuestas[slide];
 
   // Pinta el clon con el slide forzado como activo.
@@ -90,6 +91,8 @@ export function MiniaturaSlide({
     slide,
     textos,
     fondo,
+    imagenes,
+    estado.runId, // la URL de cada imagen lleva el id del run
     borradores,
     estado.run,
     estado.fuente,
