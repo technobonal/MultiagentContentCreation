@@ -285,3 +285,12 @@ if LLM_CALIBRACION_MUESTRAS < 1 or LLM_CALIBRACION_MIN_MUESTRAS < 1:  # sin mues
     raise ValueError("LLM_CALIBRACION_MUESTRAS y LLM_CALIBRACION_MIN_MUESTRAS deben ser 1 o más")
 if LLM_CALIBRACION_COLCHON < 1:  # un colchón menor que 1 reservaría MENOS de lo medido
     raise ValueError(f"LLM_CALIBRACION_COLCHON debe ser 1 o más; llegó {LLM_CALIBRACION_COLCHON}")
+
+# Aprobación humana (HITL). Con APROBACION_HUMANA activa, tras `aprobacion_solicitada` el run espera la decisión de una
+# persona (POST /api/runs/{id}/aprobacion) antes de emitir `run_finalizada`. Arranca APAGADA: sin la pantalla de
+# aprobación cada run se quedaría esperando y ocuparía uno de los MAX_RUNS_ACTIVOS cupos.
+APROBACION_HUMANA = _booleano(os.environ.get("APROBACION_HUMANA", ""), False)
+
+# Segundos que el run espera esa decisión (el tope RUN_TIMEOUT_SEG solo cubre el trabajo de los agentes, no esta espera).
+# Si vence, el run termina con estado `requiere_humano` y libera su cupo. 0 o menos = espera sin límite.
+APROBACION_TIMEOUT_SEG = float(os.environ.get("APROBACION_TIMEOUT_SEG", "900"))

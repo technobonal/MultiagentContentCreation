@@ -252,11 +252,23 @@ def _medir_llamable(medidor: _Medidor, base: str, llamable: Callable[..., Any]) 
     return medida
 
 
+@dataclass(frozen=True)
+class _Cierre:
+    """Lo que `_correr` deja listo para `_finalizar`: el estado y el sello ya calculados por código."""
+
+    estado_final: str
+    sello: dict
+
+
 async def _correr(
     ejecucion: Ejecucion, fuente: FuenteCargada, cliente: ClienteLLM, kit: dict, agentes: Agentes,
-    medidor: _Medidor | None = None,
-) -> None:
-    """Todo el flujo de una ejecución real, de run_iniciada a run_finalizada."""
+    medidor: _Medidor | None = None, esperar_aprobacion: bool = False,
+) -> _Cierre:
+    """Todo el flujo de los agentes, de run_iniciada a aprobacion_solicitada (este incluido).
+
+    Con `esperar_aprobacion` abre la espera de la decisión humana ANTES de emitir `aprobacion_solicitada`
+    (así nadie decide antes de tiempo). El cierre del run lo hace `_finalizar`, fuera del tope de tiempo de los agentes.
+    """
     entrada = ejecucion.entrada
     resolucion = ejecucion.resolucion
     # Sin medidor externo (por ejemplo, una prueba que llama a `_correr` directo) se crea uno local.
@@ -307,7 +319,9 @@ async def _correr(
         ejecucion.eventos, escalado=(resultado.estado_final == "requiere_humano")
     )
 
-    # 8F: se pide la aprobación con el mismo estado y sello del cierre; el run no espera la respuesta.
+    # Se pide la aprobación con el mismo estado y sello del cierre.
+    if esperar_aprobacion:
+        ejecucion.abrir_decision()
     await ejecucion.emitir(
         agente="sistema", tipo="aprobacion_solicitada",
         payload={
@@ -316,12 +330,38 @@ async def _correr(
             "sello": sello,
         },
     )
+    return _Cierre(estado_final, sello)
+
+
+async def _finalizar(ejecucion: Ejecucion, cierre: _Cierre, esperar_aprobacion: bool, timeout_seg: float) -> None:
+    """Cierra el run: con aprobación humana espera la decisión, emite sus eventos y después `run_finalizada`.
+
+    Orden: [editada]* → aprobada → run_finalizada. Si nadie decide en `timeout_seg` (0 o menos = sin límite),
+    el run termina igual con estado `requiere_humano`. Con bloqueantes abiertos la persona puede aprobar, pero el
+    estado final no cambia: el sello cubre lo que escribió el modelo, no las ediciones de la persona.
+    """
+    estado_final = cierre.estado_final
+    if esperar_aprobacion:
+        decision = await ejecucion.esperar_decision(timeout_seg if timeout_seg > 0 else None)
+        if decision is None:
+            log.warning("El run %s no recibió decisión en %s s: queda en requiere_humano", ejecucion.run_id, timeout_seg)
+            estado_final = "requiere_humano"
+        else:
+            for ed in decision.ediciones:
+                await ejecucion.emitir(
+                    agente="humano", tipo="editada", slide=ed.slide,
+                    payload={"campo": ed.campo, "texto_antes": ed.texto_antes, "texto_despues": ed.texto_despues},
+                )
+            payload = {"decision": "aprobada"}
+            if decision.comentario:
+                payload["comentario"] = decision.comentario
+            await ejecucion.emitir(agente="humano", tipo="aprobada", payload=payload)
     await ejecucion.emitir(
         agente="sistema", tipo="run_finalizada",
         payload={
             "estado_final": estado_final,
             "fact_ledger_ref": referencia_fact_ledger(ejecucion.run_id),
-            "sello": sello,
+            "sello": cierre.sello,
         },
     )
     await ejecucion.cerrar()
@@ -334,23 +374,31 @@ async def ejecutar_run_real(
     kit: dict,
     agentes: Agentes | None = None,
     timeout_seg: float | None = None,
+    esperar_aprobacion: bool | None = None,
+    aprobacion_timeout_seg: float | None = None,
 ) -> None:
     """Ejecuta el flujo real de una ejecución y cierra la `Ejecucion` (terminada o fallida).
 
     `cliente` se construye una sola vez al arrancar el servidor; `kit` es el kit de marca ya
     cargado; `agentes` solo se pasa en las pruebas (por defecto, los agentes reales).
-    `timeout_seg` es el tope global del run; sin valor se usa config.RUN_TIMEOUT_SEG (0 o menos = sin tope).
+    `timeout_seg` es el tope del trabajo de los agentes; sin valor se usa config.RUN_TIMEOUT_SEG (0 o menos = sin tope).
+    `esperar_aprobacion` (sin valor, config.APROBACION_HUMANA) hace que el run espere la decisión de una persona
+    hasta `aprobacion_timeout_seg` (sin valor, config.APROBACION_TIMEOUT_SEG); esa espera NO cuenta para `timeout_seg`.
     Al terminar, sea cual sea el desenlace, deja en el log el resumen de tiempos por etapa.
     """
     agentes = agentes or Agentes()
     tope = config.RUN_TIMEOUT_SEG if timeout_seg is None else timeout_seg
+    esperar = config.APROBACION_HUMANA if esperar_aprobacion is None else esperar_aprobacion
+    espera_max = config.APROBACION_TIMEOUT_SEG if aprobacion_timeout_seg is None else aprobacion_timeout_seg
     # El medidor se crea aquí (y no dentro de `_correr`) para poder imprimir el resumen aunque el run falle.
     medidor = _Medidor(ejecucion.run_id, cliente)
     # El límite se guarda en una variable para poder preguntarle después si fue él quien venció.
     limite = asyncio.timeout(tope if tope > 0 else None)
     try:
         async with limite:
-            await _correr(ejecucion, fuente, cliente, kit, agentes, medidor)
+            cierre = await _correr(ejecucion, fuente, cliente, kit, agentes, medidor, esperar)
+        # Fuera del tope de los agentes: esperar a una persona no debe agotar el tiempo del run.
+        await _finalizar(ejecucion, cierre, esperar, espera_max)
     except EventoInvalido:
         # La Ejecucion ya quedó FALLIDA con los motivos; no hay nada más que hacer.
         log.error("Evento inválido en %s: la ejecución se cortó", ejecucion.run_id)

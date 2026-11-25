@@ -52,6 +52,40 @@ class Ejecucion:
         # Si falla: {"nombre": "evento_invalido" | "run_error", "datos": {...}} para el SSE.
         self.fallo: dict | None = None
         self._cond = asyncio.Condition()  # despierta a los lectores del SSE
+        # Aprobación humana: el orquestador abre la espera, el endpoint registra la decisión y despierta al orquestador.
+        self._esperando_decision = False
+        self._decision = None  # la `Decision` registrada (aprobacion.py); solo se acepta una
+        self._decision_lista = asyncio.Event()
+
+    @property
+    def esperando_decision(self) -> bool:
+        """True mientras el run espera la decisión de una persona (el endpoint responde 409 si no)."""
+        return self._esperando_decision
+
+    def abrir_decision(self) -> None:
+        """Abre la espera. Se llama ANTES de emitir `aprobacion_solicitada`, así nadie decide antes de tiempo."""
+        self._esperando_decision = True
+
+    def registrar_decision(self, decision) -> bool:
+        """Guarda la decisión y despierta al orquestador. False si no se esperaba o ya había una (solo vale la primera)."""
+        if not self._esperando_decision or self._decision is not None:
+            return False
+        self._decision = decision
+        self._decision_lista.set()
+        return True
+
+    async def esperar_decision(self, timeout: float | None):
+        """Espera la decisión hasta `timeout` segundos (None = sin límite). Devuelve None si venció sin decisión.
+
+        Al salir, por decisión o por tiempo, la espera queda cerrada: una decisión tardía recibe 409.
+        """
+        try:
+            await asyncio.wait_for(self._decision_lista.wait(), timeout)
+            return self._decision
+        except asyncio.TimeoutError:
+            return None
+        finally:
+            self._esperando_decision = False
 
     async def emitir(self, agente: str, tipo: str, payload: dict, slide: int | None = None, causa: int | None = None) -> dict:
         """Arma el evento, lo valida contra el contrato y lo agrega al buffer.
