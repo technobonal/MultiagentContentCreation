@@ -10,20 +10,35 @@ relleno (`orquestador.py`) no se toca. Orden de emisión:
   5. Ciclo de corrección: el ciclo emite verificacion_fidelidad, hallazgo_abierto y hallazgo_corregido.
      Cuando el redactor reescribe un slide, aquí se emite texto_propuesto con `causa` igual al seq
      del hallazgo y se vuelven a emitir los escribir_texto de ESE slide (sin repetir el fondo).
-  6. run_finalizada: estado final, referencia al fact ledger y sello. El sello lo calcula el código
+  6. aprobacion_solicitada (8F): estado de la revisión, hallazgos abiertos y sello. Se emite SIEMPRE,
+     justo antes del cierre. Todavía no existe el endpoint de aprobación humana, así que el run no
+     espera: termina solo con run_finalizada (la espera real, HITL, queda para una fase posterior).
+  7. run_finalizada: estado final, referencia al fact ledger y sello. El sello lo calcula el código
      a partir de las verificaciones VIGENTES, nunca el LLM. Atribución, licencia y sello los dibuja
      el lienzo como campos calculados: aquí no se escriben con escribir_texto.
 
 Errores: AgenteError y LLMError cortan la ejecución con su mensaje visible (`run_error`); un evento
 inválido ya deja la ejecución FALLIDA con los motivos; la cancelación avisa y se propaga.
+Tope global (8F): si el run dura más de `RUN_TIMEOUT_SEG`, se corta con un `run_error` de tiempo máximo.
+
+Medición de tiempos (tanda 10A, solo observa; no cambia el flujo ni los eventos):
+- `_Medidor` cronometra cada etapa (estratega, cada slide del redactor, director de arte, cada
+  pasada del revisor y del corrector) y, si el cliente LLM expone `metricas()`, atribuye a cada etapa
+  sus peticiones a Groq, la espera por cupo y los tokens.
+- Al terminar el run (también si falló o venció el tope) se escribe un resumen en el log INFO. Si el
+  tope global cortó el run, la etapa que estaba en curso aparece marcada como INTERRUMPIDA: ahí está
+  el cuello de botella.
 """
 
 import asyncio
+import contextlib
 import logging
-from collections.abc import Callable
+import time
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any
 
+from app import config
 from app.agentes.adaptadores_ciclo import CorrectorCarrusel, EstadoCarrusel, RevisorCarrusel
 from app.agentes.ciclo_correccion import ejecutar_ciclo as _ejecutar_ciclo
 from app.agentes.cliente_llm import ClienteLLM, LLMError
@@ -38,7 +53,7 @@ from app.agentes.revisor_codigo import revisar_codigo as _revisar_codigo
 from app.agentes.revisor_fidelidad import revisar_fidelidad as _revisar_fidelidad
 from app.fuentes.cargador_fuente import FuenteCargada
 from app.runs.registro import Ejecucion, EventoInvalido
-from app.runs.sello import calcular_sello, decidir_estado_final, referencia_fact_ledger
+from app.runs.sello import calcular_sello, decidir_estado_final, hallazgos_abiertos, referencia_fact_ledger
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +70,83 @@ class Agentes:
     componer_carrusel: Callable[..., Any] = _componer_carrusel
     componer_slide: Callable[..., Any] = _componer_slide
     ciclo: Callable[..., Any] = _ejecutar_ciclo
+
+
+# ---------------------------------------------------------------------------
+# Medición de tiempos por etapa (tanda 10A)
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class _Etapa:
+    """Resultado de cronometrar una etapa del run."""
+
+    nombre: str
+    seg: float  # duración de la etapa (reloj de pared)
+    ok: bool  # False si la etapa terminó por excepción o cancelación (por ejemplo el tope global)
+    llamadas: int  # peticiones a Groq hechas durante la etapa (0 si el cliente no mide)
+    espera_cupo_seg: float  # segundos dormidos esperando cupo del limitador durante la etapa
+    tokens: int  # tokens consumidos durante la etapa
+
+
+class _Medidor:
+    """Cronometra las etapas de UN run y arma el resumen final para el log.
+
+    Medir nunca debe romper un run: cualquier fallo al leer las métricas del cliente se ignora.
+    `reloj` se inyecta en las pruebas.
+    """
+
+    def __init__(self, run_id: str, cliente: Any, reloj: Callable[[], float] = time.monotonic):
+        self.run_id = run_id
+        self.cliente = cliente
+        self.reloj = reloj
+        self.etapas: list[_Etapa] = []  # etapas terminadas, en orden de cierre
+        self._inicio = reloj()  # instante en que empezó el run (para el total)
+
+    def _foto(self) -> dict:
+        """Foto de los contadores del cliente LLM; vacía si el cliente no tiene `metricas()` o falla."""
+        leer = getattr(self.cliente, "metricas", None)
+        # Los clientes falsos de las pruebas no miden: sin `metricas()` no hay nada que atribuir.
+        if not callable(leer):
+            return {}
+        try:
+            return dict(leer())
+        except Exception:  # noqa: BLE001 - medir no puede tumbar el run
+            return {}
+
+    @contextlib.contextmanager
+    def etapa(self, nombre: str) -> Iterator[None]:
+        """Cronometra el bloque `with`. Registra la etapa aunque el bloque falle o se cancele."""
+        antes = self._foto()
+        t0 = self.reloj()
+        ok = False  # solo pasa a True si el bloque terminó sin excepción
+        try:
+            yield
+            ok = True
+        finally:
+            despues = self._foto()
+            self.etapas.append(
+                _Etapa(
+                    nombre=nombre,
+                    seg=self.reloj() - t0,
+                    ok=ok,
+                    # Diferencia de los contadores acumulados: lo que consumió ESTA etapa.
+                    llamadas=int(despues.get("llamadas_red", 0) - antes.get("llamadas_red", 0)),
+                    espera_cupo_seg=float(despues.get("espera_cupo_seg", 0.0) - antes.get("espera_cupo_seg", 0.0)),
+                    tokens=int(despues.get("tokens", 0) - antes.get("tokens", 0)),
+                )
+            )
+
+    def resumen(self) -> str:
+        """Texto multilínea con el tiempo total y una línea por etapa."""
+        lineas = [f"Resumen de tiempos del run {self.run_id}: total {self.reloj() - self._inicio:.1f} s"]
+        # Una línea por etapa, en el orden en que terminaron.
+        for e in self.etapas:
+            marca = "" if e.ok else "  <-- INTERRUMPIDA"
+            lineas.append(
+                f"  {e.nombre:<22} {e.seg:7.1f} s  llamadas={e.llamadas}  "
+                f"cupo={e.espera_cupo_seg:.1f} s  tokens={e.tokens}{marca}"
+            )
+        return "\n".join(lineas)
 
 
 def _payload_run_iniciada(ejecucion: Ejecucion) -> dict:
@@ -143,17 +235,38 @@ def _crear_corrector(
     return corregir
 
 
+def _medir_llamable(medidor: _Medidor, base: str, llamable: Callable[..., Any]) -> Callable[..., Any]:
+    """Envuelve una corutina-llamable del ciclo (revisor o corrector) para cronometrar cada llamada.
+
+    Pasa los argumentos tal cual (`*args, **kwargs`) y devuelve lo mismo que el original, así que
+    el ciclo no nota la diferencia. Cada llamada es una etapa con nombre `base_1`, `base_2`, ...
+    """
+    contador = {"n": 0}  # cuántas veces se llamó (para numerar las etapas)
+
+    async def medida(*args: Any, **kwargs: Any) -> Any:
+        """Cronometra una llamada al revisor o al corrector y devuelve su resultado intacto."""
+        contador["n"] += 1
+        with medidor.etapa(f"{base}_{contador['n']}"):
+            return await llamable(*args, **kwargs)
+
+    return medida
+
+
 async def _correr(
     ejecucion: Ejecucion, fuente: FuenteCargada, cliente: ClienteLLM, kit: dict, agentes: Agentes,
+    medidor: _Medidor | None = None,
 ) -> None:
     """Todo el flujo de una ejecución real, de run_iniciada a run_finalizada."""
     entrada = ejecucion.entrada
     resolucion = ejecucion.resolucion
+    # Sin medidor externo (por ejemplo, una prueba que llama a `_correr` directo) se crea uno local.
+    medidor = medidor or _Medidor(ejecucion.run_id, cliente)
 
     await ejecucion.emitir(agente="sistema", tipo="run_iniciada", payload=_payload_run_iniciada(ejecucion))
     await ejecucion.emitir(agente="sistema", tipo="fuente_indexada", payload=_payload_fuente_indexada(fuente))
 
-    brief = await agentes.generar_brief(cliente, entrada, resolucion, fuente)
+    with medidor.etapa("estratega"):
+        brief = await agentes.generar_brief(cliente, entrada, resolucion, fuente)
     await ejecucion.emitir(agente="estratega", tipo="brief_emitido", payload=brief.payload_evento(resolucion))
     await ejecucion.emitir(agente="director_arte", tipo="plantilla_elegida", payload=_payload_plantilla(resolucion))
 
@@ -161,12 +274,15 @@ async def _correr(
     textos: dict[int, TextoSlide] = {}
     for slide in resolucion.ficha["slides"]:
         numero = slide["numero"]
-        texto = await agentes.redactar(cliente, entrada, resolucion, fuente, brief, numero)
+        # Cada slide es su propia etapa: así se ve cuál redacción tarda más o reintenta.
+        with medidor.etapa(f"redactor_slide_{numero}"):
+            texto = await agentes.redactar(cliente, entrada, resolucion, fuente, brief, numero)
         textos[numero] = texto
         await _emitir_textos_propuestos(ejecucion, texto)
 
     # El director de arte compone todo el carrusel con los textos ya redactados.
-    await _emitir_arte(ejecucion, agentes.componer_carrusel(resolucion, kit, textos))
+    with medidor.etapa("director_arte"):
+        await _emitir_arte(ejecucion, agentes.componer_carrusel(resolucion, kit, textos))
 
     # Ciclo de corrección con el revisor real (código + fidelidad) y el corrector envuelto.
     revisor = RevisorCarrusel(
@@ -174,10 +290,13 @@ async def _correr(
         revisar_codigo=agentes.revisar_codigo, revisar_fidelidad=agentes.revisar_fidelidad, con_ids=agentes.con_ids,
     )
     corrector = CorrectorCarrusel(cliente, entrada, resolucion, fuente, redactar=agentes.redactar)
+    # Se cronometra cada pasada del revisor y del corrector dentro del ciclo (el ciclo solo ve llamables).
+    revisar_medido = _medir_llamable(medidor, "revisor", revisor)
+    corregir_medido = _medir_llamable(medidor, "corrector", _crear_corrector(ejecucion, corrector, kit, agentes))
     resultado = await agentes.ciclo(
         EstadoCarrusel(textos, brief),
-        revisar=revisor,
-        corregir=_crear_corrector(ejecucion, corrector, kit, agentes),
+        revisar=revisar_medido,
+        corregir=corregir_medido,
         emitir=ejecucion.emitir,
     )
 
@@ -186,6 +305,16 @@ async def _correr(
     # Si el ciclo escaló, requiere_humano; si no, depende de los hallazgos que sigan abiertos.
     estado_final = decidir_estado_final(
         ejecucion.eventos, escalado=(resultado.estado_final == "requiere_humano")
+    )
+
+    # 8F: se pide la aprobación con el mismo estado y sello del cierre; el run no espera la respuesta.
+    await ejecucion.emitir(
+        agente="sistema", tipo="aprobacion_solicitada",
+        payload={
+            "estado_revision": estado_final,
+            "hallazgos_abiertos": len(hallazgos_abiertos(ejecucion.eventos)),
+            "sello": sello,
+        },
     )
     await ejecucion.emitir(
         agente="sistema", tipo="run_finalizada",
@@ -204,15 +333,24 @@ async def ejecutar_run_real(
     cliente: ClienteLLM,
     kit: dict,
     agentes: Agentes | None = None,
+    timeout_seg: float | None = None,
 ) -> None:
     """Ejecuta el flujo real de una ejecución y cierra la `Ejecucion` (terminada o fallida).
 
     `cliente` se construye una sola vez al arrancar el servidor; `kit` es el kit de marca ya
     cargado; `agentes` solo se pasa en las pruebas (por defecto, los agentes reales).
+    `timeout_seg` es el tope global del run; sin valor se usa config.RUN_TIMEOUT_SEG (0 o menos = sin tope).
+    Al terminar, sea cual sea el desenlace, deja en el log el resumen de tiempos por etapa.
     """
     agentes = agentes or Agentes()
+    tope = config.RUN_TIMEOUT_SEG if timeout_seg is None else timeout_seg
+    # El medidor se crea aquí (y no dentro de `_correr`) para poder imprimir el resumen aunque el run falle.
+    medidor = _Medidor(ejecucion.run_id, cliente)
+    # El límite se guarda en una variable para poder preguntarle después si fue él quien venció.
+    limite = asyncio.timeout(tope if tope > 0 else None)
     try:
-        await _correr(ejecucion, fuente, cliente, kit, agentes)
+        async with limite:
+            await _correr(ejecucion, fuente, cliente, kit, agentes, medidor)
     except EventoInvalido:
         # La Ejecucion ya quedó FALLIDA con los motivos; no hay nada más que hacer.
         log.error("Evento inválido en %s: la ejecución se cortó", ejecucion.run_id)
@@ -224,8 +362,21 @@ async def ejecutar_run_real(
         # Fallo esperable de un agente o del cliente LLM: se muestra su mensaje, que es apto para el usuario.
         log.warning("Fallo de agente en %s (%s): %s", ejecucion.run_id, getattr(exc, "codigo", "?"), exc)
         await ejecucion.fallar(getattr(exc, "mensaje", None) or str(exc))
+    except TimeoutError:
+        # Solo es el tope global si venció nuestro límite; un TimeoutError de otro origen es un fallo inesperado.
+        if limite.expired():
+            log.warning("El run %s superó el tope de %s s", ejecucion.run_id, tope)
+            await ejecucion.fallar(f"La ejecución superó el tiempo máximo ({tope:g} s) y se detuvo.")
+        else:
+            log.exception("Timeout inesperado en %s", ejecucion.run_id)
+            await ejecucion.fallar(
+                "Error inesperado del orquestador (TimeoutError); el detalle está en el registro del servidor."
+            )
     except Exception as exc:  # cualquier fallo inesperado: visible, pero sin filtrar detalles al cliente
         log.exception("Fallo inesperado en %s", ejecucion.run_id)
         await ejecucion.fallar(
             f"Error inesperado del orquestador ({type(exc).__name__}); el detalle está en el registro del servidor."
         )
+    finally:
+        # Siempre se deja el resumen de tiempos (éxito, error, tope o cancelación): es el dato que buscamos.
+        log.info("%s", medidor.resumen())

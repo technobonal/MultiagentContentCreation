@@ -10,13 +10,16 @@ Basado en el verificador del spike v3b, con estas decisiones:
 - El código impone las reglas del contrato `verificacion_fidelidad` (una opinión o CTA nunca
   lleva veredicto distinto de `no_aplica`; una cifra o un `contradice` la vuelven factual).
 - Además, el código comprueba por su cuenta que las cifras del slide existan en los fragmentos,
-  sin depender del LLM.
+  sin depender del LLM. El hallazgo de cifra lleva la frase donde aparece la cifra (para que el
+  corrector la ubique), compara cifras exactas (no subcadenas) e ignora los marcadores de lista
+  («1.», «2)») al inicio de línea.
 - Gravedad: `contradice` y `no_respaldada` son bloqueantes; `parcialmente_respaldada` es mayor.
   Una cifra que el código no encuentra en los fragmentos es mayor (respaldo del LLM, con más
   riesgo de falso positivo por cifras derivadas, como «3 pasos»).
-- Sin fallback de modelo (`permitir_fallback=False`): el revisor debe ser de otra familia que el
-  redactor, y caer al modelo del redactor rompería esa independencia. El modelo lo elige el
-  cliente según el rol «revisor».
+- Fallback solo dentro de la cadena propia del revisor (`config.GROQ_FALLBACK_REVISOR`, tanda 10B): ambos
+  modelos son gpt-oss, de otra familia que el redactor (qwen), así que la independencia se mantiene y,
+  cuando un modelo no tiene cupo de tokens, el otro responde en vez de esperar. El revisor nunca cae al
+  modelo del redactor. El cliente decide el modelo según el rol «revisor_a».
 
 Entrada:  el `Brief`, la fuente cargada y los `TextoSlide` del redactor.
 Salida:   un `ResultadoFidelidad` con las afirmaciones verificadas, los hallazgos y el sello.
@@ -31,6 +34,7 @@ from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from app import config
 from app.agentes.cliente_llm import ClienteLLM
 from app.agentes.comun import AgenteError, cargar_prompt, pedir_json
 from app.agentes.estratega import Brief
@@ -43,11 +47,14 @@ from app.fuentes.cargador_fuente import Fragmento, FuenteCargada
 if TYPE_CHECKING:
     from app.agentes.redactor import TextoSlide
 
-# Rol del cliente LLM para el revisor: debe existir en ClienteGroq.modelos (revisor_a = gpt-oss-120b, sin fallback)
+# Rol del cliente LLM para el revisor: debe existir en ClienteGroq.modelos (revisor_a = gpt-oss-120b).
+# Su cadena de fallback propia sale de config.GROQ_FALLBACK_REVISOR (ver el docstring del módulo).
 ROL_REVISOR = "revisor_a"
 
-# Tokens de salida que se piden: el modelo razona antes de escribir el JSON (valor del spike).
-MAX_TOKENS_REVISOR = 4000
+# Tokens de salida que se piden (y se reservan en el límite por minuto). Antes eran 4000 (valor del spike): esa
+# reserva casi llenaba la ventana y cada llamada esperaba ~1 minuto. Ahora sale de config (2000 por defecto,
+# medido en la 10A); si el modelo se queda corto aparece finish_reason=length y se sube LLM_MAX_TOKENS_REVISOR.
+MAX_TOKENS_REVISOR = config.LLM_MAX_TOKENS_REVISOR
 
 # Parámetros extra de la API para el revisor: razonamiento bajo deja espacio al JSON (valor del spike).
 EXTRA_REVISOR = {"reasoning_effort": "low"}
@@ -55,6 +62,10 @@ EXTRA_REVISOR = {"reasoning_effort": "low"}
 # Cota de afirmaciones por slide y de longitud de la cita.
 MAX_AFIRMACIONES_SLIDE = 12
 CITA_MAX_CHARS = 300
+
+# Largo máximo (en caracteres) de la frase de contexto que acompaña a una cifra sin respaldo. Es corto a
+# propósito: `crear_hallazgo` puede tener un tope de longitud para la evidencia.
+FRASE_CIFRA_MAX_CHARS = 100
 
 # Identificadores de afirmación a1 a a999 (contrato `verificacion_fidelidad`).
 MAX_AFIRMACIONES_RUN = 999
@@ -67,6 +78,10 @@ VEREDICTOS = (*VEREDICTOS_FACTUALES, "no_verificada", "no_aplica")
 
 # Un número con separadores opcionales y, si lo hay, su símbolo de porcentaje.
 _CIFRA = re.compile(r"(\d+(?:[.,]\d+)*)(\s?%)?")
+
+# Marcador de lista: 1 o 2 dígitos al inicio de línea (tras una viñeta opcional), seguidos de «.» o «)» y un
+# espacio. «1.5 millones» no cuenta (tras el punto no hay espacio) y una cifra a mitad de línea tampoco.
+_MARCADOR_LISTA = re.compile(r"[ \t]*(?:[-*•][ \t]+)?(?P<n>\d{1,2})[.)]\s")
 
 # Quita los comentarios HTML del prompt (no deben viajar al modelo).
 _COMENTARIO_HTML = re.compile(r"<!--.*?-->", re.DOTALL)
@@ -173,28 +188,79 @@ def _cifras_de_fragmentos(fragmentos: Sequence[str]) -> set[str]:
     return conjunto
 
 
+def _cifras_exactas(texto: str) -> set[str]:
+    """Cifras de un texto como conjunto de formas exactas (normalizada y sin separadores), sin subcadenas.
+
+    Sirve para decidir si una cifra ya está señalada: «1» coincide con «1», pero no con «11» ni con «2024».
+    """
+    conjunto = set()
+    for cifra in _cifras(texto):
+        conjunto.add(_normalizar_cifra(cifra))
+        conjunto.add(_sin_separadores(cifra))
+    return conjunto
+
+
+def _es_marcador_de_lista(texto: str, inicio: int) -> bool:
+    """True si el número que empieza en `inicio` es un marcador de lista («1.», «2)») al inicio de línea."""
+    inicio_linea = texto.rfind("\n", 0, inicio) + 1
+    m = _MARCADOR_LISTA.match(texto, inicio_linea)
+    return m is not None and m.start("n") == inicio
+
+
+def _frase_de_cifra(texto: str, inicio: int, fin: int) -> str:
+    """Trozo corto de `texto` alrededor de la cifra (posiciones inicio:fin), para que el corrector la ubique."""
+    mitad = max(0, (FRASE_CIFRA_MAX_CHARS - (fin - inicio)) // 2)
+    desde = max(0, inicio - mitad)
+    hasta = min(len(texto), fin + mitad)
+    # Si el corte cae a mitad de palabra, se acerca al siguiente espacio sin pasar de la cifra.
+    if desde > 0 and not texto[desde - 1].isspace():
+        espacio = texto.find(" ", desde, inicio)
+        if espacio != -1:
+            desde = espacio + 1
+    frase = " ".join(texto[desde:hasta].split())
+    return ("…" if desde > 0 else "") + frase + ("…" if hasta < len(texto) else "")
+
+
 def hallazgos_por_cifras(slide: int, campos: Mapping[str, str], fragmentos: Sequence[str],
                          hallazgos_llm: Sequence[Hallazgo]) -> list[Hallazgo]:
-    """Marca las cifras del slide que no aparecen en los fragmentos asignados (control por código)."""
+    """Marca las cifras del slide que no aparecen en los fragmentos asignados (control por código).
+
+    Ignora los marcadores de lista y compara cifras exactas con lo que el LLM ya señaló. La evidencia
+    incluye la frase donde aparece la cifra, para que el corrector sepa dónde actuar.
+    """
     disponibles = _cifras_de_fragmentos(fragmentos)
+    # Cifras exactas que el LLM ya señaló en este slide (sin tratar «1» como parte de «11»).
+    senaladas = set()
+    for h in hallazgos_llm:
+        if h.slide == slide:
+            senaladas |= _cifras_exactas(h.evidencia)
     hallazgos = []
     vistas = set()
     # Se recorren todos los campos del slide buscando cifras.
     for nombre, texto in campos.items():
         if not isinstance(texto, str):
             continue
-        for cifra in _cifras(texto):
-            esta = _normalizar_cifra(cifra) in disponibles or _sin_separadores(cifra) in disponibles
-            # Una cifra respaldada, repetida o ya señalada por el LLM no abre hallazgo nuevo.
-            ya_senalada = any(h.slide == slide and cifra in h.evidencia for h in hallazgos_llm)
-            if esta or cifra in vistas or ya_senalada:
+        for m in _CIFRA.finditer(texto):
+            cifra = m.group(1)
+            clave = _normalizar_cifra(cifra)
+            # Un marcador de lista no es una cifra factual: no se verifica.
+            if _es_marcador_de_lista(texto, m.start(1)):
                 continue
-            vistas.add(cifra)
+            esta = clave in disponibles or _sin_separadores(cifra) in disponibles
+            ya_senalada = clave in senaladas or _sin_separadores(cifra) in senaladas
+            # Una cifra respaldada, repetida o ya señalada por el LLM no abre hallazgo nuevo.
+            if esta or clave in vistas or ya_senalada:
+                continue
+            vistas.add(clave)
+            frase = _frase_de_cifra(texto, m.start(1), m.end(1))
             hallazgos.append(crear_hallazgo(
                 "fidelidad", "mayor", slide,
-                f"«{nombre_campo(nombre)}»: la cifra {cifra} no está en los fragmentos asignados",
+                f"«{nombre_campo(nombre)}»: la cifra {cifra} no está en los fragmentos asignados "
+                f"(frase: «{frase}»)",
                 "La cifra no aparece en la fuente que respalda este slide.",
-                f"Comprueba la cifra {cifra} en la fuente y corrígela o elimínala.", "redactor"))
+                f"Los fragmentos asignados no contienen la cifra {cifra}. Quítala de esa frase "
+                "(o describe el elemento sin cantidad); no la reformules con otro número.",
+                "redactor"))
     return hallazgos
 
 
@@ -305,11 +371,11 @@ def _fragmentos_del_slide(brief: Brief, fuente: FuenteCargada, slide: int) -> li
 def pedir_al_revisor(cliente: ClienteLLM) -> Pedir:
     """Función `Pedir` que usa el cliente real. Es el único punto que toca `pedir_json`."""
     async def pedir(sistema: str, usuario: str) -> Mapping[str, Any]:
-        """Envía el prompt al rol «revisor», sin fallback de modelo, y devuelve el JSON validado."""
+        """Envía el prompt al rol «revisor», con la cadena de modelos propia del rol, y devuelve el JSON validado."""
         mensajes = [{"role": "system", "content": sistema}, {"role": "user", "content": usuario}]
         dato, _respuesta = await pedir_json(
             cliente, ROL_REVISOR, mensajes, _validar_respuesta,
-            max_tokens=MAX_TOKENS_REVISOR, permitir_fallback=False, extra=EXTRA_REVISOR)
+            max_tokens=MAX_TOKENS_REVISOR, permitir_fallback=None, extra=EXTRA_REVISOR)
         return dato
     return pedir
 

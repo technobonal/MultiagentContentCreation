@@ -261,6 +261,64 @@ def test_cifras_solo_miran_campos_de_texto():
     assert hallazgos_por_cifras(1, {"cuerpo": None, "titulo": 5}, ["nada"], []) == []
 
 
+# ---------------------------- cifras: contexto, marcadores y comparación exacta ----------------------------
+
+def _evidencias(campos, fragmentos=("sin números",), llm=()):
+    """Evidencias de los hallazgos por cifras del slide 1 (`llm` simula los hallazgos que ya marcó el modelo)."""
+    return [h.evidencia for h in hallazgos_por_cifras(1, campos, list(fragmentos), list(llm))]
+
+
+def _del_modelo(evidencia, slide=1):
+    """Hallazgo mínimo del modelo: solo importan el slide y la evidencia."""
+    return SimpleNamespace(slide=slide, evidencia=evidencia)
+
+
+def test_hallazgo_de_cifra_incluye_la_frase_donde_aparece():
+    (ev,) = _evidencias({"cuerpo": "Son 7 pasos clave para empezar."})
+    assert "la cifra 7" in ev and "Son 7 pasos clave para empezar." in ev
+
+
+def test_la_frase_de_contexto_es_corta_y_marca_los_recortes():
+    largo = "palabra " * 30 + "con 7 elementos " + "palabra " * 30
+    (ev,) = _evidencias({"cuerpo": largo})
+    frase = ev.split("(frase: «", 1)[1].rsplit("»)", 1)[0]
+    assert "7" in frase and frase.startswith("…") and frase.endswith("…")
+    assert len(frase) <= rf.FRASE_CIFRA_MAX_CHARS + 2  # el límite más las dos elipsis
+
+
+@pytest.mark.parametrize("texto", [
+    "1. Primero\n2. Segundo",
+    "- 1) Primero\n- 2) Segundo",
+    "  3. Tercero",
+])
+def test_marcadores_de_lista_no_abren_hallazgo(texto):
+    assert _evidencias({"cuerpo": texto}) == []
+
+
+@pytest.mark.parametrize("texto", [
+    "Son 1. Luego sigue",    # a mitad de línea
+    "1.5 millones",          # decimal, no marcador
+    "Hay 1 acción clave",    # sin punto ni paréntesis
+])
+def test_una_cifra_que_no_es_marcador_sigue_marcandose(texto):
+    assert len(_evidencias({"cuerpo": texto})) == 1
+
+
+def test_un_marcador_no_tapa_la_misma_cifra_cuando_aparece_como_dato():
+    (ev,) = _evidencias({"cuerpo": "1. Primero\nHay 1 acción."})
+    assert "la cifra 1" in ev and "Hay 1 acción." in ev
+
+
+def test_cifra_senalada_por_el_modelo_se_compara_exacta_no_por_subcadena():
+    llm = [_del_modelo("Tiene 11 módulos desde 2024.")]
+    assert len(_evidencias({"cuerpo": "Hay 1 acción."}, llm=llm)) == 1   # el «1» no está en «11» ni en «2024»
+    assert _evidencias({"cuerpo": "Hay 11 acciones."}, llm=llm) == []     # el «11» sí estaba señalado
+
+
+def test_hallazgo_del_modelo_de_otro_slide_no_cuenta_como_senalado():
+    assert len(_evidencias({"cuerpo": "Duran 7 meses."}, llm=[_del_modelo("Duran 7 meses.", slide=2)])) == 1
+
+
 # ---------------------------- flujo por slide ----------------------------
 
 def test_cota_de_afirmaciones_por_slide():
@@ -382,7 +440,7 @@ def test_usa_el_rol_revisor_sin_fallback_y_con_el_tope_de_tokens():
     r = _con_cliente(c)
     llamada = c.llamadas[0]
     assert llamada["rol"] == "revisor_a" and llamada["max_tokens"] == MAX_TOKENS_REVISOR
-    assert llamada["permitir_fallback"] is False  # el revisor no puede caer al modelo del redactor
+    assert llamada["permitir_fallback"] is None   # Sin forzar: el cliente aplica la cadena propia del revisor (gpt-oss-120b → 20b), nunca el modelo del redactor.
     assert [m["role"] for m in llamada["mensajes"]] == ["system", "user"]
     assert llamada["mensajes"][0]["content"] == "SISTEMA FIJO"
     assert r.afirmaciones[0].veredicto == "respaldada"

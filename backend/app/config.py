@@ -104,5 +104,163 @@ LLM_ESPERA_MAX_SEG = float(os.environ.get("LLM_ESPERA_MAX_SEG", "90"))
 # Tokens de salida que se piden por defecto (y que se reservan en el límite por minuto).
 LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "1500"))
 
-# Segundos que un modelo queda bloqueado tras un 429.
+# Segundos que un modelo queda bloqueado tras un 429 cuando el mensaje de Groq NO trae la pista de espera
+# («try again in Xs»). Si la trae, se usa esa pista (ver LLM_COLCHON_429_SEG y LLM_BLOQUEO_429_MAX_SEG).
 LLM_BLOQUEO_429_SEG = float(os.environ.get("LLM_BLOQUEO_429_SEG", "20"))
+
+# --- Tanda 1 de velocidad: espera exacta tras un 429 ---
+# Medido en el run run_db6c83fe: qwen tiene un límite de tokens de SALIDA por minuto (OTPM = 1000) que no aparece
+# en la consola de Groq pero sí en el mensaje del 429. Groq dice cuánto esperar y el cliente lo respeta.
+
+# Segundos que se suman a la pista de Groq para no volver a chocar justo en el borde de la ventana.
+LLM_COLCHON_429_SEG = float(os.environ.get("LLM_COLCHON_429_SEG", "0.5"))
+
+# Tope, en segundos, del bloqueo de un modelo tras un 429 con pista (una pista absurda no lo deja fuera del run).
+LLM_BLOQUEO_429_MAX_SEG = float(os.environ.get("LLM_BLOQUEO_429_MAX_SEG", "60"))
+
+# --- Tanda 10B: menos espera por cupo (medido en la tanda 10A) ---
+
+def _mapa_de_enteros(texto: str) -> dict[str, int]:
+    """Convierte «modelo=valor,modelo=valor» en un diccionario; vacío si no hay nada.
+
+    Un par mal escrito falla al arrancar (error visible, no silencioso).
+    """
+    mapa: dict[str, int] = {}
+    # Cada par separado por coma aporta un modelo y su valor.
+    for par in texto.split(","):
+        if not par.strip():  # descarta entradas vacías (por ejemplo, una coma final)
+            continue
+        modelo, _, valor = par.partition("=")
+        mapa[modelo.strip()] = int(valor)  # int() falla si falta el "=" o el valor no es un número
+    return mapa
+
+
+# Tokens por minuto de cada modelo cuando difieren de GROQ_TPM, por ejemplo
+# GROQ_TPM_POR_MODELO="qwen/qwen3.8-27b=6000,openai/gpt-oss-20b=8000". Sin valor, todos usan GROQ_TPM.
+# Los números reales de tu cuenta están en la consola de Groq (sección de límites).
+GROQ_TPM_POR_MODELO = _mapa_de_enteros(os.environ.get("GROQ_TPM_POR_MODELO", ""))
+
+# Tokens de salida que se piden (y se reservan en el límite por minuto) en cada llamada del revisor de
+# fidelidad. Medido en la 10A: una llamada gasta entre 1.200 y 1.750 tokens en total, entrada incluida.
+LLM_MAX_TOKENS_REVISOR = int(os.environ.get("LLM_MAX_TOKENS_REVISOR", "2000"))
+
+# Cadena de modelos del revisor, separados por coma (el primero es el que se pide). Ambos son gpt-oss, distintos
+# de la familia del redactor (qwen), así el revisor sigue siendo independiente y gana una segunda ventana de tokens.
+GROQ_FALLBACK_REVISOR = [
+    m.strip()
+    for m in os.environ.get("GROQ_FALLBACK_REVISOR", f"{GROQ_MODELO_REVISOR_A},{GROQ_MODELO_REVISOR_B}").split(",")
+    if m.strip()  # descarta entradas vacías
+]
+
+# --- Tanda 8F: tope global por ejecución real ---
+
+# Máximo de segundos que puede durar UN run real completo (de run_iniciada a run_finalizada).
+# Al vencer, el run se corta con un run_error visible y libera su cupo de MAX_RUNS_ACTIVOS.
+# Debe dar margen a varias llamadas al LLM con espera de cupo (ver LLM_ESPERA_MAX_SEG). 0 o menos = sin tope.
+RUN_TIMEOUT_SEG = float(os.environ.get("RUN_TIMEOUT_SEG", "600"))
+
+# --- Tanda 2A: cadenas por rol, reserva realista y respaldo solo por falla ---
+# Medido en el run run_348cc81c: el redactor saltaba a gpt-oss sin falla técnica (qwen sin cupo por una reserva
+# inflada), gastaba 2 o 3 veces más tokens y dejaba sin ventana al revisor. Estas variables lo corrigen.
+
+
+def _lista_de_texto(texto: str) -> list[str]:
+    """Convierte «a,b,c» en una lista de textos sin espacios y sin entradas vacías."""
+    # Cada entrada separada por coma se limpia; las vacías (por ejemplo, una coma final) se descartan.
+    return [parte.strip() for parte in texto.split(",") if parte.strip()]
+
+
+# Modelo de respaldo del estratega y el redactor (solo se usa si qwen falla por motivos técnicos).
+GROQ_MODELO_RESPALDO = os.environ.get("GROQ_MODELO_RESPALDO", "openai/gpt-oss-20b")
+
+# Cadena de cada rol: el primero es el que se pide y los siguientes son el respaldo, en orden.
+# Por defecto el 120b queda libre para el revisor (el respaldo es solo el 20b).
+GROQ_FALLBACK_ESTRATEGA = _lista_de_texto(
+    os.environ.get("GROQ_FALLBACK_ESTRATEGA", f"{GROQ_MODELO_ESTRATEGA},{GROQ_MODELO_RESPALDO}")
+)
+GROQ_FALLBACK_REDACTOR = _lista_de_texto(
+    os.environ.get("GROQ_FALLBACK_REDACTOR", f"{GROQ_MODELO_REDACTOR},{GROQ_MODELO_RESPALDO}")
+)
+
+# Roles cuyo respaldo entra SOLO ante una falla técnica (429, 413, 5xx, timeout, conexión) y no por falta de cupo:
+# si su modelo principal está lleno, esperan unos segundos en vez de gastar la ventana de otro rol.
+ROLES_RESPALDO_SOLO_POR_FALLA = tuple(
+    _lista_de_texto(os.environ.get("ROLES_RESPALDO_SOLO_POR_FALLA", "estratega,redactor"))
+)
+
+# Si el modelo principal de uno de esos roles tendría que esperar MÁS de estos segundos, deja de esperar y se
+# permite el salto por cupo al respaldo (evita que un run falle con «sin_cupo» o se quede dormido un minuto).
+# Desde la tanda 1 de velocidad también decide si un 429 de qwen se espera (pista de Groq dentro de este tope)
+# o salta al respaldo. Con qwen limitado a 1000 tokens de salida por minuto conviene 40 en el .env
+# (LLM_ESPERA_ANTES_DE_SALTAR_SEG=40): esperar unos segundos sale más barato que ensuciar la ventana del revisor.
+LLM_ESPERA_ANTES_DE_SALTAR_SEG = float(os.environ.get("LLM_ESPERA_ANTES_DE_SALTAR_SEG", "20"))
+
+# Tokens de SALIDA que el limitador reserva por rol (se suman a la entrada estimada). Antes se reservaba el
+# `max_tokens` completo (1500 a 2000) aunque el gasto real era de 1.050 tokens (redactor) y 1.200 a 1.750
+# (revisor), entrada incluida. Esto es solo la reserva: el tope que se envía a Groq sigue siendo `max_tokens`.
+# Si Groq empieza a responder 429 con frecuencia, sube estos valores; los reales salen de `tokens=` en el log.
+# Formato de la variable de entorno (pisa solo los roles que nombres): "redactor=700,revisor_a=1100".
+# Desde la tanda 2 de velocidad esto es solo el valor de ARRANQUE: con LLM_CALIBRAR_RESERVA activo, cuando el
+# cliente ya tiene muestras reales de un rol, usa lo que ese rol gastó de verdad (ver abajo).
+LLM_RESERVA_SALIDA_POR_ROL = {
+    **_mapa_de_enteros("estratega=700,redactor=600,revisor_a=1000,revisor_b=1000"),
+    **_mapa_de_enteros(os.environ.get("LLM_RESERVA_SALIDA_POR_ROL", "")),
+}
+
+# Fracción del límite por minuto de Groq que el limitador considera utilizable (0.8 = deja un 20 % de colchón).
+# Probar 0.9 solo después de comprobar los límites reales de cada modelo en la consola de Groq.
+GROQ_MARGEN = float(os.environ.get("GROQ_MARGEN", "0.8"))
+if not 0 < GROQ_MARGEN <= 1:  # fuera de rango: no se arranca con un margen sin sentido
+    raise ValueError(f"GROQ_MARGEN debe estar entre 0 (excluido) y 1; llegó {GROQ_MARGEN}")
+
+# Nivel de razonamiento de los modelos gpt-oss (low, medium o high; vacío = no se envía). En «low» el modelo
+# gasta pocos tokens pensando y no se come la salida: el redactor sobre gpt-oss-120b se cortó con finish=length.
+NIVEL_RAZONAMIENTO_GPT_OSS = os.environ.get("NIVEL_RAZONAMIENTO_GPT_OSS", "low").strip().lower()
+if NIVEL_RAZONAMIENTO_GPT_OSS not in ("", "low", "medium", "high"):  # valor desconocido: falla al arrancar
+    raise ValueError(f"NIVEL_RAZONAMIENTO_GPT_OSS debe ser low, medium, high o vacío; llegó {NIVEL_RAZONAMIENTO_GPT_OSS!r}")
+
+# Parámetros fijos por modelo que el cliente añade a cada petición (el llamador puede pisarlos con `extra`).
+# Hoy solo el razonamiento de los dos gpt-oss; qwen no recibe nada.
+GROQ_EXTRA_POR_MODELO = (
+    {
+        modelo: {"reasoning_effort": NIVEL_RAZONAMIENTO_GPT_OSS}
+        for modelo in dict.fromkeys((GROQ_MODELO_REVISOR_A, GROQ_MODELO_REVISOR_B, GROQ_MODELO_RESPALDO))
+    }
+    if NIVEL_RAZONAMIENTO_GPT_OSS
+    else {}
+)
+
+# --- Tanda 2 de velocidad: reserva calibrada con el gasto real ---
+# Medido en el run run_4e47da95 (85 s, 64 s de espera por cupo, 53,7 s en una sola llamada del revisor): la reserva
+# del limitador era la entrada estimada con «1 token por cada 3 caracteres» más una salida fija por rol, bastante
+# por encima del gasto real (~1.300 tokens por llamada del revisor). Con el 20b ya cargado por respaldos del
+# redactor, esa reserva inflada no cabía en la ventana y la llamada dormía casi un minuto. Ahora el cliente aprende,
+# por rol, cuántos caracteres caben en un token y cuántos tokens de salida se gastan de verdad.
+
+def _booleano(texto: str, defecto: bool) -> bool:
+    """Interpreta «1/0», «true/false», «si/no», «on/off»; vacío = el valor por defecto. Un valor raro falla al arrancar."""
+    limpio = texto.strip().lower()
+    if not limpio:  # variable ausente o vacía: se queda con el valor por defecto
+        return defecto
+    if limpio in ("1", "true", "si", "sí", "on", "yes"):
+        return True
+    if limpio in ("0", "false", "no", "off"):
+        return False
+    raise ValueError(f"Valor booleano no reconocido: {texto!r} (usa 1/0, true/false, si/no, on/off)")
+
+
+# Interruptor: 1 = reserva calibrada (por defecto); 0 = vuelve a la fórmula de siempre (chars // 3 + salida fija).
+LLM_CALIBRAR_RESERVA = _booleano(os.environ.get("LLM_CALIBRAR_RESERVA", ""), True)
+
+# Cuántas respuestas recientes de un rol se recuerdan para calibrar (ventana deslizante por rol).
+LLM_CALIBRACION_MUESTRAS = int(os.environ.get("LLM_CALIBRACION_MUESTRAS", "5"))
+
+# Cuántas respuestas reales hacen falta antes de fiarse de la calibración; con menos se usa la fórmula de siempre.
+LLM_CALIBRACION_MIN_MUESTRAS = int(os.environ.get("LLM_CALIBRACION_MIN_MUESTRAS", "2"))
+
+# Factor de seguridad sobre lo medido (1.15 = 15 % de colchón). Debe ser 1 o más.
+LLM_CALIBRACION_COLCHON = float(os.environ.get("LLM_CALIBRACION_COLCHON", "1.15"))
+if LLM_CALIBRACION_MUESTRAS < 1 or LLM_CALIBRACION_MIN_MUESTRAS < 1:  # sin muestras no hay calibración posible
+    raise ValueError("LLM_CALIBRACION_MUESTRAS y LLM_CALIBRACION_MIN_MUESTRAS deben ser 1 o más")
+if LLM_CALIBRACION_COLCHON < 1:  # un colchón menor que 1 reservaría MENOS de lo medido
+    raise ValueError(f"LLM_CALIBRACION_COLCHON debe ser 1 o más; llegó {LLM_CALIBRACION_COLCHON}")

@@ -33,3 +33,12 @@ Reglas:
 6. Toda cifra, nombre propio, fecha o definición que uses en un texto debe tener su cita literal en "hechos". Un slide puramente de presentación o cierre puede llevar la lista vacía.
 7. Máximo 6 citas. No repitas la misma cita.
 8. No añadas campos distintos a los indicados.
+
+<!--
+  Reglas 9 y 10 (se añaden al final para no renumerar las anteriores). Motivo: el modelo "cuenta" cosas
+  que la fuente no cuenta («N pasos clave», listas numeradas) y el revisor de cifras las marca como no
+  respaldadas; al corregir, reformular suele reintroducir una cifra. Por eso estas dos reglas y sus
+  ejemplos NO llevan ningún número: un ejemplo con cifra induciría justo ese vicio.
+-->
+9. No cuentes ni numeres elementos (pasos, puntos, razones, ventajas, ideas) salvo que los fragmentos den esa cantidad de forma explícita. No uses cantidades, ordinales ni listas numeradas inventados. Si los fragmentos no dan la cantidad, describe los elementos sin ella: escribe «los pasos clave del proceso» o «las ventajas principales», nunca una frase que anuncie cuántos son.
+10. Si recibes observaciones de una revisión sobre un texto anterior, elimina el contenido señalado antes que reformularlo. Reformula solo si lo que queda está respaldado por los fragmentos, y nunca sustituyas una cifra no respaldada por otra distinta.

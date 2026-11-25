@@ -107,17 +107,20 @@ def hallazgo(slide, gravedad="bloqueante", responsable="redactor"):
     }
 
 
-def fabricar_agentes(malos=(), hallazgo_fijo=None, error_redactor=None, error_brief=None, texto_largo=False):
+def fabricar_agentes(malos=(), hallazgo_fijo=None, error_redactor=None, error_brief=None, texto_largo=False, brief_lento=False):
     """Agentes falsos. `malos`: slides que el redactor escribe mal la primera vez (título "MALO").
 
     `hallazgo_fijo`: función slide -> hallazgo que el revisor devuelve siempre (para casos sin corrección).
+    `brief_lento`: el estratega no responde nunca (sirve para probar el tope global de tiempo).
     """
     registro = {"redactor": [], "fidelidad": []}
 
     async def generar_brief(cliente, entrada, resolucion_, fuente_):
-        """Brief falso; si `error_brief` está, lo lanza."""
+        """Brief falso; si `error_brief` está, lo lanza; si `brief_lento`, se queda esperando."""
         if error_brief:
             raise error_brief
+        if brief_lento:
+            await asyncio.sleep(3600)  # el tope global lo corta mucho antes
         return BriefFalso(fragmentos_por_slide={})
 
     async def redactar(cliente, entrada, resolucion_, fuente_, brief, numero, correcciones=()):
@@ -162,17 +165,20 @@ def fabricar_agentes(malos=(), hallazgo_fijo=None, error_redactor=None, error_br
     return agentes, registro
 
 
-def correr(agentes, modo="auto", esperar_cancelacion=False):
-    """Ejecuta el orquestador con una Ejecucion real y devuelve la Ejecucion resultante."""
+def correr(agentes, modo="auto", esperar_cancelacion=False, timeout_seg=None):
+    """Ejecuta el orquestador con una Ejecucion real y devuelve la Ejecucion resultante.
+
+    `timeout_seg` es el tope global del run; sin valor se usa el de config (600 s), que estas pruebas no alcanzan.
+    """
 
     async def principal():
         ejecucion = Ejecucion(RUN_ID, ENTRADA, resolucion(modo), "real")
         # La cancelación se propaga: la prueba la captura para poder inspeccionar la ejecución.
         if esperar_cancelacion:
             with pytest.raises(asyncio.CancelledError):
-                await ejecutar_run_real(ejecucion, fuente(), "cliente", KIT, agentes)
+                await ejecutar_run_real(ejecucion, fuente(), "cliente", KIT, agentes, timeout_seg)
         else:
-            await ejecutar_run_real(ejecucion, fuente(), "cliente", KIT, agentes)
+            await ejecutar_run_real(ejecucion, fuente(), "cliente", KIT, agentes, timeout_seg)
         return ejecucion
 
     return asyncio.run(principal())
@@ -197,7 +203,7 @@ def test_flujo_feliz_emite_en_orden_y_termina_aprobada():
     ej = correr(agentes)
     t = tipos(ej)
     assert t[:4] == ["run_iniciada", "fuente_indexada", "brief_emitido", "plantilla_elegida"]
-    assert t[-1] == "run_finalizada"
+    assert t[-2:] == ["aprobacion_solicitada", "run_finalizada"]  # 8F: la aprobación se pide justo antes del cierre
     assert ej.estado == EstadoRun.TERMINADA and ej.fallo is None
     assert [e["seq"] for e in ej.eventos] == list(range(1, len(ej.eventos) + 1))  # seq consecutivo
     assert {e["origen"] for e in ej.eventos} == {"real"}
@@ -244,6 +250,45 @@ def test_el_redactor_trabaja_los_slides_en_secuencia():
 
 
 # ---------------------------------------------------------------------------
+# Aprobación solicitada (8F)
+# ---------------------------------------------------------------------------
+
+def test_aprobacion_solicitada_aprobada_va_antes_de_run_finalizada_y_el_run_no_espera():
+    agentes, _ = fabricar_agentes()
+    ej = correr(agentes)
+    aprobacion = de_tipo(ej, "aprobacion_solicitada")
+    assert len(aprobacion) == 1  # se emite una sola vez, también en un run aprobado
+    assert aprobacion[0]["agente"] == "sistema"
+    assert aprobacion[0]["payload"] == {
+        "estado_revision": "aprobada",
+        "hallazgos_abiertos": 0,
+        "sello": {"afirmaciones_respaldadas": 4, "afirmaciones_totales": 4},
+    }
+    # Inmediatamente antes del cierre, y el run termina solo (no queda en espera de la persona).
+    assert ej.eventos[-2]["seq"] == aprobacion[0]["seq"] and ej.eventos[-1]["tipo"] == "run_finalizada"
+    assert ej.estado == EstadoRun.TERMINADA
+
+
+def test_aprobacion_solicitada_con_menor_abierto_cuenta_el_hallazgo():
+    agentes, _ = fabricar_agentes(hallazgo_fijo=lambda n: hallazgo(2, "menor") if n == 2 else None)
+    ej = correr(agentes)
+    payload = de_tipo(ej, "aprobacion_solicitada")[0]["payload"]
+    assert payload["estado_revision"] == "aprobada_con_advertencias" and payload["hallazgos_abiertos"] == 1
+
+
+def test_aprobacion_solicitada_escalada_a_humano_y_coincide_con_el_estado_final():
+    agentes, _ = fabricar_agentes(
+        hallazgo_fijo=lambda n: hallazgo(2, "bloqueante", "director_arte") if n == 2 else None
+    )
+    ej = correr(agentes)
+    payload = de_tipo(ej, "aprobacion_solicitada")[0]["payload"]
+    assert payload["estado_revision"] == "requiere_humano" and payload["hallazgos_abiertos"] == 1
+    # La revisión pedida y el estado final del run dicen lo mismo.
+    assert de_tipo(ej, "run_finalizada")[0]["payload"]["estado_final"] == payload["estado_revision"]
+    assert ej.estado == EstadoRun.TERMINADA
+
+
+# ---------------------------------------------------------------------------
 # Ciclo de corrección
 # ---------------------------------------------------------------------------
 
@@ -260,7 +305,7 @@ def test_reescritura_emite_texto_propuesto_con_causa_y_vuelve_a_escribir_solo_es
     t = tipos(ej)
     # Dos escribir_texto más (solo el slide 1) y ningún colocar_fondo nuevo.
     assert (t.count("escribir_texto"), t.count("colocar_fondo")) == (10, 5)
-    ultimos = [e for e in ej.eventos[-12:] if e["tipo"] == "escribir_texto" and e["seq"] > propuestos[-1]["seq"]]
+    ultimos = [e for e in ej.eventos if e["tipo"] == "escribir_texto" and e["seq"] > propuestos[-1]["seq"]]
     assert [e["slide"] for e in ultimos] == [1, 1]
     # El hallazgo se cierra y el run aprueba; la segunda revisión solo mira el slide corregido.
     corregido = de_tipo(ej, "hallazgo_corregido")[0]
@@ -270,6 +315,8 @@ def test_reescritura_emite_texto_propuesto_con_causa_y_vuelve_a_escribir_solo_es
     assert final["estado_final"] == "aprobada"
     # El sello usa las verificaciones vigentes: 4 factuales, sin duplicar las del slide 1.
     assert final["sello"] == {"afirmaciones_respaldadas": 4, "afirmaciones_totales": 4}
+    # El hallazgo ya corregido no cuenta como abierto al pedir la aprobación.
+    assert de_tipo(ej, "aprobacion_solicitada")[0]["payload"]["hallazgos_abiertos"] == 0
 
 
 def test_hallazgo_menor_abierto_sale_con_advertencias():
@@ -301,6 +348,7 @@ def test_error_de_agente_corta_el_run_con_su_mensaje():
     assert ej.estado == EstadoRun.FALLIDA
     assert ej.fallo == {"nombre": "run_error", "datos": {"motivos": ["El redactor devolvió una salida inválida."]}}
     assert "run_finalizada" not in tipos(ej)
+    assert "aprobacion_solicitada" not in tipos(ej)  # un run fallido no pide aprobación
 
 
 def test_error_del_cliente_llm_corta_el_run_con_su_mensaje():
@@ -331,6 +379,39 @@ def test_texto_fuera_del_contrato_corta_con_evento_invalido():
     assert ej.estado == EstadoRun.FALLIDA
     assert ej.fallo["nombre"] == "evento_invalido" and ej.fallo["datos"]["tipo"] == "texto_propuesto"
     assert "run_finalizada" not in tipos(ej)
+
+
+# ---------------------------------------------------------------------------
+# Tope global de tiempo (8F)
+# ---------------------------------------------------------------------------
+
+def test_tope_global_corta_un_run_colgado_con_run_error_visible():
+    agentes, _ = fabricar_agentes(brief_lento=True)
+    ej = correr(agentes, timeout_seg=0.05)
+    assert ej.estado == EstadoRun.FALLIDA  # libera el cupo de MAX_RUNS_ACTIVOS
+    assert ej.fallo["nombre"] == "run_error"
+    assert "tiempo máximo" in ej.fallo["datos"]["motivos"][0]
+    assert tipos(ej) == ["run_iniciada", "fuente_indexada"]  # se colgó en el estratega
+    assert "run_finalizada" not in tipos(ej)
+
+
+def test_un_run_dentro_del_tope_termina_normal():
+    agentes, _ = fabricar_agentes()
+    ej = correr(agentes, timeout_seg=30)
+    assert ej.estado == EstadoRun.TERMINADA and ej.fallo is None
+
+
+def test_tope_cero_o_negativo_desactiva_el_limite():
+    agentes, _ = fabricar_agentes()
+    ej = correr(agentes, timeout_seg=0)
+    assert ej.estado == EstadoRun.TERMINADA and tipos(ej)[-1] == "run_finalizada"
+
+
+def test_la_cancelacion_externa_no_se_confunde_con_el_tope():
+    # Aunque haya tope, una cancelación del servidor se propaga y avisa "se canceló", no "tiempo máximo".
+    agentes, _ = fabricar_agentes(error_redactor=asyncio.CancelledError())
+    ej = correr(agentes, esperar_cancelacion=True, timeout_seg=30)
+    assert ej.estado == EstadoRun.FALLIDA and "se canceló" in ej.fallo["datos"]["motivos"][0]
 
 
 # ---------------------------------------------------------------------------
