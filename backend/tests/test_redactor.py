@@ -127,7 +127,9 @@ def test_mensajes_prompt_fijo_primero_y_variable_al_final():
 
 def test_mensaje_de_usuario_lista_campos_limites_y_fragmentos_numerados():
     u = construir_mensajes(ENTRADA, _brief(), SLIDE_GANCHO, CAMPOS, list(FRAGMENTOS))[1]["content"]
-    assert "- titulo (máximo 60 caracteres)" in u and "- cuerpo (máximo 160 caracteres)" in u
+    # El límite va en caracteres y también en palabras (los modelos cuentan palabras mejor que caracteres).
+    assert "- titulo (máximo 60 caracteres, unas 9 palabras)" in u
+    assert "- cuerpo (máximo 160 caracteres, unas 23 palabras)" in u
     assert "[Fragmento 0]" in u and "[Fragmento 1]" in u
     assert "Idioma de salida: es" in u and "rol: gancho" in u
 
@@ -377,3 +379,29 @@ def test_recorte_nunca_pasa_del_limite_y_siempre_es_prefijo(maximo):
     r = recortar_a_limite(texto, maximo)
     assert len(r) <= maximo
     assert texto.startswith(r.removesuffix("…"))
+
+
+def test_recorte_prefiere_una_coma_a_una_oracion_que_deja_menos_del_setenta_por_ciento():
+    """Caso real: un `cuerpo` de 273 quedaba en 110 de 220 por cortar en la primera oración."""
+    primera = "Los beneficiarios tienen derechos claros."  # 41 caracteres: muy poco para un límite de 100
+    texto = primera + " Incluyen trato digno, información oportuna, medicamentos, quejas y una segunda opinión médica."
+    r = recortar_a_limite(texto, 100)
+    assert len(r) <= 100 and len(r) > len(primera) and r.endswith("…")
+    assert texto.startswith(r.removesuffix("…"))
+
+
+def test_palabras_para_traduce_el_limite_con_holgura():
+    from app.agentes.redactor import palabras_para
+    assert palabras_para(220) == 31 and palabras_para(100) == 14 and palabras_para(60) == 9
+    assert palabras_para(10) == 3  # nunca menos de tres palabras
+
+
+def test_el_motivo_de_exceso_dice_a_cuantas_palabras_bajar():
+    dato = json.loads(_resp(campos={"titulo": "x" * 66, "cuerpo": "y"}))
+    motivo = next(m for m in _validar(dato) if "supera 60" in m)
+    assert "unas 9 palabras" in motivo and "quitando ideas" in motivo
+
+
+def test_prompt_del_redactor_pide_holgura_y_elegir_en_listas_largas():
+    prompt = construir_mensajes(ENTRADA, _brief(), SLIDE_GANCHO, CAMPOS, [FRAGMENTOS[0]])[0]["content"]
+    assert "Respeta el límite con holgura" in prompt and "lista larga" in prompt

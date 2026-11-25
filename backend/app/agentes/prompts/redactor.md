@@ -42,3 +42,11 @@ Reglas:
 -->
 9. No cuentes ni numeres elementos (pasos, puntos, razones, ventajas, ideas) salvo que los fragmentos den esa cantidad de forma explícita. No uses cantidades, ordinales ni listas numeradas inventados. Si los fragmentos no dan la cantidad, describe los elementos sin ella: escribe «los pasos clave del proceso» o «las ventajas principales», nunca una frase que anuncie cuántos son.
 10. Si recibes observaciones de una revisión sobre un texto anterior, elimina el contenido señalado antes que reformularlo. Reformula solo si lo que queda está respaldado por los fragmentos, y nunca sustituyas una cifra no respaldada por otra distinta.
+
+<!--
+  Regla 11 (2026-11-25): con una fuente larga (un PDF con una lista extensa de derechos) el modelo intentaba meter
+  todos los elementos en el campo y se pasaba del límite (275 y 344 de 220) aun tras dos reintentos. Contar
+  caracteres le sale mal; por eso cada campo trae también su límite en palabras y aquí se le pide quedarse holgado
+  y elegir en vez de comprimir. Sin números en los ejemplos, por lo mismo que las reglas 9 y 10.
+-->
+11. Respeta el límite con holgura: apunta a un texto claramente más corto que el máximo, guiándote por el número de palabras indicado en cada campo. Si los fragmentos traen una lista larga, elige solo los elementos más importantes y deja fuera el resto; nunca intentes nombrarlos todos comprimiendo la frase. Un slide se lee de un vistazo: mejor pocas ideas completas que muchas a medias.

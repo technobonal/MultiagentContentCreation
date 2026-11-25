@@ -50,8 +50,14 @@ MAX_TOKENS_REDACTOR = 2000
 # en las pruebas con un PDF ni tres intentos evitaban que `cuerpo` saliera con 275 o 344 caracteres de 220.
 REINTENTOS_CONTENIDO_REDACTOR = 1
 
-# Un recorte por oración que deje menos de esta fracción del límite pierde demasiado: se prueba en una coma o un espacio.
+# Recorte: una oración completa se acepta si deja al menos RECORTE_MIN_ORACION del límite; si no, se prefiere cortar en
+# una coma o un espacio (que conserva más texto), siempre que deje al menos RECORTE_MIN_FRACCION. Con 0.5 para las dos,
+# un `cuerpo` de 273 caracteres quedaba en 110 de 220 por cortar en la primera oración.
+RECORTE_MIN_ORACION = 0.7
 RECORTE_MIN_FRACCION = 0.5
+
+# Caracteres por palabra (con su espacio) para traducir un límite de caracteres a palabras en el pedido al modelo.
+CARACTERES_POR_PALABRA = 7
 
 # Final de oración dentro de un campo: signo de cierre (con comilla o paréntesis opcional) seguido de un blanco o del final.
 _FIN_ORACION = re.compile(r"[.!?…][\"')\]»”]?(?=\s|$)")
@@ -92,6 +98,11 @@ def campos_del_redactor(slide: dict) -> list[tuple[str, int]]:
     return campos
 
 
+def palabras_para(maximo: int) -> int:
+    """Palabras que caben con holgura en `maximo` caracteres (en español, unos 7 caracteres por palabra con su espacio)."""
+    return max(3, round(maximo / CARACTERES_POR_PALABRA))
+
+
 def construir_mensajes(
     entrada: dict,
     brief: Brief,
@@ -105,7 +116,10 @@ def construir_mensajes(
     `correcciones` (opcional) son los cambios que pidió el revisor; se añaden al final del
     mensaje de usuario para no alterar el prefijo reutilizable por el caché.
     """
-    lista_campos = "\n".join(f"- {nombre} (máximo {maximo} caracteres)" for nombre, maximo in campos)
+    # El límite también va en palabras: los modelos cuentan caracteres muy mal y palabras bastante mejor.
+    lista_campos = "\n".join(
+        f"- {nombre} (máximo {maximo} caracteres, unas {palabras_para(maximo)} palabras)" for nombre, maximo in campos
+    )
     # Cada fragmento va delimitado y con su número, para que el modelo cite del texto correcto.
     bloques = "\n\n".join(f"[Fragmento {f.indice}]\n{f.texto}" for f in fragmentos)
     usuario = (
@@ -139,10 +153,10 @@ def recortar_a_limite(texto: str, maximo: int) -> str:
     if len(texto) <= maximo:
         return texto
     minimo = int(maximo * RECORTE_MIN_FRACCION)
-    # 1) Última oración completa que quepa.
+    # 1) Última oración completa que quepa, si conserva buena parte del límite.
     ventana = texto[: maximo + 1]
     finales = [m.end() for m in _FIN_ORACION.finditer(ventana) if m.end() <= maximo]
-    if finales and finales[-1] >= minimo:
+    if finales and finales[-1] >= int(maximo * RECORTE_MIN_ORACION):
         return texto[: finales[-1]].strip()
     # 2) Última coma, punto y coma o espacio, dejando lugar para «…».
     ventana = texto[: maximo - 1]
@@ -193,7 +207,10 @@ def validar_redaccion(
                 motivos.append(f"el campo '{nombre}' debe ser un texto no vacío")
             # Sin exigir la longitud (último intento) el exceso no se rechaza: `redactar_slide` recorta el campo.
             elif len(valor.strip()) > maximo and exigir_longitud:
-                motivos.append(f"el campo '{nombre}' supera {maximo} caracteres ({len(valor.strip())})")
+                motivos.append(
+                    f"el campo '{nombre}' supera {maximo} caracteres ({len(valor.strip())}); reescríbelo con unas "
+                    f"{palabras_para(maximo)} palabras como máximo, quitando ideas o elementos de la lista en vez de comprimirlos"
+                )
 
     hechos = dato.get("hechos")
     if not isinstance(hechos, list) or not all(isinstance(h, str) for h in hechos):
