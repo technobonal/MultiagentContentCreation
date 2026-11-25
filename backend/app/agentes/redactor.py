@@ -12,21 +12,36 @@ Reescritura (ciclo de corrección): `redactar_slide` acepta `correcciones`, una 
 textos con lo que el revisor pidió cambiar. Van al final del mensaje de usuario, así el
 prefijo fijo del prompt sigue reutilizándose en el caché.
 
+Respuesta vacía o cortada: a veces el modelo devuelve el texto vacío o cortado (de forma
+intermitente, en un slide cualquiera). `pedir_json` no lo reintenta porque repetir el mismo
+pedido idéntico lo volvería a cortar; aquí se reintenta UNA vez con una temperatura algo mayor,
+para que la segunda respuesta no sea una copia de la primera.
+
 Orden del prompt (para el caché de Groq): prompt fijo primero, datos variables al final.
 Para que el prefijo se reutilice, el orquestador debe llamar a los slides en SECUENCIA.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 from app.agentes.cliente_llm import ClienteLLM
-from app.agentes.comun import cargar_prompt, pedir_json
+from app.agentes.comun import AgenteError, cargar_prompt, pedir_json
 from app.agentes.estratega import Brief
 from app.agentes.verificar_hechos import HechoUbicado, ubicar_hechos
 from app.fuentes.cargador_fuente import FuenteCargada
 
+log = logging.getLogger(__name__)
+
 # Tokens de salida que se piden (y se reservan en el límite por minuto).
-MAX_TOKENS_REDACTOR = 700
+MAX_TOKENS_REDACTOR = 2000
+
+# Temperatura del primer intento y del reintento tras una respuesta vacía o cortada.
+TEMPERATURA_REDACTOR = 0.2
+TEMPERATURA_REINTENTO = 0.5
+
+# Cuántas veces más se pide el slide si la respuesta llega vacía o cortada.
+REINTENTOS_SALIDA_TRUNCADA = 1
 
 # Límites de los hechos citados.
 MAX_HECHOS = 6
@@ -139,6 +154,33 @@ def validar_redaccion(dato: Any, campos: list[tuple[str, int]], fragmentos: list
     return motivos
 
 
+async def _pedir_redaccion(cliente: ClienteLLM, mensajes: list[dict[str, str]], validar) -> tuple[Any, Any]:
+    """Pide la redacción al LLM y reintenta si la respuesta llega vacía o cortada.
+
+    Solo se reintenta el código `salida_truncada`; cualquier otro error (JSON inválido tras sus
+    reintentos, fallos del cliente) se propaga sin tocar. El reintento usa una temperatura mayor.
+    Devuelve (dato_validado, respuesta), igual que `pedir_json`.
+    """
+    # Intento inicial más los reintentos permitidos por salida vacía o cortada.
+    for intento in range(REINTENTOS_SALIDA_TRUNCADA + 1):
+        try:
+            return await pedir_json(
+                cliente,
+                "redactor",
+                mensajes,
+                validar,
+                max_tokens=MAX_TOKENS_REDACTOR,
+                permitir_fallback=True,
+                temperatura=TEMPERATURA_REDACTOR if intento == 0 else TEMPERATURA_REINTENTO,
+            )
+        except AgenteError as exc:
+            # Otro tipo de fallo, o ya no quedan reintentos: se deja pasar el error tal cual.
+            if exc.codigo != "salida_truncada" or intento == REINTENTOS_SALIDA_TRUNCADA:
+                raise
+            log.warning("Redactor: respuesta vacía o cortada; se reintenta (intento %d)", intento + 2)
+    raise AssertionError("inalcanzable: el bucle siempre devuelve o lanza")  # pragma: no cover
+
+
 async def redactar_slide(
     cliente: ClienteLLM,
     entrada: dict,
@@ -152,7 +194,8 @@ async def redactar_slide(
 
     `correcciones` (opcional) activa la reescritura: lo que el revisor pidió cambiar.
     Con fallback permitido (un run caído pesa más que mezclar familias; queda registrado en
-    `TextoSlide.modelo`). Lanza AgenteError (salida truncada o inválida) o LLMError (cliente).
+    `TextoSlide.modelo`). Una respuesta vacía o cortada se reintenta una vez. Lanza AgenteError
+    (salida truncada o inválida) o LLMError (cliente).
     """
     slide = next(s for s in resolucion.ficha["slides"] if s["numero"] == numero)
     campos = campos_del_redactor(slide)
@@ -164,14 +207,7 @@ async def redactar_slide(
     fragmentos = [fuente.fragmentos[i] for i in brief.fragmentos_por_slide[numero]]
     mensajes = construir_mensajes(entrada, brief, slide, campos, fragmentos, tuple(correcciones))
 
-    dato, resp = await pedir_json(
-        cliente,
-        "redactor",
-        mensajes,
-        lambda d: validar_redaccion(d, campos, fragmentos),
-        max_tokens=MAX_TOKENS_REDACTOR,
-        permitir_fallback=True,
-    )
+    dato, resp = await _pedir_redaccion(cliente, mensajes, lambda d: validar_redaccion(d, campos, fragmentos))
     ubicados, _ = ubicar_hechos(dato["hechos"], fragmentos)  # ya validados: aquí solo se calcula la posición
     return TextoSlide(
         numero=numero,

@@ -57,6 +57,11 @@ def _err(status):
     return clase(f"error {status}", response=_http(status), body=None)
 
 
+def _err400(mensaje):
+    """400 de Groq con un mensaje concreto (para distinguir las causas del rechazo)."""
+    return groq.BadRequestError(mensaje, response=_http(400), body=None)
+
+
 class SDKFalso:
     """SDK falso: cada llamada consume el siguiente guion (una respuesta o una excepción)."""
 
@@ -145,6 +150,63 @@ def test_json_mode_rechazado_reintenta_sin_response_format():
     assert r.texto == "ok" and r.modelo == REDACTOR
     assert "response_format" in sdk.llamadas[0] and "response_format" not in sdk.llamadas[1]
     assert any("JSON" in (x.get("error") or "") for x in c.llamadas)  # quedó registrado
+
+
+# --- Memoria del modo JSON por modelo (tanda 9A)
+
+def test_json_rechazado_se_recuerda_y_no_se_repite():
+    """Si el modelo rechaza el JSON y sin él responde, la llamada siguiente ya no lo envía."""
+    sdk = SDKFalso(_err(400), _resp("ok1"), _resp("ok2"))
+    c = _cliente(sdk)
+    correr(c.completar("redactor", MSGS))  # 400 con JSON + reintento sin JSON (2 llamadas al SDK)
+    assert c.modelos_sin_json == {REDACTOR}
+    r = correr(c.completar("redactor", MSGS))  # ahora directo, sin response_format (1 llamada)
+    assert r.texto == "ok2" and len(sdk.llamadas) == 3
+    assert "response_format" not in sdk.llamadas[2]
+    assert c.llamadas[-1]["json_mode"] is False  # el registro refleja que no se usó JSON
+
+
+def test_json_recordado_no_afecta_a_otros_modelos():
+    """Recordar que un modelo no admite JSON no apaga el JSON de los demás."""
+    sdk = SDKFalso(_err(400), _resp("ok1"), _resp("ok2"))
+    c = _cliente(sdk)
+    correr(c.completar("redactor", MSGS))  # el redactor queda recordado
+    correr(c.completar("revisor_a", MSGS))  # otro modelo: sigue enviando response_format
+    assert sdk.llamadas[2]["model"] == REV_A and "response_format" in sdk.llamadas[2]
+    assert c.modelos_sin_json == {REDACTOR}
+
+
+def test_json_apagado_en_un_modelo_no_se_arrastra_al_fallback():
+    """Si el reintento sin JSON falla técnicamente y se pasa al siguiente modelo, este recibe JSON y nada se recuerda."""
+    sdk = SDKFalso(_err(400), _err(500), _resp("ok"))
+    c = _cliente(sdk)
+    r = correr(c.completar("redactor", MSGS))
+    assert r.modelo == REV_A and r.fallback is True
+    assert "response_format" in sdk.llamadas[2]  # el fallback vuelve a probar JSON
+    assert c.modelos_sin_json == frozenset()  # el redactor nunca respondió sin JSON: no se recuerda
+
+
+def test_400_que_tambien_falla_sin_json_no_se_atribuye_al_json():
+    """Un 400 ajeno al JSON (p. ej. un parámetro inválido) falla otra vez sin JSON: error_api y sin memoria."""
+    sdk = SDKFalso(_err(400), _err(400), _resp("ok"))
+    c = _cliente(sdk)
+    with pytest.raises(LLMError) as e:
+        correr(c.completar("redactor", MSGS, extra={"reasoning_effort": "invalido"}))
+    assert e.value.codigo == "error_api"
+    assert c.modelos_sin_json == frozenset()
+    correr(c.completar("redactor", MSGS))  # la siguiente llamada sigue enviando JSON
+    assert "response_format" in sdk.llamadas[2]
+
+
+def test_json_mal_generado_es_transitorio_y_no_se_recuerda():
+    """Un 400 por JSON inválido del modelo se reintenta sin JSON, pero no apaga el JSON para siempre."""
+    sdk = SDKFalso(_err400("Failed to generate JSON. Please adjust your prompt."), _resp("ok1"), _resp("ok2"))
+    c = _cliente(sdk)
+    assert correr(c.completar("redactor", MSGS)).texto == "ok1"
+    assert "response_format" not in sdk.llamadas[1]  # esa llamada se reintentó sin JSON
+    assert c.modelos_sin_json == frozenset()
+    correr(c.completar("redactor", MSGS))
+    assert "response_format" in sdk.llamadas[2]  # y la siguiente vuelve a pedir JSON
 
 
 def test_400_sin_json_mode_es_error_de_api():

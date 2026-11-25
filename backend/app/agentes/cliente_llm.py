@@ -11,6 +11,15 @@ Reglas heredadas del spike de fidelidad v3b:
 - El revisor corre sin fallback (cada revisor con su modelo).
 - Una salida cortada (`finish_reason == "length"`) o vacía se informa con `truncada`;
   qué hacer con ella lo decide el agente.
+
+Memoria del modo JSON (tanda 9A):
+- Si un modelo rechaza `response_format` (400) y la MISMA petición sale bien sin él, el cliente
+  recuerda ese modelo (`modelos_sin_json`) y ya no se lo envía en las llamadas siguientes, así se
+  evita un viaje de ida y vuelta fallido en cada petición.
+- Solo se recuerda cuando el reintento sin JSON tuvo éxito: un 400 por otra causa (por ejemplo un
+  parámetro inválido en `extra`) falla otra vez sin JSON y NO se atribuye al modo JSON.
+- Un 400 por JSON mal generado por el modelo (`json_validate_failed`) es transitorio: se reintenta
+  esa llamada sin JSON, pero no se recuerda al modelo.
 """
 
 import asyncio
@@ -213,6 +222,15 @@ def _es_tecnico(e: Exception) -> bool:
     return estado in (413, 429) or (estado is not None and estado >= 500)
 
 
+def _rechazo_json_transitorio(e: Exception) -> bool:
+    """True si el 400 viene de que el modelo generó un JSON inválido (no de que no admita el modo JSON).
+
+    Ese caso depende de la respuesta concreta, no del modelo, así que no debe recordarse.
+    """
+    texto = str(e).lower()
+    return "json_validate_failed" in texto or "failed to generate json" in texto
+
+
 class ClienteGroq:
     """Cliente asíncrono de Groq con fallback técnico, reserva de tokens y registro de llamadas."""
 
@@ -268,6 +286,13 @@ class ClienteGroq:
         # Reintentos internos del SDK desactivados: los reintentos son solo los de este cliente.
         self.sdk = sdk if sdk is not None else groq.AsyncGroq(api_key=clave, max_retries=0, timeout=self.timeout_seg)
         self.llamadas: deque[dict] = deque(maxlen=200)  # registro de diagnóstico (como el CALL_LOG del spike)
+        # Modelos que rechazaron el modo JSON y aceptaron la misma petición sin él (ver docstring del módulo).
+        self._sin_json: set[str] = set()
+
+    @property
+    def modelos_sin_json(self) -> frozenset[str]:
+        """Modelos a los que ya no se les envía `response_format` (lectura para pruebas y diagnóstico)."""
+        return frozenset(self._sin_json)
 
     def _registrar(self, **datos: Any) -> None:
         """Guarda una entrada en el registro de llamadas."""
@@ -328,7 +353,10 @@ class ClienteGroq:
 
         limite_total = self.reloj() + self.espera_max_seg  # tope de espera acumulada por cupo
         intentos = dict.fromkeys(viables, 0)  # fallas técnicas por modelo en esta llamada
-        json_activo = json_mode
+        # Modelos que en ESTA llamada rechazaron el modo JSON (el apagado es por modelo, no global a la llamada).
+        sin_json_llamada: set[str] = set()
+        # Subconjunto del anterior cuyo rechazo fue transitorio (JSON mal generado): no se recuerda al terminar.
+        rechazo_transitorio: set[str] = set()
         ultimo_error: Exception | None = None
 
         # Bucle principal: elegir un modelo con cupo, llamar, y reaccionar al resultado.
@@ -349,6 +377,8 @@ class ClienteGroq:
                 continue
 
             modelo = con_cupo[0]
+            # El JSON se envía solo si se pidió y este modelo no lo rechazó (antes o en esta misma llamada).
+            json_activo = json_mode and modelo not in self._sin_json and modelo not in sin_json_llamada
             reserva = self.limitador.reservar(modelo, estimado)
             t0 = self.reloj()
             try:
@@ -359,10 +389,14 @@ class ClienteGroq:
             except groq.BadRequestError as e:
                 self.limitador.ajustar(reserva, 0)
                 # Modo JSON rechazado: se reintenta en el mismo modelo sin response_format (queda registrado).
+                # Si ese reintento sale bien, el modelo se recuerda más abajo; si vuelve a dar 400, no era el JSON.
                 if json_activo:
                     log.warning("Groq rechazó el modo JSON en %s; se reintenta sin response_format", modelo)
                     self._registrar(rol=rol, pedido=pedido, modelo=modelo, error="BadRequest en JSON mode", seg=round(self.reloj() - t0, 2))
-                    json_activo = False
+                    sin_json_llamada.add(modelo)
+                    # Un JSON mal generado depende de la respuesta, no del modelo: no se recordará.
+                    if _rechazo_json_transitorio(e):
+                        rechazo_transitorio.add(modelo)
                     continue
                 raise LLMError("error_api", f"La API rechazó el pedido: {str(e)[:200]}") from e
             except Exception as e:  # noqa: BLE001 - se clasifica abajo
@@ -409,6 +443,10 @@ class ClienteGroq:
                 rol=rol, pedido=pedido, modelo=modelo, fallback=respuesta.fallback,
                 json_mode=json_activo, finish_reason=respuesta.finish_reason, seg=seg, error=None,
             )
+            # El modelo rechazó el JSON y la misma petición salió bien sin él: se recuerda para no repetir el fallo.
+            if modelo in sin_json_llamada and modelo not in rechazo_transitorio and modelo not in self._sin_json:
+                self._sin_json.add(modelo)
+                log.info("Se recuerda que %s no admite el modo JSON; no se volverá a enviar response_format", modelo)
             # Una salida cortada o vacía no es un error técnico, pero conviene dejar constancia.
             if respuesta.truncada:
                 log.warning("Respuesta truncada o vacía de %s (finish_reason=%s)", modelo, respuesta.finish_reason)
