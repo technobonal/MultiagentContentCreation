@@ -56,6 +56,12 @@ ROL_REVISOR = "revisor_a"
 # medido en la 10A); si el modelo se queda corto aparece finish_reason=length y se sube LLM_MAX_TOKENS_REVISOR.
 MAX_TOKENS_REVISOR = config.LLM_MAX_TOKENS_REVISOR
 
+# Slides por llamada del revisor real (ver config). Con un `pedir` inyectado se usa 1, salvo que se pida otro valor.
+SLIDES_POR_LLAMADA = config.LLM_REVISOR_SLIDES_POR_LLAMADA
+
+# Separador entre slides en el mensaje de una llamada agrupada.
+SEPARADOR_SLIDES = "\n\n---\n\n"
+
 # Parámetros extra de la API para el revisor: razonamiento bajo deja espacio al JSON (valor del spike).
 EXTRA_REVISOR = {"reasoning_effort": "low"}
 
@@ -338,10 +344,47 @@ def _prompt_sistema() -> str:
 
 
 def _validar_respuesta(dato: Any) -> list[str]:
-    """Validador para `pedir_json`: lista de errores si falta la lista «afirmaciones»."""
-    if not isinstance(dato, Mapping) or not isinstance(dato.get("afirmaciones"), list):
-        return ["Devuelve un objeto JSON con la clave «afirmaciones» (lista)."]
-    return []
+    """Validador para `pedir_json`: acepta {"slides": [{"slide", "afirmaciones"}]} o, de un solo slide,
+    {"afirmaciones": [...]}. Devuelve la lista de errores (vacía si la forma sirve)."""
+    # Tolerante a propósito: un elemento ilegible de «slides» no tumba el run, ese slide se revisa solo después.
+    if isinstance(dato, Mapping) and (
+        isinstance(dato.get("afirmaciones"), list) or isinstance(dato.get("slides"), list)
+    ):
+        return []
+    return ['Devuelve un objeto JSON {"slides": [{"slide": N, "afirmaciones": [...]}]}, un elemento por slide.']
+
+
+_NUMERO = re.compile(r"\d+")
+
+
+def _numero_slide(valor: Any) -> int | None:
+    """Número de slide de un elemento de la respuesta: acepta 4, "4" o "SLIDE 4" (None si no hay número)."""
+    if isinstance(valor, bool):
+        return None
+    if isinstance(valor, int):
+        return valor
+    if isinstance(valor, str):
+        m = _NUMERO.search(valor)
+        return int(m.group()) if m else None
+    return None
+
+
+def _crudas_por_slide(respuesta: Any, slides: Sequence[int]) -> dict[int, list]:
+    """Afirmaciones crudas de cada slide pedido. Un slide que la respuesta no trae queda fuera del mapa."""
+    if not isinstance(respuesta, Mapping):
+        return {}
+    por_slide: dict[int, list] = {}
+    lista = respuesta.get("slides")
+    if isinstance(lista, list):
+        for s in lista:
+            numero = _numero_slide(s.get("slide")) if isinstance(s, Mapping) else None
+            # Solo cuentan los slides pedidos; el primero que aparece manda si el modelo repite uno.
+            if numero in slides and isinstance(s.get("afirmaciones"), list):
+                por_slide.setdefault(numero, s["afirmaciones"])
+    # Forma de un solo slide (la de siempre): solo vale si se pidió un único slide.
+    elif len(slides) == 1 and isinstance(respuesta.get("afirmaciones"), list):
+        por_slide[slides[0]] = respuesta["afirmaciones"]
+    return por_slide
 
 
 def _mensaje_usuario(slide: int, campos: Mapping[str, str], fragmentos: Sequence[str]) -> str:
@@ -368,28 +411,23 @@ def _fragmentos_del_slide(brief: Brief, fuente: FuenteCargada, slide: int) -> li
     return fragmentos
 
 
-def pedir_al_revisor(cliente: ClienteLLM) -> Pedir:
+def pedir_al_revisor(cliente: ClienteLLM, max_tokens: int = MAX_TOKENS_REVISOR) -> Pedir:
     """Función `Pedir` que usa el cliente real. Es el único punto que toca `pedir_json`."""
     async def pedir(sistema: str, usuario: str) -> Mapping[str, Any]:
         """Envía el prompt al rol «revisor», con la cadena de modelos propia del rol, y devuelve el JSON validado."""
         mensajes = [{"role": "system", "content": sistema}, {"role": "user", "content": usuario}]
         dato, _respuesta = await pedir_json(
             cliente, ROL_REVISOR, mensajes, _validar_respuesta,
-            max_tokens=MAX_TOKENS_REVISOR, permitir_fallback=None, extra=EXTRA_REVISOR)
+            max_tokens=max_tokens, permitir_fallback=None, extra=EXTRA_REVISOR)
         return dato
     return pedir
 
 
-async def verificar_slide(pedir: Pedir, sistema: str, slide: int, campos: Mapping[str, str],
-                          fragmentos: Sequence[Fragmento], primer_numero: int) -> list[Afirmacion]:
-    """Verifica un slide: una llamada al modelo y normalización de sus afirmaciones."""
-    respuesta = await pedir(sistema, _mensaje_usuario(slide, campos, [f.texto for f in fragmentos]))
-    crudas = respuesta.get("afirmaciones") if isinstance(respuesta, Mapping) else None
-    # Sin la lista esperada, la respuesta no sirve y se corta con un error claro.
-    if not isinstance(crudas, list):
-        raise AgenteError("revisor_respuesta_invalida", f"El revisor no devolvió «afirmaciones» para el slide {slide}.")
+def _normalizar_lista(crudas: list, slide: int, fragmentos: Sequence[Fragmento],
+                      primer_numero: int) -> list[Afirmacion]:
+    """Normaliza las afirmaciones crudas de un slide; los ids siguen la numeración de toda la ejecución."""
     afirmaciones = []
-    # Se normalizan solo las primeras N; los ids siguen la numeración de toda la ejecución.
+    # Se normalizan solo las primeras N.
     for crudo in crudas[:MAX_AFIRMACIONES_SLIDE]:
         numero = primer_numero + len(afirmaciones)
         if numero > MAX_AFIRMACIONES_RUN:
@@ -400,18 +438,63 @@ async def verificar_slide(pedir: Pedir, sistema: str, slide: int, campos: Mappin
     return afirmaciones
 
 
+async def verificar_slide(pedir: Pedir, sistema: str, slide: int, campos: Mapping[str, str],
+                          fragmentos: Sequence[Fragmento], primer_numero: int) -> list[Afirmacion]:
+    """Verifica un slide: una llamada al modelo y normalización de sus afirmaciones."""
+    respuesta = await pedir(sistema, _mensaje_usuario(slide, campos, [f.texto for f in fragmentos]))
+    crudas = _crudas_por_slide(respuesta, [slide]).get(slide)
+    # Sin la lista esperada, la respuesta no sirve y se corta con un error claro.
+    if not isinstance(crudas, list):
+        raise AgenteError("revisor_respuesta_invalida", f"El revisor no devolvió «afirmaciones» para el slide {slide}.")
+    return _normalizar_lista(crudas, slide, fragmentos, primer_numero)
+
+
+async def _verificar_grupo(pedir: Pedir, sistema: str, grupo: Sequence[tuple[int, Mapping[str, str], list]],
+                           primer_numero: int) -> list[list[Afirmacion]]:
+    """Verifica varios slides en UNA llamada; devuelve las afirmaciones de cada slide, en el orden del grupo.
+
+    Cada slide lleva sus propios fragmentos y su cita se ubica solo en ellos (la evidencia sigue acotada).
+    Un slide que el modelo omite se verifica solo, en una llamada aparte, en vez de perderse.
+    """
+    if len(grupo) == 1:
+        slide, campos, fragmentos = grupo[0]
+        return [await verificar_slide(pedir, sistema, slide, campos, fragmentos, primer_numero)]
+    usuario = SEPARADOR_SLIDES.join(
+        _mensaje_usuario(slide, campos, [f.texto for f in fragmentos]) for slide, campos, fragmentos in grupo)
+    por_slide = _crudas_por_slide(await pedir(sistema, usuario), [slide for slide, _, _ in grupo])
+    resultado = []
+    numero = primer_numero
+    # En el orden del grupo (no en el que respondió el modelo), para que los ids sean deterministas.
+    for slide, campos, fragmentos in grupo:
+        crudas = por_slide.get(slide)
+        if crudas is None:
+            nuevas = await verificar_slide(pedir, sistema, slide, campos, fragmentos, numero)
+        else:
+            nuevas = _normalizar_lista(crudas, slide, fragmentos, numero)
+        resultado.append(nuevas)
+        numero += len(nuevas)
+    return resultado
+
+
 async def revisar_fidelidad(cliente: ClienteLLM, brief: Brief, fuente: FuenteCargada,
-                            textos: Sequence[TextoSlide], pedir: Pedir | None = None) -> ResultadoFidelidad:
+                            textos: Sequence[TextoSlide], pedir: Pedir | None = None,
+                            slides_por_llamada: int | None = None) -> ResultadoFidelidad:
     """Revisa la fidelidad de todos los slides con texto y devuelve afirmaciones, hallazgos y sello.
 
     `pedir` permite inyectar un falso en los tests; por defecto se usa el cliente real (rol «revisor»).
+    `slides_por_llamada`: cuántos slides van en cada llamada. Sin valor, el cliente real usa
+    `SLIDES_POR_LLAMADA` (config) y un `pedir` inyectado usa 1 (una llamada por slide, como antes).
     """
-    pedir = pedir or pedir_al_revisor(cliente)
+    if slides_por_llamada is None:
+        slides_por_llamada = SLIDES_POR_LLAMADA if pedir is None else 1
+    slides_por_llamada = max(1, slides_por_llamada)
+    pedir_inyectado = pedir
     sistema = _prompt_sistema()
     afirmaciones: list[Afirmacion] = []
     hallazgos: list[Hallazgo] = []
-    verificados = sin_fragmentos = 0
-    # Un slide a la vez: respeta el límite de tokens por minuto y deja ids deterministas.
+    sin_fragmentos = 0
+    # Primero se juntan los slides verificables, en orden; después se revisan en grupos.
+    verificables: list[tuple[int, Mapping[str, str], list]] = []
     for t in textos:
         slide = leer_campo(t, "slide", leer_campo(t, "numero"))
         campos = leer_campo(t, "campos", {})
@@ -422,13 +505,20 @@ async def revisar_fidelidad(cliente: ClienteLLM, brief: Brief, fuente: FuenteCar
         if not fragmentos:
             sin_fragmentos += 1
             continue
-        verificados += 1
-        nuevas = await verificar_slide(pedir, sistema, slide, campos, fragmentos, len(afirmaciones) + 1)
-        afirmaciones += nuevas
-        hallazgos_slide = [h for h in map(hallazgo_de_afirmacion, nuevas) if h is not None]
-        # Control por código de las cifras, sin repetir lo que el LLM ya marcó.
-        hallazgos_slide += hallazgos_por_cifras(slide, campos, [f.texto for f in fragmentos], hallazgos_slide)
-        hallazgos += hallazgos_slide
+        verificables.append((slide, campos, fragmentos))
+    verificados = len(verificables)
+    # Un grupo a la vez: respeta el límite de tokens por minuto y deja ids deterministas.
+    for inicio in range(0, len(verificables), slides_por_llamada):
+        grupo = verificables[inicio:inicio + slides_por_llamada]
+        # Una llamada agrupada devuelve más afirmaciones: el tope de salida crece con el grupo (hasta el doble).
+        pedir = pedir_inyectado or pedir_al_revisor(cliente, MAX_TOKENS_REVISOR * min(len(grupo), 2))
+        por_slide = await _verificar_grupo(pedir, sistema, grupo, len(afirmaciones) + 1)
+        for (slide, campos, fragmentos), nuevas in zip(grupo, por_slide):
+            afirmaciones += nuevas
+            hallazgos_slide = [h for h in map(hallazgo_de_afirmacion, nuevas) if h is not None]
+            # Control por código de las cifras, sin repetir lo que el LLM ya marcó.
+            hallazgos_slide += hallazgos_por_cifras(slide, campos, [f.texto for f in fragmentos], hallazgos_slide)
+            hallazgos += hallazgos_slide
     factuales = [a for a in afirmaciones if a.clasificacion == "factual"]
     sello = {
         "slides_verificados": verificados,

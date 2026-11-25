@@ -144,6 +144,13 @@ GROQ_TPM_POR_MODELO = _mapa_de_enteros(os.environ.get("GROQ_TPM_POR_MODELO", "")
 # fidelidad. Medido en la 10A: una llamada gasta entre 1.200 y 1.750 tokens en total, entrada incluida.
 LLM_MAX_TOKENS_REVISOR = int(os.environ.get("LLM_MAX_TOKENS_REVISOR", "2000"))
 
+# Cuántos slides revisa el revisor de fidelidad en UNA llamada (tanda 2 de velocidad, 2026-11-25). El prompt fijo
+# pesa ~813 tokens de los ~1.100 de entrada de cada llamada y Groq no devolvió tokens cacheados, así que revisar
+# 3 slides por llamada ahorra ~1.600 tokens por pasada. 1 = una llamada por slide (comportamiento anterior).
+LLM_REVISOR_SLIDES_POR_LLAMADA = int(os.environ.get("LLM_REVISOR_SLIDES_POR_LLAMADA", "3"))
+if LLM_REVISOR_SLIDES_POR_LLAMADA < 1:  # sin slides por llamada no hay revisión posible
+    raise ValueError(f"LLM_REVISOR_SLIDES_POR_LLAMADA debe ser 1 o más; llegó {LLM_REVISOR_SLIDES_POR_LLAMADA}")
+
 # Cadena de modelos del revisor, separados por coma (el primero es el que se pide). Ambos son gpt-oss, distintos
 # de la familia del redactor (qwen), así el revisor sigue siendo independiente y gana una segunda ventana de tokens.
 GROQ_FALLBACK_REVISOR = [

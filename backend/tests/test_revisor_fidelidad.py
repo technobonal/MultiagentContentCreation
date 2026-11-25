@@ -472,3 +472,86 @@ def test_prompt_real_se_carga_desde_la_carpeta_de_prompts_y_sin_comentarios():
     texto = cargar_prompt_real("revisor")
     assert "afirmaciones" in texto
     assert "<!--" not in rf._COMENTARIO_HTML.sub("", texto)
+
+# ---------------------------- revisión agrupada (varios slides por llamada) ----------------------------
+
+def _agrupado(pedir, slides_por_llamada):
+    """Slides 1 y 2 con fragmentos distintos (P0 y P1), revisados en grupos del tamaño pedido."""
+    brief = _brief({1: (0,), 2: (1,)})
+    textos = [_texto(1), _texto(2, titulo="Roles", cuerpo="El Scrum Master ayuda al equipo.")]
+    return asyncio.run(revisar_fidelidad(None, brief, FUENTE, textos, pedir, slides_por_llamada=slides_por_llamada))
+
+
+def test_agrupado_revisa_dos_slides_en_una_llamada_con_sus_propios_fragmentos():
+    a2 = _a("El Scrum Master ayuda al equipo.", cita=CITA_P1)
+    pedir = PedirFalso({"slides": [{"slide": 2, "afirmaciones": [a2]}, {"slide": 1, "afirmaciones": [_a()]}]})
+    r = _agrupado(pedir, 2)
+    assert len(pedir.llamadas) == 1
+    usuario = pedir.llamadas[0][1]
+    assert "SLIDE: 1" in usuario and "SLIDE: 2" in usuario and rf.SEPARADOR_SLIDES in usuario
+    # Orden e ids según el grupo, no según el orden de la respuesta del modelo.
+    assert [(a.afirmacion_id, a.slide) for a in r.afirmaciones] == [("a1", 1), ("a2", 2)]
+    assert r.afirmaciones[1].cita["inicio"] == TEXTO.index(CITA_P1)
+    assert r.sello["slides_verificados"] == 2
+
+
+def test_agrupado_una_cita_de_otro_slide_no_respalda():
+    # El slide 1 cita un trozo que solo está en los fragmentos del slide 2: no es literal para él.
+    pedir = PedirFalso({"slides": [{"slide": 1, "afirmaciones": [_a(cita=CITA_P1)]}, {"slide": 2, "afirmaciones": []}]})
+    r = _agrupado(pedir, 2)
+    assert r.afirmaciones[0].veredicto == "no_verificada" and r.afirmaciones[0].cita is None
+
+
+def test_agrupado_un_slide_omitido_se_revisa_solo_en_otra_llamada():
+    pedir = PedirFalso(
+        {"slides": [{"slide": 1, "afirmaciones": [_a()]}]},  # falta el slide 2
+        {"afirmaciones": [_a("El Scrum Master ayuda al equipo.", cita=CITA_P1)]},
+    )
+    r = _agrupado(pedir, 2)
+    assert len(pedir.llamadas) == 2
+    assert "SLIDE: 2" in pedir.llamadas[1][1] and "SLIDE: 1" not in pedir.llamadas[1][1]
+    assert [(a.afirmacion_id, a.slide, a.veredicto) for a in r.afirmaciones] == [("a1", 1, "respaldada"), ("a2", 2, "respaldada")]
+
+
+def test_con_pedir_inyectado_y_sin_valor_se_mantiene_una_llamada_por_slide():
+    a2 = _a("El Scrum Master ayuda al equipo.", cita=CITA_P1)
+    pedir = PedirFalso({"afirmaciones": [_a()]}, {"afirmaciones": [a2]})
+    _agrupado(pedir, None)
+    assert len(pedir.llamadas) == 2
+
+
+def test_cliente_real_agrupa_por_defecto_y_duplica_el_tope_de_salida():
+    respuesta = json.dumps({"slides": [
+        {"slide": 1, "afirmaciones": [_a()]},
+        {"slide": 2, "afirmaciones": [_a("El Scrum Master ayuda al equipo.", cita=CITA_P1)]},
+    ]})
+    c = ClienteFalso([respuesta])
+    textos = [_texto(1), _texto(2, titulo="Roles", cuerpo="El Scrum Master ayuda al equipo.")]
+    r = asyncio.run(revisar_fidelidad(c, _brief({1: (0,), 2: (1,)}), FUENTE, textos))
+    assert len(c.llamadas) == 1 and c.llamadas[0]["max_tokens"] == MAX_TOKENS_REVISOR * 2
+    assert len(r.afirmaciones) == 2
+
+
+def test_validador_acepta_las_dos_formas_y_rechaza_otra():
+    assert rf._validar_respuesta({"afirmaciones": []}) == []
+    assert rf._validar_respuesta({"slides": [{"slide": 1, "afirmaciones": []}]}) == []
+    # Tolerante: un elemento raro no invalida la respuesta (ese slide se revisa solo después).
+    assert rf._validar_respuesta({"slides": [{"slide": "1"}, "basura"]}) == []
+    assert rf._validar_respuesta({"x": 1})
+
+
+def test_agrupado_acepta_el_numero_de_slide_como_texto():
+    a2 = _a("El Scrum Master ayuda al equipo.", cita=CITA_P1)
+    pedir = PedirFalso({"slides": [{"slide": "1", "afirmaciones": [_a()]}, {"slide": "SLIDE 2", "afirmaciones": [a2]}]})
+    r = _agrupado(pedir, 2)
+    assert len(pedir.llamadas) == 1
+    assert [a.slide for a in r.afirmaciones] == [1, 2]
+
+
+def test_agrupado_un_elemento_ilegible_no_tumba_el_run():
+    pedir = PedirFalso(
+        {"slides": [{"slide": 1, "afirmaciones": [_a()]}, "basura"]},
+        {"afirmaciones": []},  # el slide 2 se revisa solo
+    )
+    r = _agrupado(pedir, 2)
+    assert len(pedir.llamadas) == 2 and r.sello["slides_verificados"] == 2
