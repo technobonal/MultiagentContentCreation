@@ -315,3 +315,9 @@ OPENROUTER_MODELOS_VISION = tuple(
     ).split(",") if m.strip()
 )
 OPENROUTER_TIMEOUT_SEG = float(os.environ.get("OPENROUTER_TIMEOUT_SEG", "60"))
+
+# Fotos de la fuente en el hueco de imagen de la plantilla. Licencia BLOQUEADA por defecto: sin `FOTOS_LICENCIA` el run
+# no coloca ninguna foto. Quien la define confirma que puede usar las imágenes de esa fuente; el texto va tal cual en el
+# evento `colocar_imagen` (2 a 120 caracteres), así que queda a la vista en el lienzo y en el slide de fuentes.
+FOTOS_LICENCIA = os.environ.get("FOTOS_LICENCIA", "").strip()
+FOTOS_MAX_PAGINAS = int(os.environ.get("FOTOS_MAX_PAGINAS", "6"))  # páginas del PDF que se miran en busca de fotos (el OCR tarda ~2 s por página)
