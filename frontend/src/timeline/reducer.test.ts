@@ -270,7 +270,7 @@ describe("reductor: inmutabilidad", () => {
   });
 });
 
-// --- Tabla por tipo (los 15 tipos) -------------------------------------------
+// --- Tabla por tipo (los 16 tipos) -------------------------------------------
 interface CasoTipo {
   tipo: string;
   eventos: Borrador[];
@@ -279,6 +279,7 @@ interface CasoTipo {
 
 // Toma el borrador de un seq de la secuencia sintética (1-indexado).
 const b = (seq: number): Borrador => BORRADORES[seq - 1] as Borrador;
+const IMAGEN = { campo: "imagen_producto", referencia: "foto-2", licencia: "Uso autorizado", texto_alternativo: "Un edificio" };
 
 const CASOS: CasoTipo[] = [
   { tipo: "run_iniciada", eventos: [b(1)], verificar: (e) => expect(e.run?.fuente.licencia).toBe("CC BY-SA 4.0") },
@@ -290,6 +291,10 @@ const CASOS: CasoTipo[] = [
     expect(e.lienzo.textos[3]).toBeUndefined(); // no se dibuja
   } },
   { tipo: "colocar_fondo", eventos: [b(5)], verificar: (e) => expect(e.lienzo.fondos[1]).toEqual({ tipo: "color", valor: "#112233" }) },
+  { tipo: "colocar_imagen", eventos: [d("director_arte", "colocar_imagen", IMAGEN, { slide: 2 })], verificar: (e) => {
+    expect(e.lienzo.imagenes[2]?.imagen_producto).toEqual({ referencia: "foto-2", licencia: "Uso autorizado", texto_alternativo: "Un edificio" });
+    expect(e.lienzo.fondos[2]).toBeUndefined(); // una imagen en su campo no es el fondo del slide
+  } },
   { tipo: "escribir_texto", eventos: [b(6)], verificar: (e) => expect(e.lienzo.textos[1]?.titulo).toBe("Scrum en pocas palabras") },
   { tipo: "verificacion_fidelidad", eventos: [b(9)], verificar: (e) => expect(e.ledger.a1?.actual.veredicto).toBe("contradice") },
   { tipo: "hallazgo_abierto", eventos: [b(10)], verificar: (e) => {
@@ -312,7 +317,7 @@ const CASOS: CasoTipo[] = [
 ];
 
 describe("reductor: un caso mínimo por tipo", () => {
-  it("la tabla cubre exactamente los 15 tipos del catálogo", () => {
+  it("la tabla cubre exactamente los 16 tipos del catálogo", () => {
     expect(CASOS.map((c) => c.tipo).sort()).toEqual([...TIPOS_EVENTO].sort());
   });
 
@@ -449,6 +454,15 @@ describe("reductor: anomalías", () => {
       d("director_arte", "colocar_fondo", { fondo: { tipo: "imagen", referencia: "img_1", licencia: "" } }, { slide: 2 }),
     ]);
     expect(codigos(reducirTodos(crearEstadoInicial(), eventos))).toEqual(["fondo_imagen_sin_licencia"]);
+  });
+
+  it("colocar_imagen sin slide es una anomalía y dos imágenes del mismo slide conviven", () => {
+    expect(codigos(reducirTodos(crearEstadoInicial(), secuenciar([d("director_arte", "colocar_imagen", IMAGEN)])))).toEqual(["slide_ausente"]);
+    const estado = reducirTodos(crearEstadoInicial(), secuenciar([
+      d("director_arte", "colocar_imagen", IMAGEN, { slide: 2 }),
+      d("director_arte", "colocar_imagen", { ...IMAGEN, campo: "imagen_2", referencia: "foto-3" }, { slide: 2 }),
+    ]));
+    expect(Object.keys(estado.lienzo.imagenes[2] ?? {}).sort()).toEqual(["imagen_2", "imagen_producto"]);
   });
 
   it("fondo de imagen con licencia se guarda completo", () => {

@@ -35,7 +35,7 @@ Diferenciador a demostrar: **revisor editorial explicable + fidelidad a la fuent
 | Versión del contrato | 0.x hasta cerrar la Fase 2 | Decidido |
 | Idioma de salida | ES y PT-BR, nativo, no traducción | Decidido |
 | Contratos | JSON Schema 2020-12 con `$comment` por bloque; fuente de verdad compartida | Decidido |
-| Catálogo de eventos 0.1 | 15 eventos (ver `contracts/README.md`) | Decidido |
+| Catálogo de eventos 0.1 | 16 eventos (ver `contracts/README.md`); `colocar_imagen` se sumó el 2026-11-25 | Decidido |
 | Sello de revisión | Lo calcula código, nunca el LLM | Decidido |
 | Destinos de edición (Penpot, Figma) | Exportación posterior a la aprobación vía DesignDoc y adaptadores; sin uso en vivo por los agentes; Fase 5, Penpot primero | Decidido (documentado) |
 

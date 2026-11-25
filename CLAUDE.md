@@ -38,7 +38,7 @@ Variables de entorno (se leen en `backend/app/config.py`, que carga el `.env` de
 
 **Regla de dependencia:** `frontend` y `backend` solo se comunican a través de `contracts/` (JSON Schema 2020-12, con `$comment` en cada bloque). Los dos validan cada evento contra `contracts/events/event.schema.json` (ajv en el frontend, `jsonschema` en `backend/app/events/validador.py`, con la misma carga de esquemas por `$id` que `contracts/validate.py`). Si cambiás un contrato, corré `validate.py` y las dos suites.
 
-**Contrato de eventos** (`contracts/README.md`): 15 tipos con un sobre común (`run_id`, `seq` consecutivo desde 1, `origen` `real`/`grabado`, `agente`, `slide`, `causa`). Los eventos son inmutables: una corrección es un evento nuevo cuya `causa` apunta al `seq` original. Un evento inválido nunca se omite: produce un error visible y corta el flujo.
+**Contrato de eventos** (`contracts/README.md`): 16 tipos con un sobre común (`run_id`, `seq` consecutivo desde 1, `origen` `real`/`grabado`, `agente`, `slide`, `causa`). Los eventos son inmutables: una corrección es un evento nuevo cuya `causa` apunta al `seq` original. Un evento inválido nunca se omite: produce un error visible y corta el flujo.
 
 ### Backend (`backend/app/`)
 

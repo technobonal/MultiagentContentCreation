@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/colocar_imagen.schema.json",
+  "$comment": "El Director de arte coloca una imagen en un campo de imagen de la plantilla (por ejemplo 'imagen_producto'), no como fondo del slide: el fondo es colocar_fondo. La imagen va por referencia (el backend la sirve en /api/runs/{run_id}/imagenes/{referencia}) y lleva su licencia y un texto alternativo. El lienzo solo dibuja lo que dice el evento.",
+  "title": "colocar_imagen",
+  "required": ["agente", "slide", "payload"],
+  "properties": {
+    "agente": { "const": "director_arte" },
+    "payload": {
+      "$comment": "Campo de imagen de la plantilla, imagen a dibujar, su licencia y su texto alternativo.",
+      "type": "object",
+      "required": ["campo", "referencia", "licencia", "texto_alternativo"],
+      "additionalProperties": false,
+      "properties": {
+        "campo": {
+          "$ref": "../common.schema.json#/$defs/nombre_campo"
+        },
+        "referencia": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]{1,40}$",
+          "description": "Identificador de la imagen dentro del run: solo minúsculas, dígitos, guion y guion bajo, para que sea seguro en una URL."
+        },
+        "licencia": {
+          "$ref": "../common.schema.json#/$defs/licencia_fuente"
+        },
+        "texto_alternativo": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Descripción de la imagen para lectores de pantalla."
+        }
+      }
+    }
+  }
+}

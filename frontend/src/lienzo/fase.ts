@@ -52,6 +52,7 @@ const FASE_POR_TIPO: Readonly<Record<string, ClaveFase>> = {
   plantilla_elegida: "plantilla",
   texto_propuesto: "redactando",
   colocar_fondo: "disenando",
+  colocar_imagen: "disenando",
   escribir_texto: "disenando",
   verificacion_fidelidad: "verificando",
   hallazgo_abierto: "verificando",

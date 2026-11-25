@@ -177,12 +177,12 @@ def comprobar_catalogo_eventos(esquemas):
             problemas.append(
                 f"{nombre} difiere del sobre: faltan {sorted(tipos_envelope - conjunto)}, sobran {sorted(conjunto - tipos_envelope)}"
             )
-    if len(tipos_envelope) != 15:  # el catálogo 0.1 está congelado en 15 eventos
-        problemas.append(f"el catálogo 0.1 debe tener 15 eventos y tiene {len(tipos_envelope)}")
+    if len(tipos_envelope) != 16:  # catálogo 0.1: 15 eventos originales + colocar_imagen (2026-11-25)
+        problemas.append(f"el catálogo 0.1 debe tener 16 eventos y tiene {len(tipos_envelope)}")
     if problemas:
         registrar("FALLA", "Catálogo de eventos coherente", problemas)
     else:
-        registrar("OK", "Catálogo de eventos coherente (15 eventos)")
+        registrar("OK", "Catálogo de eventos coherente (16 eventos)")
 
 
 # --------------------------------------------------------------------------------------
@@ -624,6 +624,23 @@ def comprobar_pruebas_negativas(registro):
     # El emisor equivocado.
     e = base("colocar_fondo"); e["agente"] = "revisor"
     casos.append(("colocar_fondo emitido por el revisor", e))
+    # colocar_imagen: la grabación no trae ninguno, así que se arma uno válido desde un colocar_fondo y se rompe de a una regla.
+    def imagen_valida():
+        e = base("colocar_fondo")
+        e["tipo"] = "colocar_imagen"
+        e["payload"] = {"campo": "imagen_producto", "referencia": "foto-2", "licencia": "Uso autorizado por el titular",
+                        "texto_alternativo": "Edificio residencial al atardecer"}
+        return e
+    e = imagen_valida(); e["agente"] = "revisor"
+    casos.append(("colocar_imagen emitido por el revisor", e))
+    e = imagen_valida(); e["payload"].pop("licencia")
+    casos.append(("colocar_imagen sin licencia", e))
+    e = imagen_valida(); e["payload"]["referencia"] = "../secreto"
+    casos.append(("colocar_imagen con una referencia que no es segura en una URL", e))
+    e = imagen_valida(); e["payload"].pop("texto_alternativo")
+    casos.append(("colocar_imagen sin texto alternativo", e))
+    e = imagen_valida(); e["payload"]["url"] = "http://externo.example/x.jpg"
+    casos.append(("colocar_imagen con un campo no declarado", e))
     # Un tipo fuera del catálogo.
     e = base("run_iniciada"); e["tipo"] = "evento_inventado"
     casos.append(("tipo fuera del catálogo", e))

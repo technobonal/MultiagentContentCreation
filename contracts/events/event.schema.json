@@ -63,6 +63,15 @@
       "then": { "$ref": "colocar_fondo.schema.json" }
     },
     {
+      "$comment": "Si el tipo es colocar_imagen, aplica su esquema.",
+      "if": {
+        "$comment": "Detecta el tipo colocar_imagen.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "colocar_imagen" } }
+      },
+      "then": { "$ref": "colocar_imagen.schema.json" }
+    },
+    {
       "$comment": "Si el tipo es escribir_texto, aplica su esquema.",
       "if": {
         "$comment": "Detecta el tipo escribir_texto.",

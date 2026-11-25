@@ -12,6 +12,7 @@ export const TIPOS_EVENTO = [
   "plantilla_elegida",
   "texto_propuesto",
   "colocar_fondo",
+  "colocar_imagen",
   "escribir_texto",
   "verificacion_fidelidad",
   "hallazgo_abierto",
@@ -133,6 +134,14 @@ export interface PayloadTextoCampo {
 export interface PayloadColocarFondo {
   readonly fondo: Fondo;
 }
+// Imagen en un campo de imagen de la plantilla (no el fondo del slide). La sirve el backend por `referencia`.
+export interface PayloadColocarImagen {
+  readonly campo: string;
+  readonly referencia: string;
+  readonly licencia: string;
+  readonly texto_alternativo: string;
+}
+export type ImagenColocada = Omit<PayloadColocarImagen, "campo">;
 export interface PayloadVerificacionFidelidad {
   readonly afirmacion_id: string;
   readonly afirmacion: string;
@@ -206,6 +215,7 @@ export type Evento =
   | Sobre<"plantilla_elegida", PayloadPlantillaElegida>
   | Sobre<"texto_propuesto", PayloadTextoCampo>
   | Sobre<"colocar_fondo", PayloadColocarFondo>
+  | Sobre<"colocar_imagen", PayloadColocarImagen>
   | Sobre<"escribir_texto", PayloadTextoCampo>
   | Sobre<"verificacion_fidelidad", PayloadVerificacionFidelidad>
   | Sobre<"hallazgo_abierto", PayloadHallazgoAbierto>
@@ -303,6 +313,8 @@ export interface Estado {
   readonly lienzo: {
     readonly fondos: Readonly<Record<number, Fondo>>;
     readonly textos: TextosPorSlide;
+    // Imágenes dibujadas: por slide y por campo de imagen de la plantilla.
+    readonly imagenes: Readonly<Record<number, Readonly<Record<string, ImagenColocada>>>>;
   };
   readonly ledger: Readonly<Record<string, RegistroLedger>>;
   readonly hallazgos: Readonly<Record<string, Hallazgo>>;

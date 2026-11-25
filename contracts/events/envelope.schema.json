@@ -31,7 +31,7 @@
       "type": "string",
       "enum": [
         "run_iniciada", "fuente_indexada", "brief_emitido", "plantilla_elegida",
-        "texto_propuesto", "colocar_fondo", "escribir_texto", "verificacion_fidelidad",
+        "texto_propuesto", "colocar_fondo", "colocar_imagen", "escribir_texto", "verificacion_fidelidad",
         "hallazgo_abierto", "hallazgo_corregido", "corregir", "aprobacion_solicitada",
         "aprobada", "editada", "run_finalizada"
       ],

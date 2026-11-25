@@ -8,6 +8,7 @@ import type { Estado, Evento } from "../timeline/types.ts";
 // Tipos de evento que dejan contenido visible en un slide (fondo, texto o borrador).
 const TIPOS_CON_CONTENIDO: ReadonlySet<string> = new Set([
   "colocar_fondo",
+  "colocar_imagen",
   "escribir_texto",
   "texto_propuesto",
   "corregir",

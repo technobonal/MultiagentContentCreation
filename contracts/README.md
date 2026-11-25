@@ -13,7 +13,7 @@ python contracts/validate.py
 | `common.schema.json` | Tipos compartidos: ids, seq, agentes, veredictos, gravedad, dimensiones, colores, cita, sello |
 | `events/envelope.schema.json` | Sobre común de todo evento |
 | `events/event.schema.json` | Despachador: sobre + esquema propio según `tipo` |
-| `events/<evento>.schema.json` | Un esquema por evento (15) |
+| `events/<evento>.schema.json` | Un esquema por evento (16) |
 | `input/input.schema.json` | Esquema de entrada con modos Auto/Fijo |
 | `input/examples/` | Ejemplos `valido_*` (deben pasar) e `invalido_*` (deben rechazarse) |
 | `template-card/card.schema.json` | Ficha de plantilla |
@@ -36,7 +36,7 @@ python contracts/validate.py
 | `causa` | `seq` del evento que originó este (obligatorio en correcciones) |
 | `payload` | Datos propios de cada tipo |
 
-## Catálogo 0.1 (15 eventos)
+## Catálogo 0.1 (16 eventos)
 
 | Evento | Emisor | Datos clave | Notas |
 | ------ | ------ | ----------- | ----- |
@@ -45,7 +45,8 @@ python contracts/validate.py
 | `brief_emitido` | estratega | Ángulo, tono, slides, tipo de mensaje, roles | Último rol siempre `fuentes` |
 | `plantilla_elegida` | director_arte | Id, modo, motivo, confianza | |
 | `texto_propuesto` | redactor | Slide, campo, texto | Una reescritura lleva `causa` = hallazgo |
-| `colocar_fondo` | director_arte | Slide, color o imagen con licencia | |
+| `colocar_fondo` | director_arte | Slide, color o imagen con licencia | Fondo del slide |
+| `colocar_imagen` | director_arte | Slide, campo de imagen, referencia, licencia, texto alternativo | Imagen en un campo de la plantilla; la sirve el backend por referencia |
 | `escribir_texto` | director_arte | Slide, campo, texto | |
 | `verificacion_fidelidad` | revisor | Afirmación, clasificación, veredicto, cita | Base del fact ledger |
 | `hallazgo_abierto` | revisor | Dimensión, gravedad, evidencia, explicación, acción | |

@@ -34,7 +34,7 @@ export function crearEstadoInicial(): Estado {
     brief: null,
     plantilla: null,
     propuestas: {},
-    lienzo: { fondos: {}, textos: {} },
+    lienzo: { fondos: {}, textos: {}, imagenes: {} },
     ledger: {},
     hallazgos: {},
     revision: null,
@@ -134,6 +134,20 @@ function aplicarTipo(estado: Estado, evento: Evento): Resultado {
       const { campo, texto } = evento.payload;
       return resultado({
         propuestas: conCampo(estado.propuestas, evento.slide, campo, texto),
+      });
+    }
+
+    case "colocar_imagen": {
+      if (evento.slide === undefined) return sinSlide(evento.tipo);
+      const { campo, ...imagen } = evento.payload;
+      return resultado({
+        lienzo: {
+          ...estado.lienzo,
+          imagenes: {
+            ...estado.lienzo.imagenes,
+            [evento.slide]: { ...estado.lienzo.imagenes[evento.slide], [campo]: imagen },
+          },
+        },
       });
     }
 

@@ -116,6 +116,8 @@ export function actividadDeEstado(
       return { ...base, accion: "escribir", destino: "campo", burbuja: f(`Redactando slide ${n}…`, `Redigindo slide ${n}…`) };
     case "colocar_fondo":
       return { ...base, accion: "pintar", destino: "esquina", burbuja: f(`Pintando el fondo del slide ${n}…`, `Pintando o fundo do slide ${n}…`) };
+    case "colocar_imagen":
+      return { ...base, accion: "pintar", destino: "campo", burbuja: f(`Colocando la foto del slide ${n}…`, `Colocando a foto do slide ${n}…`) };
     case "escribir_texto":
       return { ...base, accion: "escribir", destino: "campo", burbuja: f(`Escribiendo slide ${n}…`, `Escrevendo slide ${n}…`) };
     case "verificacion_fidelidad":
