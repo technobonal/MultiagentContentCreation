@@ -555,3 +555,23 @@ def test_agrupado_un_elemento_ilegible_no_tumba_el_run():
     )
     r = _agrupado(pedir, 2)
     assert len(pedir.llamadas) == 2 and r.sello["slides_verificados"] == 2
+
+
+def test_cita_rechazada_queda_en_el_log_con_su_causa(caplog):
+    """La cita que el modelo dio y no se pudo ubicar se registra, para saber por qué quedó no_verificada."""
+    crudo = {"afirmacion": "El Sprint dura un mes.", "tipo": "factual", "veredicto": "respaldada",
+             "cita": "El Sprint dura dos meses.", "motivo": "ok"}
+    with caplog.at_level("WARNING", logger="app.agentes.revisor_fidelidad"):
+        af = rf._normalizar_afirmacion(crudo, 3, 1, FRAGMENTOS)
+    assert af.veredicto == "no_verificada" and af.cita is None
+    assert "no aparece en los fragmentos" in caplog.text
+    assert "El Sprint dura dos meses." in caplog.text
+
+
+@pytest.mark.parametrize("cita, causa", [
+    (None, "sin cita"),
+    ("a" * 500, "demasiado larga"),
+    ("El Sprint ... un mes", "puntos suspensivos"),
+])
+def test_causa_de_cita_rechazada(cita, causa):
+    assert causa in rf._por_que_no_es_literal(cita)

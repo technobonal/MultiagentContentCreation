@@ -29,6 +29,7 @@ Salida:   un `ResultadoFidelidad` con las afirmaciones verificadas, los hallazgo
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -270,7 +271,21 @@ def hallazgos_por_cifras(slide: int, campos: Mapping[str, str], fragmentos: Sequ
     return hallazgos
 
 
+log = logging.getLogger(__name__)
+
 # ---------------------------------------------------------------- citas y afirmaciones
+
+def _por_que_no_es_literal(cita: object) -> str:
+    """Causa legible de una cita rechazada, solo para el log (el contrato no la guarda)."""
+    if not isinstance(cita, str) or not cita.strip():
+        return "sin cita"
+    if len(cita.strip()) > CITA_MAX_CHARS:
+        return f"demasiado larga ({len(cita.strip())} caracteres, tope {CITA_MAX_CHARS})"
+    limpia = quitar_bordes(cita)
+    if "..." in limpia or "…" in limpia:
+        return "une trozos con puntos suspensivos"
+    return "no aparece en los fragmentos asignados"
+
 
 def _localizar_cita(cita: object, fragmentos: Sequence[Fragmento]) -> dict | None:
     """Ubica una cita literal en los fragmentos asignados con `ubicar_hecho`.
@@ -316,6 +331,12 @@ def _normalizar_afirmacion(crudo: object, slide: int, numero: int,
     # Respaldo sin cita literal o veredicto inválido: no se puede verificar, nunca abre hallazgo.
     if veredicto in VEREDICTOS_QUE_RESPALDAN and cita is None:
         veredicto = "no_verificada"
+        crudo_cita = crudo.get("cita")
+        log.warning(
+            "Cita rechazada (slide %d, %s): %s. Cita del modelo: %r",
+            slide, ident, _por_que_no_es_literal(crudo_cita),
+            crudo_cita[:400] if isinstance(crudo_cita, str) else crudo_cita,
+        )
         motivo = recortar_texto(f"La cita no es literal de la fuente. {motivo}")
     elif veredicto not in VEREDICTOS_FACTUALES:
         veredicto, cita = "no_verificada", None
