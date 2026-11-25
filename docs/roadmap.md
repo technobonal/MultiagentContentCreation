@@ -111,7 +111,7 @@ Lo que sigue, en este orden:
 - [ ] Texto alternativo descriptivo de cada foto con la cascada de visión (opcional; manda las imágenes a OpenRouter)
 - [ ] Recorte en vivo con la página original (opcional; cambia el contrato)
 - [x] Subidos a GitHub los 47 commits del día (2026-11-25, `cdf7e62..2b879bb`, autor `technobonal <technobonal@gmail.com>`)
-- [ ] Borrar la rama local `backup-antes-de-autor` (historial anterior al cambio de autor) cuando Frank lo confirme
+- [x] Borrada la rama local `backup-antes-de-autor` (2026-11-25, con el OK de Frank; su contenido era idéntico al de master)
 
 ### Pendiente
 
