@@ -1,4 +1,10 @@
-"""Rutas HTTP del backend: iniciar una ejecución (POST) y su canal SSE de eventos (GET)."""
+"""Rutas HTTP del backend: iniciar una ejecución (POST) y su canal SSE de eventos (GET).
+
+Modo de ejecución: lo decide el lifespan UNA vez al arrancar (app.state.contexto). Si hay contexto,
+POST /api/runs lanza el orquestador real; si es None, el de relleno (simulado).
+"""
+
+import asyncio
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
@@ -7,8 +13,11 @@ from app import config
 from app.events.cargador import RunNoEncontrado, cargar_eventos
 from app.events.emisor import filtrar_desde, flujo_sse, flujo_vivo
 from app.events.validador import comprobar_entrada
+from app.fuentes.cargador_fuente import FuenteError, cargar_fuente
 from app.resolution import cargar_fichas, resolver
+from app.runs.contexto_real import ORIGEN_REAL, ContextoReal
 from app.runs.orquestador import ejecutar_run
+from app.runs.orquestador_real import ejecutar_run_real
 from app.runs.registro import EstadoRun, LimiteDeRuns, RegistroRuns, obtener_registro_runs
 from app.runs.relleno import ORIGEN_RELLENO
 
@@ -36,6 +45,14 @@ def obtener_latido() -> float:
     return config.LATIDO_SEG
 
 
+def obtener_contexto(request: Request) -> ContextoReal | None:
+    """Dependencia que entrega el contexto real (modo real) o None (modo relleno).
+
+    Lo guarda el lifespan en app.state; si la app se usa sin lifespan (pruebas sin `with`), no existe y es None.
+    """
+    return getattr(request.app.state, "contexto", None)
+
+
 def _rechazo(codigo: int, motivos: list[str], cabeceras: dict | None = None) -> JSONResponse:
     """Respuesta de error con la lista de motivos (mismo formato que evento_invalido)."""
     return JSONResponse(status_code=codigo, content={"motivos": motivos}, headers=cabeceras)
@@ -46,11 +63,13 @@ async def iniciar_run(
     request: Request,
     registro: RegistroRuns = Depends(obtener_registro_runs),
     ritmo_relleno: float = Depends(obtener_ritmo_relleno),
+    contexto: ContextoReal | None = Depends(obtener_contexto),
 ):
     """Valida la entrada (forma y reglas cruzadas), crea la ejecución y lanza el orquestador.
 
     Responde 201 con el run_id y la URL del canal de eventos. El cuerpo se valida contra
     input.schema.json (la única fuente de verdad), no contra un modelo Pydantic.
+    Sin contexto lanza el relleno; con contexto, carga la fuente y lanza el orquestador real.
     """
     try:
         entrada = await request.json()
@@ -65,12 +84,26 @@ async def iniciar_run(
     if motivos:
         return _rechazo(422, motivos)
 
+    fuente = None
+    # Modo real: la fuente se carga ANTES de crear la ejecución, así un error 422 no consume un cupo.
+    if contexto is not None:
+        try:
+            # Va en un hilo aparte: leer y fragmentar un archivo grande no debe bloquear el bucle de asyncio.
+            fuente = await asyncio.to_thread(cargar_fuente, entrada["fuente"]["referencia"])
+        except FuenteError as exc:  # referencia inválida, PDF, archivo inexistente, vacío, etc.
+            return _rechazo(422, [exc.mensaje])
+
+    origen = ORIGEN_REAL if contexto is not None else ORIGEN_RELLENO
     try:
-        ejecucion = registro.crear(entrada, resolucion, ORIGEN_RELLENO)
+        ejecucion = registro.crear(entrada, resolucion, origen)
     except LimiteDeRuns as exc:  # demasiadas ejecuciones en curso: que reintente en unos segundos
         return _rechazo(429, [str(exc)], {"Retry-After": "10"})
 
-    registro.lanzar(ejecutar_run(ejecucion, ritmo_relleno))
+    # Cada modo lanza su orquestador; el real recibe su propia copia del kit de marca.
+    if contexto is not None:
+        registro.lanzar(ejecutar_run_real(ejecucion, fuente, contexto.cliente, contexto.kit_para_run()))
+    else:
+        registro.lanzar(ejecutar_run(ejecucion, ritmo_relleno))
     return {"run_id": ejecucion.run_id, "url_eventos": f"/api/runs/{ejecucion.run_id}/eventos"}
 
 
