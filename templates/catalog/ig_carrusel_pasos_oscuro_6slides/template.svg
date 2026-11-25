@@ -52,6 +52,10 @@
   .sobre-acento { color:var(--texto-sobre-acento); font-weight:600; }
 </style>
 
+  <defs>
+    <!-- Esquinas redondeadas de la foto: el mismo rectángulo que el borde punteado del hueco imagen-producto. -->
+    <clipPath id="recorte-foto"><rect x="80" y="698" width="920" height="422" rx="16"/></clipPath>
+  </defs>
   <rect id="fondo" width="1080" height="1350" fill="#0F172A"/>
 
   <!-- ============ Slide 1 · gancho ============ -->
@@ -86,7 +90,7 @@
     <g id="imagen-producto" data-campo="{{imagen_producto}}" data-opcional="true">
       <title>Foto del producto</title>
       <rect x="80" y="698" width="920" height="422" rx="16" fill="#F8FAFC" fill-opacity=".06" stroke="#38BDF8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>
-      <image x="80" y="698" width="920" height="422" preserveAspectRatio="xMidYMid slice" href="{{imagen_producto}}"/>
+      <image x="80" y="698" width="920" height="422" preserveAspectRatio="xMidYMid slice" clip-path="url(#recorte-foto)" href="{{imagen_producto}}"/>
     </g>
     <g id="progreso-2">
       <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>

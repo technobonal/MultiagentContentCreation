@@ -107,3 +107,110 @@ describe("pintarLienzo", () => {
     expect(raiz.querySelector("#slide-2")!.classList.contains("activo")).toBe(true);
   });
 });
+// --- Imágenes (evento colocar_imagen) -------------------------------------------------------------
+
+function raizConHueco(): HTMLElement {
+  const raiz = document.createElement("div");
+  raiz.innerHTML = `<svg>
+    <g id="slide-2" class="slide">
+      <g id="imagen-producto" data-campo="{{imagen_producto}}" data-opcional="true">
+        <title>Foto del producto</title>
+        <rect x="80" y="698" width="920" height="422"/>
+        <image x="80" y="698" width="920" height="422" href="{{imagen_producto}}"/>
+      </g>
+    </g>
+  </svg>`;
+  return raiz;
+}
+
+const IMAGEN_COLOCADA = { referencia: "foto-2", licencia: "Uso autorizado", texto_alternativo: "Un edificio al atardecer" };
+
+function estadoConImagen(runId: string | null, imagen: typeof IMAGEN_COLOCADA | null = IMAGEN_COLOCADA): Estado {
+  const base = crearEstadoInicial();
+  const imagenes: Estado["lienzo"]["imagenes"] = imagen ? { 2: { imagen_producto: imagen } } : {};
+  return { ...base, slideActivo: 2, runId, lienzo: { ...base.lienzo, imagenes } };
+}
+
+function partes(raiz: HTMLElement) {
+  const grupo = raiz.querySelector<SVGElement>("#imagen-producto") as SVGElement;
+  const img = grupo.querySelector("image") as SVGImageElement;
+  const hueco = grupo.querySelector("rect") as SVGElement;
+  return { grupo, img, hueco };
+}
+
+describe("pintarLienzo: imagen de la fuente", () => {
+  it("sin imagen el hueco opcional sigue oculto", () => {
+    const raiz = raizConHueco();
+    pintarLienzo(raiz, estadoConImagen("run_1", null), fabricaFalsa);
+    expect(partes(raiz).grupo.style.display).toBe("none");
+  });
+
+  it("con imagen pide la URL del run, muestra el hueco y pone el texto alternativo y la licencia", () => {
+    const raiz = raizConHueco();
+    pintarLienzo(raiz, estadoConImagen("run_abc"), fabricaFalsa);
+    const { grupo, img } = partes(raiz);
+    expect(grupo.style.display).toBe("");
+    expect(img.getAttribute("href")).toBe("/api/runs/run_abc/imagenes/foto-2");
+    expect(img.getAttribute("aria-label")).toBe("Un edificio al atardecer");
+    expect(grupo.querySelector("title")?.textContent).toBe("Un edificio al atardecer");
+    expect(grupo.getAttribute("data-licencia")).toBe("Uso autorizado");
+  });
+
+  it("al cargar marca la imagen y oculta el borde punteado; si falla, deja el hueco a la vista", () => {
+    const raiz = raizConHueco();
+    pintarLienzo(raiz, estadoConImagen("run_abc"), fabricaFalsa);
+    const { img, hueco } = partes(raiz);
+    expect(img.hasAttribute("data-cargada")).toBe(false);
+    img.dispatchEvent(new Event("load"));
+    expect(img.getAttribute("data-cargada")).toBe("true");
+    expect(hueco.style.display).toBe("none");
+
+    const otra = raizConHueco();
+    pintarLienzo(otra, estadoConImagen("run_abc"), fabricaFalsa);
+    const p = partes(otra);
+    p.img.dispatchEvent(new Event("error"));
+    expect(p.img.getAttribute("data-error")).toBe("true");
+    expect(p.hueco.style.display).toBe("");
+  });
+
+  it("es idempotente: repintar la misma imagen no reinicia la carga", () => {
+    const raiz = raizConHueco();
+    pintarLienzo(raiz, estadoConImagen("run_abc"), fabricaFalsa);
+    partes(raiz).img.dispatchEvent(new Event("load"));
+    pintarLienzo(raiz, estadoConImagen("run_abc"), fabricaFalsa);
+    expect(partes(raiz).img.getAttribute("data-cargada")).toBe("true");
+  });
+
+  it("una referencia nueva reinicia la carga", () => {
+    const raiz = raizConHueco();
+    pintarLienzo(raiz, estadoConImagen("run_abc"), fabricaFalsa);
+    partes(raiz).img.dispatchEvent(new Event("load"));
+    pintarLienzo(raiz, estadoConImagen("run_abc", { ...IMAGEN_COLOCADA, referencia: "foto-3" }), fabricaFalsa);
+    const { img } = partes(raiz);
+    expect(img.getAttribute("href")).toBe("/api/runs/run_abc/imagenes/foto-3");
+    expect(img.hasAttribute("data-cargada")).toBe(false);
+  });
+
+  it("sin run (grabación local) no se pide ninguna imagen", () => {
+    const raiz = raizConHueco();
+    pintarLienzo(raiz, estadoConImagen(null), fabricaFalsa);
+    const { grupo, img } = partes(raiz);
+    expect(img.hasAttribute("href")).toBe(false);
+    expect(grupo.style.display).toBe("none");
+  });
+
+  it("si la imagen deja de estar en el estado (salto atrás) el campo vuelve a ocultarse", () => {
+    const raiz = raizConHueco();
+    pintarLienzo(raiz, estadoConImagen("run_abc"), fabricaFalsa);
+    pintarLienzo(raiz, estadoConImagen("run_abc", null), fabricaFalsa);
+    const { grupo, img } = partes(raiz);
+    expect(grupo.style.display).toBe("none");
+    expect(img.hasAttribute("href")).toBe(false);
+  });
+
+  it("un id de run con caracteres raros se escapa en la URL", () => {
+    const raiz = raizConHueco();
+    pintarLienzo(raiz, estadoConImagen("run x/../y"), fabricaFalsa);
+    expect(partes(raiz).img.getAttribute("href")).toBe("/api/runs/run%20x%2F..%2Fy/imagenes/foto-2");
+  });
+});

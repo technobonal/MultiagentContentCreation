@@ -864,3 +864,17 @@ input[type="range"] {
   background: rgba(183, 121, 31, 0.12);
   font-size: 0.9rem;
 }
+
+/* Foto de la fuente en el hueco de imagen: transparente hasta cargar y entra con un fundido. */
+#imagen-producto image {
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+#imagen-producto image[data-cargada="true"] {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  #imagen-producto image {
+    transition: none;
+  }
+}

@@ -1,6 +1,6 @@
 /**
  * pintarLienzo.ts — Pinta el estado del reductor sobre el SVG de la plantilla.
- * Lee `estado.lienzo.textos`, `estado.lienzo.fondos`, `estado.slideActivo` y los campos
+ * Lee `estado.lienzo.textos`, `estado.lienzo.fondos`, `estado.lienzo.imagenes`, `estado.slideActivo` y los campos
  * calculados (sello, atribución y licencia de la fuente). Opcionalmente muestra los
  * borradores del redactor (`estado.propuestas`) en los campos que aún no tienen texto
  * dibujado, marcados con data-borrador="true". Es idempotente: se puede llamar
@@ -11,7 +11,7 @@ import { ajustarTexto } from "./ajusteTexto.ts";
 import type { Medidor, ResultadoAjuste } from "./ajusteTexto.ts";
 import { textoCampoCalculado } from "./camposCalculados.ts";
 import { crearMedidorDOM } from "./medidorDOM.ts";
-import type { Estado } from "../timeline/types.ts";
+import type { Estado, ImagenColocada } from "../timeline/types.ts";
 
 // Crea el medidor de un campo; en pruebas se inyecta uno falso.
 export type FabricaMedidor = (div: HTMLElement) => Medidor;
@@ -85,6 +85,52 @@ function pintarFondo(raiz: ParentNode, estado: Estado): void {
 }
 
 /**
+ * Pinta (o limpia) la imagen de un campo de imagen de la plantilla. La URL la sirve el backend por run y referencia.
+ * Es idempotente: solo toca el <image> cuando cambia la referencia. Mientras carga queda transparente y, al cargar,
+ * entra con un fundido (CSS) y oculta el borde punteado del hueco; si falla, el hueco punteado queda a la vista.
+ */
+function pintarImagen(campoEl: SVGElement, imagen: ImagenColocada | undefined, runId: string | null, opcional: boolean): void {
+  const img = campoEl.querySelector("image");
+  const hueco = campoEl.querySelector<SVGElement>("rect");
+  if (!img) {
+    // Sin <image> no hay dónde dibujar: se oculta si es opcional (como antes de que hubiera imágenes).
+    if (opcional) campoEl.style.display = "none";
+    return;
+  }
+  // Sin imagen dibujada (o sin run al que pedírsela): el campo opcional se oculta y se olvida lo anterior.
+  if (imagen === undefined || runId === null) {
+    img.removeAttribute("data-ref");
+    img.removeAttribute("data-cargada");
+    img.removeAttribute("data-error");
+    img.removeAttribute("href");
+    if (hueco) hueco.style.display = "";
+    campoEl.style.display = opcional ? "none" : "";
+    return;
+  }
+  const url = `/api/runs/${encodeURIComponent(runId)}/imagenes/${encodeURIComponent(imagen.referencia)}`;
+  campoEl.style.display = "";
+  campoEl.setAttribute("data-licencia", imagen.licencia);
+  const titulo = campoEl.querySelector("title");
+  if (titulo) titulo.textContent = imagen.texto_alternativo;
+  img.setAttribute("aria-label", imagen.texto_alternativo);
+  // La misma imagen ya está pedida: no se vuelve a asignar (reiniciaría la carga y el fundido).
+  if (img.getAttribute("data-ref") === url) return;
+  img.setAttribute("data-ref", url);
+  img.removeAttribute("data-cargada");
+  img.removeAttribute("data-error");
+  if (hueco) hueco.style.display = "";
+  img.addEventListener("load", () => {
+    if (img.getAttribute("data-ref") !== url) return; // llegó tarde: ya hay otra imagen
+    img.setAttribute("data-cargada", "true");
+    if (hueco) hueco.style.display = "none";
+  }, { once: true });
+  img.addEventListener("error", () => {
+    if (img.getAttribute("data-ref") === url) img.setAttribute("data-error", "true");
+  }, { once: true });
+  img.setAttribute("href", url);
+}
+
+/**
  * Pinta todos los slides: marca el activo, escribe los textos y ajusta el tamaño
  * de los campos del slide activo. Devuelve el resultado por campo.
  */
@@ -114,10 +160,9 @@ export function pintarLienzo(
       const opcional = campoEl.getAttribute("data-opcional") === "true";
       const div = campoEl.querySelector<HTMLElement>("div");
 
-      // Sin div no es un campo de texto (por ejemplo la imagen): el MVP la oculta siempre.
+      // Sin div no es un campo de texto sino un campo de imagen: se dibuja la imagen del evento colocar_imagen.
       if (!div) {
-        // Las imágenes quedan para una fase posterior.
-        if (opcional) campoEl.style.display = "none";
+        pintarImagen(campoEl, estado.lienzo.imagenes[numero]?.[nombre], estado.runId, opcional);
         continue;
       }
 
