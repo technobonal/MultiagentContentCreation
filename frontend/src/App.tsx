@@ -5,6 +5,8 @@
  * En modo Servidor el ritmo lo marca el backend, así que no se muestran las velocidades.
  * CAMBIO: el slide que se mira puede elegirse a mano (miniatura sin eventos, como el de
  * fuentes y sello); la elección se suelta sola cuando llega un evento nuevo o se salta en el tiempo.
+ * 9B-3: en modo Servidor, si la conexión termina en error se avisa al lienzo (`runFallido`)
+ * para que el avatar vuelva a reposo con la burbuja de fallo.
  */
 import { useEffect, useMemo, useState } from "react";
 import { cargarGrabacion, listarGrabaciones } from "./lib/grabacion.ts";
@@ -55,6 +57,7 @@ function Pantalla({
   idiomaGuia,
   eventos,
   enVivo = false,
+  runFallido = false,
 }: {
   reproductor: Reproductor;
   svg: string;
@@ -63,6 +66,8 @@ function Pantalla({
   eventos: readonly Evento[];
   // NUEVO: en modo Servidor se ocultan las velocidades (el ritmo lo marca el backend).
   enVivo?: boolean;
+  // NUEVO (9B-3): el canal falló (solo modo Servidor; false por defecto).
+  runFallido?: boolean;
 }) {
   const vista = useReproductor(reproductor);
 
@@ -88,6 +93,10 @@ function Pantalla({
   // Suelta la elección manual; se llama antes de cualquier acción que mueva la reproducción.
   const soltarManual = () => setManual(null);
 
+  // NUEVO (9B-3): el aviso de fallo solo se muestra cuando la reproducción ya alcanzó el último
+  // evento recibido (si no, el avatar diría "interrumpida" sobre un evento viejo).
+  const fallidoVisible = runFallido && vista.aplicados >= vista.total;
+
   return (
     <div className="pantalla">
       {/* Selector del idioma de las etiquetas (letrero, agentes y tarjeta del revisor). */}
@@ -106,7 +115,7 @@ function Pantalla({
 
       <MesaAgentes estado={vista.estado} idioma={idioma} />
 
-      <Lienzo vista={vistaLienzo} svg={svg} idioma={idioma} />
+      <Lienzo vista={vistaLienzo} svg={svg} idioma={idioma} runFallido={fallidoVisible} />
 
       {/* Miniaturas; al hacer clic se salta al punto donde ese slide ya tiene contenido,
           o, si ningún evento lo toca (fuentes y sello), se ve a mano. */}
@@ -268,7 +277,14 @@ function PantallaServidor({ fuente, svg }: { fuente: FuenteEnVivo; svg: string }
       </p>
       {/* Errores y avisos del canal: visibles, nunca ocultos. */}
       {vivo.mensaje && <pre role="alert">{vivo.mensaje}</pre>}
-      <Pantalla reproductor={fuente} svg={svg} idiomaGuia={idiomaGuia} eventos={vivo.eventos} enVivo />
+      <Pantalla
+        reproductor={fuente}
+        svg={svg}
+        idiomaGuia={idiomaGuia}
+        eventos={vivo.eventos}
+        enVivo
+        runFallido={vivo.conexion === "error"}
+      />
     </>
   );
 }

@@ -2,16 +2,26 @@
 // posicionAvatar.ts — Decide qué hace y a dónde va el avatar del agente activo.
 // Función pura: solo lee el Estado del reductor y devuelve una descripción
 // (agente, acción, destino y burbuja de texto). Quien la dibuja es AvataresVivos.
+//
+// Cierre del run (9B-3):
+//  - Exitoso: el último evento es run_finalizada y la actividad se marca con cierre "exitoso".
+//    AvataresVivos muestra «Cerrando la ejecución…» unos segundos y luego deja todo en reposo.
+//  - Fallido o cortado (sin run_finalizada): quien llama pasa `runFallido = true` y el avatar del
+//    último evento vuelve a reposo con una burbuja de fallo (cierre "fallido").
 // ---------------------------------------------------------------------------
 import type { Estado } from "../timeline/types.ts";
 import { textoFaseDeTipo, ultimoEvento } from "./fase.ts";
 import type { IdiomaFase } from "./fase.ts";
 
-// Gesto del avatar: cambia la animación de su herramienta.
-export type AccionAvatar = "pensar" | "escribir" | "pintar" | "revisar" | "aprobar" | "procesar";
+// Gesto del avatar: cambia la animación de su herramienta ("reposo" = ninguna).
+export type AccionAvatar = "pensar" | "escribir" | "pintar" | "revisar" | "aprobar" | "procesar" | "reposo";
 
-// Dónde trabaja: centro del slide, junto a un campo de texto, esquina (pintar fondo) o afirmación subrayada.
-export type DestinoAvatar = "centro" | "campo" | "esquina" | "afirmacion";
+// Dónde trabaja: centro del slide, junto a un campo de texto, esquina (pintar fondo), afirmación subrayada
+// o su casilla de reposo (con la burbuja de fallo).
+export type DestinoAvatar = "centro" | "campo" | "esquina" | "afirmacion" | "reposo";
+
+// Cómo terminó el run, si la actividad es de cierre: null = actividad normal.
+export type CierreAvatar = "exitoso" | "fallido";
 
 // Campo de texto concreto sobre el que se está trabajando.
 export interface CampoActivo {
@@ -27,6 +37,8 @@ export interface ActividadAvatar {
   readonly accion: AccionAvatar;
   readonly destino: DestinoAvatar;
   readonly burbuja: string;
+  // Distinto de null cuando es la actividad de cierre del run (la burbuja dura unos segundos).
+  readonly cierre: CierreAvatar | null;
 }
 
 // Id de la afirmación verificada por el último evento ("" si no se encuentra).
@@ -58,14 +70,38 @@ function idHallazgoReevaluado(estado: Estado): string {
 }
 
 // Actividad del avatar para el último evento aplicado (null si aún no hay eventos).
-export function actividadDeEstado(estado: Estado, idioma: IdiomaFase): ActividadAvatar | null {
+// `runFallido` (opcional, false por defecto): el run falló o se cortó sin run_finalizada.
+export function actividadDeEstado(
+  estado: Estado,
+  idioma: IdiomaFase,
+  runFallido: boolean = false,
+): ActividadAvatar | null {
   const ultimo = ultimoEvento(estado);
   if (ultimo === null) return null;
 
   const n = estado.slideActivo;
   // Elige el texto según el idioma.
   const f = (es: string, pt: string): string => (idioma === "es" ? es : pt);
-  const base = { clave: String(estado.ultimoSeq), agente: ultimo.agente };
+  // Datos comunes a toda actividad normal (no es un cierre).
+  const base: Pick<ActividadAvatar, "clave" | "agente" | "cierre"> = {
+    clave: String(estado.ultimoSeq),
+    agente: ultimo.agente,
+    cierre: null,
+  };
+
+  // Run fallido o cortado: el avatar del último evento vuelve a reposo con una burbuja de fallo.
+  // Si el último evento ya es run_finalizada el run sí terminó: manda el cierre exitoso de abajo.
+  if (runFallido && ultimo.tipo !== "run_finalizada") {
+    return {
+      // El sufijo distingue esta burbuja de la del evento normal y reinicia su animación.
+      clave: `${estado.ultimoSeq}-fallo`,
+      agente: ultimo.agente,
+      accion: "reposo",
+      destino: "reposo",
+      cierre: "fallido",
+      burbuja: f("Ejecución interrumpida…", "Execução interrompida…"),
+    };
+  }
 
   switch (ultimo.tipo) {
     case "run_iniciada":
@@ -97,7 +133,14 @@ export function actividadDeEstado(estado: Estado, idioma: IdiomaFase): Actividad
     case "editada":
       return { ...base, accion: "escribir", destino: "campo", burbuja: f(`Editando slide ${n}…`, `Editando slide ${n}…`) };
     case "run_finalizada":
-      return { ...base, accion: "procesar", destino: "centro", burbuja: f("Cerrando la ejecución…", "Encerrando a execução…") };
+      // Cierre exitoso: AvataresVivos oculta esta burbuja a los pocos segundos.
+      return {
+        ...base,
+        cierre: "exitoso",
+        accion: "procesar",
+        destino: "centro",
+        burbuja: f("Cerrando la ejecución…", "Encerrando a execução…"),
+      };
     default:
       // Tipo desconocido: gesto genérico con la frase de fase.
       return { ...base, accion: "procesar", destino: "centro", burbuja: textoFaseDeTipo(ultimo.tipo, idioma) };

@@ -36,6 +36,8 @@ interface PropsLienzo {
   readonly svg: string;
   // Idioma de las etiquetas (letrero, agentes, tarjeta, avatares).
   readonly idioma: IdiomaFase;
+  // NUEVO (9B-3): el run falló o se cortó sin run_finalizada (opcional; false por defecto).
+  readonly runFallido?: boolean;
 }
 
 // Un campo de texto tal como se ve ahora: de qué slide, qué texto y si es borrador.
@@ -73,7 +75,7 @@ function lienzoVacio(estado: Estado): boolean {
   );
 }
 
-export function Lienzo({ vista, svg, idioma }: PropsLienzo) {
+export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) {
   const contenedor = useRef<HTMLDivElement | null>(null);
   const marco = useRef<HTMLDivElement | null>(null);
   const etiquetaCursor = useRef<HTMLDivElement | null>(null);
@@ -344,6 +346,7 @@ export function Lienzo({ vista, svg, idioma }: PropsLienzo) {
         campoActivo={campoActivo}
         reproduciendo={vista.reproduciendo}
         velocidad={vista.velocidad}
+        runFallido={runFallido}
       />
     </div>
   );

@@ -5,8 +5,13 @@
  * una esquina para pintar el fondo o el centro) y muestra una burbuja con su actividad.
  * Una función por cuadro (gsap.ticker) mueve los avatares; así siguen al cursor mientras
  * se escribe. Con el slider, o con "reducir movimiento", se colocan de golpe.
+ *
+ * Cierre del run (9B-3): la burbuja de cierre dura MS_BURBUJA_CIERRE y después todos los
+ * avatares vuelven a reposo sin burbuja. En un run exitoso es «Cerrando la ejecución…»
+ * (con "reducir movimiento" se pasa directo al reposo); en un run fallido (`runFallido`)
+ * el avatar del último evento vuelve a reposo con una burbuja de fallo.
  */
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { AGENTES_AVATAR, Avatar } from "./avatares.tsx";
 import type { IdiomaFase } from "./fase.ts";
@@ -21,6 +26,8 @@ const SEPARACION = 50;
 const MARGEN = 10;
 // Fracción de la distancia que recorre el avatar en cada cuadro al volar (a 1x).
 const SUAVIDAD = 0.14;
+// Cuánto se ve la burbuja de cierre antes de dejar los avatares en reposo (ms).
+export const MS_BURBUJA_CIERRE = 3000;
 
 // Referencia a un elemento (compatible con useRef de React 18 y 19).
 interface Ref<T> {
@@ -36,6 +43,8 @@ interface PropsAvatares {
   readonly campoActivo: CampoActivo | null;
   readonly reproduciendo: boolean;
   readonly velocidad: number;
+  // El run falló o se cortó sin run_finalizada (opcional; false por defecto).
+  readonly runFallido?: boolean;
 }
 
 // Punto (esquina superior izquierda del avatar) en coordenadas del marco.
@@ -92,6 +101,10 @@ function puntoDeTrabajo(
   const centro = limitar({ x: m.width / 2 - TAM / 2, y: m.height * 0.2 }, m.width, m.height);
 
   switch (actividad.destino) {
+    case "reposo":
+      // Run fallido: el avatar se queda en su casilla de reposo (con la burbuja de fallo).
+      return puntoDeReposo(actividad.agente, m.height);
+
     case "esquina":
       // Pintar el fondo: esquina superior derecha.
       return limitar({ x: m.width - TAM - 14, y: 14 }, m.width, m.height);
@@ -142,8 +155,35 @@ export function AvataresVivos({
   campoActivo,
   reproduciendo,
   velocidad,
+  runFallido = false,
 }: PropsAvatares) {
-  const actividad = actividadDeEstado(estado, idioma);
+  // Actividad del último evento (o la de fallo si el run se cortó), tal como la describe la función pura.
+  const actividadPura = actividadDeEstado(estado, idioma, runFallido);
+  const clave = actividadPura !== null ? actividadPura.clave : null;
+  const cierre = actividadPura !== null ? actividadPura.cierre : null;
+
+  // Clave del cierre cuya burbuja ya venció (null = ninguna): pasados unos segundos se oculta.
+  const [cierreVencido, setCierreVencido] = useState<string | null>(null);
+
+  // Temporizador de la burbuja de cierre.
+  useEffect(() => {
+    // Sin cierre en pantalla se olvida el cierre vencido: el próximo cierre vuelve a mostrarse.
+    if (clave === null || cierre === null) {
+      setCierreVencido(null);
+      return;
+    }
+    const temporizador = window.setTimeout(() => setCierreVencido(clave), MS_BURBUJA_CIERRE);
+    return () => {
+      window.clearTimeout(temporizador);
+    };
+  }, [clave, cierre]);
+
+  // Con "reducir movimiento" el cierre exitoso pasa directo al reposo (el de fallo sí muestra su aviso).
+  const reducirMovimiento = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  const ocultarCierre =
+    cierre !== null && ((cierre === "exitoso" && reducirMovimiento) || cierreVencido === clave);
+  // Cierre ya vencido: sin actividad, así todos los avatares vuelven a su casilla y sin burbuja.
+  const actividad = ocultarCierre ? null : actividadPura;
 
   // Elemento y posición actual de cada avatar.
   const elementos = useRef(new Map<string, HTMLDivElement>());
@@ -163,12 +203,11 @@ export function AvataresVivos({
   useLayoutEffect(() => {
     const salto = estado.ultimoSeq - seqPrevio.current;
     seqPrevio.current = estado.ultimoSeq;
-    const reducirMovimiento =
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const reducir = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
     // Solo se recalcula cuando cambió el evento: así un re-render no corta un vuelo en curso.
     if (salto !== 0) {
-      vivo.current.suave = reproduciendo && salto === 1 && !reducirMovimiento;
+      vivo.current.suave = reproduciendo && salto === 1 && !reducir;
     }
     vivo.current.actividad = actividad;
     vivo.current.campoActivo = campoActivo;
