@@ -198,12 +198,17 @@ def test_validar_tolerante_no_rechaza_citas_no_literales():
     ({"campos": {"titulo": "x" * 61, "cuerpo": "y"}}, "supera 60"),
     ({"hechos": "no es lista"}, "lista de textos"),
     ({"hechos": ["El Sprint dura un mes como máximo."] * (MAX_HECHOS + 1)}, f"el máximo es {MAX_HECHOS}"),
-    ({"hechos": ["a" * (HECHO_MAX_CHARS + 1)]}, f"más de {HECHO_MAX_CHARS}"),
 ])
 def test_validar_tolerante_sigue_exigiendo_la_estructura(cambio, fragmento_motivo):
-    """El modo tolerante solo perdona las citas no literales: campos, límites y tipos se exigen siempre."""
+    """El modo tolerante solo perdona las citas (no literales o demasiado largas): campos, límites y tipos se exigen siempre."""
     motivos = validar_redaccion({**json.loads(_resp()), **cambio}, CAMPOS, FRAGMENTOS, exigir_citas=False)
     assert any(fragmento_motivo in m for m in motivos), motivos
+
+
+def test_cita_demasiado_larga_se_rechaza_en_modo_estricto_y_se_perdona_en_el_tolerante():
+    dato = {**json.loads(_resp()), "hechos": ["a" * (HECHO_MAX_CHARS + 1)]}
+    assert any(f"más de {HECHO_MAX_CHARS}" in m for m in _validar(dato))
+    assert validar_redaccion(dato, CAMPOS, FRAGMENTOS, exigir_citas=False) == []
 
 
 # ---------------------------- redactar_slide ----------------------------
@@ -258,6 +263,18 @@ def test_el_ultimo_intento_conserva_solo_las_citas_literales():
     c = ClienteFalso([_resp(hechos=["inventada"]), _resp(hechos=["inventada", buena])])
     r = _redactar(c)
     assert [h.texto for h in r.hechos] == [buena]  # la mala se descarta y la buena queda ubicada
+
+
+def test_cita_demasiado_larga_en_ambos_intentos_se_descarta_sin_abortar(caplog):
+    """Con una fuente larga (PDF) el modelo copia pasajes enteros: la cita larga se descarta, el slide se conserva."""
+    buena = "El Sprint dura un mes como máximo."
+    larga = "x" * (HECHO_MAX_CHARS + 1)
+    c = ClienteFalso([_resp(hechos=[larga]), _resp(hechos=[larga, buena])])
+    with caplog.at_level(logging.WARNING, logger="app.agentes.redactor"):
+        r = _redactar(c)
+    assert len(c.llamadas) == 2
+    assert [h.texto for h in r.hechos] == [buena] and r.campos["titulo"] == "Sprints de un mes"
+    assert "descartada" in caplog.text
 
 
 def test_cita_descartada_deja_aviso_en_el_log(caplog):

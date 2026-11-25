@@ -157,8 +157,9 @@ def validar_redaccion(
     # Cantidad y longitud de las citas.
     if len(hechos) > MAX_HECHOS:
         motivos.append(f"'hechos' tiene {len(hechos)} citas y el máximo es {MAX_HECHOS}")
+    # Modo tolerante (último intento): una cita demasiado larga tampoco aborta el run, `redactar_slide` la descarta.
     largos = [h for h in hechos if len(h) > HECHO_MAX_CHARS]
-    if largos:
+    if largos and exigir_citas:
         motivos.append(f"hay citas de más de {HECHO_MAX_CHARS} caracteres; usa citas más cortas")
 
     # Modo tolerante: no se rechaza por citas no literales (se descartarán al ubicarlas).
@@ -241,7 +242,10 @@ async def redactar_slide(
         lambda d: validar_redaccion(d, campos, fragmentos),
         lambda d: validar_redaccion(d, campos, fragmentos, exigir_citas=False),
     )
-    ubicados, faltan = ubicar_hechos(dato["hechos"], fragmentos)
+    # Una cita de más de HECHO_MAX_CHARS que sobrevivió al último intento tolerante se descarta sin ubicarla.
+    largos = [h for h in dato["hechos"] if len(h) > HECHO_MAX_CHARS]
+    ubicados, faltan = ubicar_hechos([h for h in dato["hechos"] if len(h) <= HECHO_MAX_CHARS], fragmentos)
+    faltan = [*faltan, *largos]
     # Las citas que siguen sin ser literales se descartan; el texto del slide se conserva y queda constancia.
     if faltan:
         log.warning(
