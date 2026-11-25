@@ -122,3 +122,29 @@ def test_una_licencia_fuera_del_contrato_bloquea_las_fotos_en_vez_de_romper_el_e
     monkeypatch.setattr(config, "FOTOS_LICENCIA", texto)
     ej, llamadas = correr_con_fotos(da_fotos)
     assert de_tipo(ej, "colocar_imagen") == [] and llamadas == [] and ej.estado == EstadoRun.TERMINADA
+
+
+def test_hay_una_pausa_antes_de_cada_foto_para_que_el_lienzo_las_anime_de_a_una(licencia, monkeypatch):
+    monkeypatch.setattr(config, "FOTOS_PAUSA_SEG", 1.5)
+    pausas = []
+
+    async def dormir_falso(seg):
+        pausas.append(seg)
+
+    async def preparar(_, huecos):
+        return await da_fotos(_, huecos)
+
+    agentes = dataclasses.replace(fabricar_agentes()[0], preparar_fotos=preparar, dormir=dormir_falso)
+
+    async def principal():
+        ejecucion = Ejecucion(RUN_ID, ENTRADA, resolucion_con_huecos(), "real")
+        await ejecutar_run_real(ejecucion, fuente(), "cliente", KIT, agentes, esperar_aprobacion=False)
+        return ejecucion
+
+    ej = asyncio.run(principal())
+    assert len(de_tipo(ej, "colocar_imagen")) == 3 and pausas == [1.5, 1.5, 1.5]
+
+
+def test_con_pausa_cero_no_se_duerme_nada(licencia):
+    ej, _ = correr_con_fotos(da_fotos)  # el conftest deja la pausa en 0 y el dormir real fallaría con un tope bajo si se usara
+    assert len(de_tipo(ej, "colocar_imagen")) == 3

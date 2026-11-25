@@ -74,7 +74,7 @@
     <g id="imagen-portada" class="hueco-imagen" data-campo="{{imagen_portada}}" data-opcional="true">
       <title>Foto de portada</title>
       <rect x="80" y="850" width="920" height="280" rx="16" fill="#F8FAFC" fill-opacity=".06" stroke="#38BDF8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>
-      <image x="80" y="850" width="920" height="280" preserveAspectRatio="xMidYMid slice" clip-path="url(#recorte-foto-1)" href="{{imagen_portada}}"/>
+      <g clip-path="url(#recorte-foto-1)"><image x="80" y="850" width="920" height="280" preserveAspectRatio="xMidYMid slice" href="{{imagen_portada}}"/></g>
     </g>
     <g id="progreso-1">
       <rect x="80"  y="1180" width="140" height="6" fill="#38BDF8"/>
@@ -99,7 +99,7 @@
     <g id="imagen-producto" class="hueco-imagen" data-campo="{{imagen_producto}}" data-opcional="true">
       <title>Foto del producto</title>
       <rect x="80" y="698" width="920" height="422" rx="16" fill="#F8FAFC" fill-opacity=".06" stroke="#38BDF8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>
-      <image x="80" y="698" width="920" height="422" preserveAspectRatio="xMidYMid slice" clip-path="url(#recorte-foto)" href="{{imagen_producto}}"/>
+      <g clip-path="url(#recorte-foto)"><image x="80" y="698" width="920" height="422" preserveAspectRatio="xMidYMid slice" href="{{imagen_producto}}"/></g>
     </g>
     <g id="progreso-2">
       <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
@@ -124,7 +124,7 @@
     <g id="imagen-apoyo-3" class="hueco-imagen" data-campo="{{imagen_apoyo_3}}" data-opcional="true">
       <title>Foto de apoyo</title>
       <rect x="80" y="880" width="920" height="250" rx="16" fill="#F8FAFC" fill-opacity=".06" stroke="#38BDF8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>
-      <image x="80" y="880" width="920" height="250" preserveAspectRatio="xMidYMid slice" clip-path="url(#recorte-foto-3)" href="{{imagen_apoyo_3}}"/>
+      <g clip-path="url(#recorte-foto-3)"><image x="80" y="880" width="920" height="250" preserveAspectRatio="xMidYMid slice" href="{{imagen_apoyo_3}}"/></g>
     </g>
     <g id="progreso-3">
       <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
@@ -149,7 +149,7 @@
     <g id="imagen-apoyo-4" class="hueco-imagen" data-campo="{{imagen_apoyo_4}}" data-opcional="true">
       <title>Foto de apoyo</title>
       <rect x="80" y="880" width="920" height="250" rx="16" fill="#F8FAFC" fill-opacity=".06" stroke="#38BDF8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>
-      <image x="80" y="880" width="920" height="250" preserveAspectRatio="xMidYMid slice" clip-path="url(#recorte-foto-4)" href="{{imagen_apoyo_4}}"/>
+      <g clip-path="url(#recorte-foto-4)"><image x="80" y="880" width="920" height="250" preserveAspectRatio="xMidYMid slice" href="{{imagen_apoyo_4}}"/></g>
     </g>
     <g id="progreso-4">
       <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
@@ -175,7 +175,7 @@
     <g id="imagen-cierre" class="hueco-imagen" data-campo="{{imagen_cierre}}" data-opcional="true">
       <title>Foto de cierre</title>
       <rect x="80" y="830" width="920" height="300" rx="16" fill="#F8FAFC" fill-opacity=".06" stroke="#38BDF8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>
-      <image x="80" y="830" width="920" height="300" preserveAspectRatio="xMidYMid slice" clip-path="url(#recorte-foto-5)" href="{{imagen_cierre}}"/>
+      <g clip-path="url(#recorte-foto-5)"><image x="80" y="830" width="920" height="300" preserveAspectRatio="xMidYMid slice" href="{{imagen_cierre}}"/></g>
     </g>
     <g id="progreso-5">
       <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>

@@ -52,7 +52,7 @@ function partir(texto: string): string[] {
 }
 
 // Coloca la etiqueta flotante con su esquina inferior izquierda en (x, y) del marco.
-function colocarEtiqueta(etiqueta: HTMLElement, marco: HTMLElement, x: number, y: number): void {
+export function colocarEtiqueta(etiqueta: HTMLElement, marco: HTMLElement, x: number, y: number): void {
   const anchoMarco = marco.getBoundingClientRect().width;
   // La etiqueta no se sale por la derecha ni por arriba.
   const izquierda = Math.max(0, Math.min(x, anchoMarco - etiqueta.offsetWidth));

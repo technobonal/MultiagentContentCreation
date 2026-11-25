@@ -80,7 +80,9 @@ function puntoDeReposo(agente: string, alto: number): Punto {
 // Busca el <div> de un campo de texto del slide (o el primero si no se da el nombre).
 function buscarCampo(marco: HTMLElement, slide: number, campo: string | null): HTMLElement | null {
   const selector =
-    campo !== null ? `#slide-${slide} [data-campo="{{${campo}}}"] div` : `#slide-${slide} [data-campo] div`;
+    campo !== null
+      ? `#slide-${slide} [data-campo="{{${campo}}}"] div, #slide-${slide} [data-campo="{{${campo}}}"] rect`
+      : `#slide-${slide} [data-campo] div`;
   return marco.querySelector<HTMLElement>(selector);
 }
 

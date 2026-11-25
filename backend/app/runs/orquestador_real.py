@@ -72,6 +72,7 @@ class Agentes:
     componer_carrusel: Callable[..., Any] = _componer_carrusel
     componer_slide: Callable[..., Any] = _componer_slide
     preparar_fotos: Callable[..., Any] = _preparar_fotos
+    dormir: Callable[..., Any] = asyncio.sleep  # inyectable: las pruebas no esperan de verdad
     ciclo: Callable[..., Any] = _ejecutar_ciclo
 
 
@@ -234,6 +235,8 @@ async def _colocar_fotos(ejecucion: Ejecucion, fuente: FuenteCargada, agentes: A
         foto = fotos.get(hueco.campo)
         if foto is None:
             continue
+        if config.FOTOS_PAUSA_SEG > 0:
+            await agentes.dormir(config.FOTOS_PAUSA_SEG)  # cada foto con su momento: el lienzo anima de a un evento
         referencia = f"foto-{hueco.slide}"
         try:
             ejecucion.guardar_imagen(referencia, foto.datos, foto.mime)

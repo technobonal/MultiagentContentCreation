@@ -13,6 +13,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { AvataresVivos } from "./AvataresVivos.tsx";
 import { esperarFuentes, parsearPlantilla } from "./cargarPlantilla.ts";
+import { colocarImagenEnVivo, imagenesColocadas, imagenNueva } from "./colocarImagenEnVivo.ts";
 import { escribirEnVivo, solidificar } from "./escrituraEnVivo.ts";
 import { detalleDeFase, faseDeEstado, nombreAgente, ultimoEvento } from "./fase.ts";
 import type { IdiomaFase } from "./fase.ts";
@@ -96,6 +97,9 @@ export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) 
   const claveResaltada = useRef<string | null>(null);
   // Animación de escritura / solidificación en curso.
   const animacion = useRef<gsap.core.Timeline | null>(null);
+  // Imágenes ya dibujadas («slide:campo» -> referencia) y cómo deshacer la animación de la foto en curso.
+  const imagenesPrevias = useRef<Map<string, string>>(new Map());
+  const restaurarImagen = useRef<(() => void) | null>(null);
 
   // Monta el SVG una vez por plantilla y espera las tipografías antes de medir.
   useEffect(() => {
@@ -143,6 +147,8 @@ export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) 
       seqPrevio.current = 0;
       veniaReproduciendo.current = false;
       claveResaltada.current = null;
+      imagenesPrevias.current = new Map();
+      restaurarImagen.current = null;
     };
   }, [svg]);
 
@@ -153,7 +159,10 @@ export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) 
     const etiqueta = etiquetaCursor.current;
     if (!cont || !marcoEl || !etiqueta || !montado) return;
 
-    // Se corta la animación del evento anterior y se oculta su etiqueta.
+    // Se corta la animación del evento anterior y se oculta su etiqueta. Si era la de una foto, se deshace primero
+    // (si no, la foto quedaría a medio revelar con los estilos de la animación).
+    restaurarImagen.current?.();
+    restaurarImagen.current = null;
     animacion.current?.kill();
     animacion.current = null;
     gsap.killTweensOf(etiqueta);
@@ -228,11 +237,18 @@ export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) 
     }
     propuestasPrevias.current = propuestasAhora;
 
-    // El campo de trabajo es el texto que cambió en pantalla o, si no, el borrador que cambió.
+    // Qué foto apareció en el slide activo (para ubicar a su avatar y animarla).
+    const imagenesAhora = imagenesColocadas(vista.estado);
+    const fotoNueva = imagenNueva(imagenesPrevias.current, imagenesAhora, vista.estado.slideActivo);
+    imagenesPrevias.current = imagenesAhora;
+
+    // El campo de trabajo es la foto nueva, el texto que cambió en pantalla o, si no, el borrador que cambió.
     const ubicacion: CampoActivo | null =
-      elegido !== null
-        ? { slide: elegido.campo.slide, campo: elegido.campo.campo }
-        : propuestaCambiada;
+      fotoNueva !== null
+        ? fotoNueva
+        : elegido !== null
+          ? { slide: elegido.campo.slide, campo: elegido.campo.campo }
+          : propuestaCambiada;
     // Solo se actualiza el estado si el campo realmente cambió (evita renders de más).
     if (ubicacion !== null) {
       setCampoActivo((prev) =>
@@ -242,8 +258,27 @@ export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) 
       );
     }
 
+    // Una foto recién colocada se anima con su propia coreografía y deja sin animar al texto de ese instante.
+    const ultimoEv = ultimoEvento(vista.estado);
+    let animoFoto = false;
+    if (animar && fotoNueva !== null && ultimoEv?.tipo === "colocar_imagen") {
+      const grupo = cont.querySelector<SVGElement>(`#slide-${fotoNueva.slide} [data-campo="{{${fotoNueva.campo}}}"]`);
+      if (grupo) {
+        const colocacion = colocarImagenEnVivo({
+          grupo,
+          etiqueta,
+          marco: marcoEl,
+          nombreAgente: nombreAgente(ultimoEv.agente ?? "director_arte", idioma),
+          velocidad: vista.velocidad,
+        });
+        animacion.current = colocacion.timeline;
+        restaurarImagen.current = colocacion.restaurar;
+        animoFoto = true;
+      }
+    }
+
     // Anima el campo elegido con el nombre del agente que hizo el último evento.
-    if (animar && elegido !== null) {
+    if (animar && elegido !== null && !animoFoto) {
       const { campo, previo } = elegido;
       const div = cont.querySelector<HTMLElement>(
         `#slide-${campo.slide} [data-campo="{{${campo.campo}}}"] div`,
