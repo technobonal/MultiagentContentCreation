@@ -124,6 +124,29 @@ export function textoEspera(idioma: IdiomaFase): string {
   return idioma === "es" ? "En espera" : "Em espera";
 }
 
+// true cuando la ejecución ya cerró (se aplicó run_finalizada); al mirar el pasado con irA vuelve a false.
+export function ejecucionTerminada(estado: Estado): boolean {
+  return estado.final !== null;
+}
+
+// Texto de un agente que no llegó a intervenir en una ejecución ya terminada.
+export function textoSinIntervencion(idioma: IdiomaFase): string {
+  return idioma === "es" ? "Sin intervención" : "Sem intervenção";
+}
+
+// Texto de la ficha de un agente en la mesa: su última acción mientras el run avanza,
+// y un estado final cuando el run terminó (si no, las fichas se quedarían en "Planificando…" etc.).
+export function textoEstadoAgente(estado: Estado, agente: string, idioma: IdiomaFase): string {
+  const entrada = estado.agentes[agente];
+  // Run terminado: quien actuó figura como terminado y quien nunca actuó ya no "espera" nada.
+  if (ejecucionTerminada(estado)) {
+    return entrada ? TEXTOS.terminado[idioma] : textoSinIntervencion(idioma);
+  }
+  // Run en curso: sin intervención todavía = en espera; si no, la frase de su última acción.
+  if (!entrada) return textoEspera(idioma);
+  return textoFaseDeTipo(entrada.tipo, idioma);
+}
+
 // Detalle del paso actual (solo para los pasos del estratega y del sistema); null si no hay.
 export function detalleDeFase(estado: Estado, idioma: IdiomaFase): string | null {
   const ultimo = ultimoEvento(estado);

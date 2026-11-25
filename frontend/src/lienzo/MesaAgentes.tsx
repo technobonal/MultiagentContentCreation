@@ -1,16 +1,11 @@
 /**
  * MesaAgentes.tsx — Franja con los agentes del sistema: quién acaba de actuar (resaltado
  * y pulsando) y cuál fue la última acción de cada uno. Cada ficha lleva su mini-avatar.
- * Se lee del estado del reductor.
+ * Se lee del estado del reductor. Al terminar el run, cada ficha pasa a su estado final
+ * ("Terminado" / "Sin intervención") en vez de quedarse con su última acción.
  */
 import { Avatar } from "./avatares.tsx";
-import {
-  AGENTES_MESA,
-  nombreAgente,
-  textoEspera,
-  textoFaseDeTipo,
-  ultimoEvento,
-} from "./fase.ts";
+import { AGENTES_MESA, nombreAgente, textoEstadoAgente, ultimoEvento } from "./fase.ts";
 import type { IdiomaFase } from "./fase.ts";
 import type { Estado } from "../timeline/types.ts";
 
@@ -30,9 +25,8 @@ export function MesaAgentes({ estado, idioma }: { estado: Estado; idioma: Idioma
             <Avatar agente={agente} tamano={22} />
             <div className="agente-texto">
               <span className="agente-nombre">{nombreAgente(agente, idioma)}</span>
-              <span className="agente-estado">
-                {entrada ? textoFaseDeTipo(entrada.tipo, idioma) : textoEspera(idioma)}
-              </span>
+              {/* Su última acción mientras el run avanza; su estado final cuando terminó. */}
+              <span className="agente-estado">{textoEstadoAgente(estado, agente, idioma)}</span>
             </div>
           </div>
         );
