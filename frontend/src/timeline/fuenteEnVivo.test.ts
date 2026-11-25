@@ -307,6 +307,16 @@ describe("fuenteEnVivo", () => {
     expect(fuente.obtener().total).toBe(0);
   });
 
+  it("elegir una velocidad reconecta desde el principio pidiendo ese ritmo", () => {
+    const { fuente, fuentes } = montar();
+    expect(fuentes[0]?.url).toBe(URL_BASE); // sin velocidad elegida no hay ritmo
+    fuente.velocidad(2);
+    expect(fuentes).toHaveLength(2);
+    expect(fuentes[0]?.cerrada).toBe(true);
+    expect(fuentes[1]?.url).toBe(`${URL_BASE}?ritmo=2`);
+    expect(fuente.obtener().velocidad).toBe(2);
+  });
+
   it("rechaza una velocidad fuera de la lista", () => {
     const { fuente } = montar();
     // @ts-expect-error: 7 no es una Velocidad válida

@@ -113,6 +113,8 @@ async def eventos_de_run(
     last_event_id: str | None = Header(default=None),  # llega como cabecera Last-Event-ID
     # EventSource no permite fijar cabeceras a mano: el cliente usa ?desde=N para pedir de nuevo lo que falta.
     desde: int | None = Query(default=None, ge=0),
+    # Repetición animada de un run guardado: ritmo 1, 2 o 3 (sin él, los eventos guardados salen de golpe).
+    ritmo: int | None = Query(default=None, ge=1, le=3),
     brecha_max: float = Depends(obtener_brecha_max),
     latido: float = Depends(obtener_latido),
     registro: RegistroRuns = Depends(obtener_registro_runs),
@@ -145,7 +147,7 @@ async def eventos_de_run(
         if desde_seq > 0 and desde_seq >= len(ejecucion.eventos) and ejecucion.estado == EstadoRun.TERMINADA:
             return Response(status_code=204)
         return StreamingResponse(
-            flujo_vivo(ejecucion, desde_seq, latido),
+            flujo_vivo(ejecucion, desde_seq, latido, ritmo=ritmo, brecha_max=brecha_max),
             media_type="text/event-stream",
             headers=CABECERAS_SSE,
         )

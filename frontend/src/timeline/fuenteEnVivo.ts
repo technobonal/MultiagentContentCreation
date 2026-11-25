@@ -61,12 +61,16 @@ export interface FuenteEnVivo extends Reproductor {
   obtenerEnVivo(): VistaEnVivo;
 }
 
-// Arma la URL de la conexión: con ?desde=N solo si ya se recibió algo.
-function construirUrl(base: string, desde: number): string {
+// Arma la URL de la conexión: con ?desde=N solo si ya se recibió algo y con ritmo=N solo si la persona
+// eligió una velocidad (repetición animada de lo que el servidor ya tiene guardado).
+export function construirUrl(base: string, desde: number, ritmo: number | null = null): string {
+  const partes: string[] = [];
   // Sin eventos previos se pide todo desde el principio.
-  if (desde <= 0) return base;
+  if (desde > 0) partes.push(`desde=${desde}`);
+  if (ritmo !== null) partes.push(`ritmo=${ritmo}`);
+  if (partes.length === 0) return base;
   // Respeta una query ya existente en la URL base.
-  return `${base}${base.includes("?") ? "&" : "?"}desde=${desde}`;
+  return `${base}${base.includes("?") ? "&" : "?"}${partes.join("&")}`;
 }
 
 // Redacta el aviso a partir del evento nombrado `evento_invalido` que envía el servidor.
@@ -107,7 +111,8 @@ export function crearFuenteEnVivo(
   let estado = crearEstadoInicial();
   let aplicados = 0; // cuántos eventos del buffer ya pasaron por el reductor
   let reproduciendo = true; // en vivo se arranca aplicando
-  let factor: Velocidad = 1; // se guarda por la interfaz, pero el ritmo lo marca el servidor
+  let factor: Velocidad = 1; // velocidad de las animaciones del lienzo
+  let ritmo: Velocidad | null = null; // null = sin repetición animada; 1, 2 o 3 tras elegir una velocidad
   let flujoCompleto = false; // true cuando llegó run_finalizada
   let conexion: EstadoConexion = "conectando";
   let mensaje: string | null = null;
@@ -280,7 +285,7 @@ export function crearFuenteEnVivo(
   // Abre una conexión nueva pidiendo los eventos con seq mayor que `desde`.
   function conectar(desde: number): void {
     cerrarActual();
-    const fuente = fabrica(construirUrl(urlBase, desde));
+    const fuente = fabrica(construirUrl(urlBase, desde, ritmo));
     actual = fuente;
     // Los avisos de una conexión que ya no es la vigente se descartan.
     const vigente = (): boolean => !destruido && actual === fuente;
@@ -400,8 +405,11 @@ export function crearFuenteEnVivo(
         );
       }
       if (destruido) return;
-      // Sin efecto real: en modo servidor el ritmo lo marca el backend.
       factor = valor;
+      // Repetición animada: se vuelve a pedir el run desde el principio con ese ritmo y el servidor
+      // reenvía lo que ya tiene guardado espaciado en el tiempo (un run en curso sigue con su ritmo real).
+      ritmo = valor;
+      reiniciarInterno();
       publicar();
     },
 

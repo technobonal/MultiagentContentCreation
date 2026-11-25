@@ -2,7 +2,8 @@
  * App.tsx — Pantalla principal: elige la fuente de eventos (grabación local o servidor SSE),
  * carga la plantilla y muestra la mesa de agentes, el lienzo, las miniaturas y los controles.
  * Lienzo no cambia entre fuentes: ambas cumplen la interfaz Reproductor.
- * En modo Servidor el ritmo lo marca el backend, así que no se muestran las velocidades.
+ * En modo Servidor los botones 1x/2x/3x repiten el run guardado animado (el backend espacia los eventos
+ * con ?ritmo=N); un run en curso sigue a su ritmo real.
  * CAMBIO: el slide que se mira puede elegirse a mano (miniatura sin eventos, como el de
  * fuentes y sello); la elección se suelta sola cuando llega un evento nuevo o se salta en el tiempo.
  * 9B-3: en modo Servidor, si la conexión termina en error se avisa al lienzo (`runFallido`)
@@ -56,7 +57,6 @@ function Pantalla({
   svg,
   idiomaGuia,
   eventos,
-  enVivo = false,
   runFallido = false,
 }: {
   reproductor: Reproductor;
@@ -64,8 +64,6 @@ function Pantalla({
   idiomaGuia: IdiomaFase;
   // Eventos de la secuencia (la tira calcula a dónde saltar con ellos).
   eventos: readonly Evento[];
-  // NUEVO: en modo Servidor se ocultan las velocidades (el ritmo lo marca el backend).
-  enVivo?: boolean;
   // NUEVO (9B-3): el canal falló (solo modo Servidor; false por defecto).
   runFallido?: boolean;
 }) {
@@ -158,18 +156,21 @@ function Pantalla({
             Reiniciar
           </button>
 
-          {/* Un botón por velocidad (1x, 2x, 3x), solo con grabación local. */}
-          {!enVivo &&
-            VELOCIDADES.map((v) => (
-              <button
-                key={v}
-                type="button"
-                aria-pressed={vista.velocidad === v}
-                onClick={() => reproductor.velocidad(v)}
-              >
-                {v}x
-              </button>
-            ))}
+          {/* Un botón por velocidad (1x, 2x, 3x). En modo Servidor, elegir una repite el run guardado
+              animado a ese ritmo (el servidor espacia los eventos; un run en curso sigue a su paso). */}
+          {VELOCIDADES.map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={vista.velocidad === v}
+              onClick={() => {
+                soltarManual();
+                reproductor.velocidad(v);
+              }}
+            >
+              {v}x
+            </button>
+          ))}
         </div>
 
         {/* Seek por índice de evento: 0 = inicio, total = todo aplicado (en vivo, total crece). */}
@@ -282,7 +283,6 @@ function PantallaServidor({ fuente, svg }: { fuente: FuenteEnVivo; svg: string }
         svg={svg}
         idiomaGuia={idiomaGuia}
         eventos={vivo.eventos}
-        enVivo
         runFallido={vivo.conexion === "error"}
       />
     </>

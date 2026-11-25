@@ -84,6 +84,11 @@ LangGraph entra en la **Fase 2, después de que existan el revisor y el ciclo de
 - [ ] `reasoning_effort` bajo en los modelos gpt-oss
 - [ ] Loguear por qué estratega y redactor caen en `fallback=True`
 - [ ] Mejorar los estados de espera en el lienzo (hoy Estratega "Planificando…" y Revisor "En espera" quedan desactualizados durante la espera de cupo)
+- [x] Límites de Groq verificados en la consola (2026-11-25): 8K TPM, 30 RPM y 200K tokens por día en `qwen/qwen3.8-27b`, `gpt-oss-120b` y `gpt-oss-20b`; `GROQ_TPM=8000` es correcto, así que la espera de cupo es real y el único camino es gastar menos tokens por run (~27K en `run_d95dcd67`, unos 7 runs completos por día y modelo)
+- [x] Medición de dos runs reales (2026-11-25): `run_d95dcd67` en 71.7 s (51 s de espera de cupo, 45 s solo en `qwen` con el 20b también lleno) y `run_a3f9cf5c` en 14.8 s (sin espera, una sola ronda de corrección; no es comparable). Sin esperas un run cuesta unos 15 s de trabajo real
+- [x] Cadena del redactor `qwen → gpt-oss-20b → gpt-oss-120b` (commit `a0f1daf`): el 120b entra solo si los otros dos no tienen cupo, y rompe la independencia con el revisor solo en ese caso (log con `fallback=True`). Se quita con `GROQ_FALLBACK_REDACTOR`. Falta confirmarlo con 2 o 3 runs seguidos que saturen la ventana
+- [x] Repetición animada de un run guardado (2026-11-25): un run terminado se abría de golpe, sin animación. `GET /api/runs/{id}/eventos?ritmo=1|2|3` reenvía los eventos guardados con su brecha original (tope `BRECHA_MAX_SEG`) dividida por el ritmo; sin el parámetro nada cambia. En modo Servidor los botones 1x/2x/3x reconectan pidiendo ese ritmo (`emisor.py`, `rutas.py`, `fuenteEnVivo.ts`, `App.tsx`; 793 tests del backend y `fuenteEnVivo.test.ts` 21 passed)
+- [ ] Prefiltro del revisor y menos tokens en el redactor: el revisor gasta más de la mitad del run (~14K tokens), pero la espera de cupo estuvo en `qwen`; el prefiltro ayuda poco a esa espera (estimado 5 a 10 s), así que primero medir con runs seguidos
 - [ ] Medir el run completo con el log de tiempos y comparar con el objetivo (30-60 s, estimado)
 
 ### Pendiente

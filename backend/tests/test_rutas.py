@@ -715,10 +715,11 @@ def test_get_pasa_la_brecha_y_el_latido_de_las_dependencias_a_los_flujos(falsos,
         vistos["brecha"] = brecha_max
         return flujo_sse(eventos, brecha_max, *args)
 
-    def flujo_vivo_espia(ejecucion, desde_seq, latido_seg):
-        """Anota desde_seq y latido recibidos y delega en el flujo real."""
+    def flujo_vivo_espia(ejecucion, desde_seq, latido_seg, **kwargs):
+        """Anota desde_seq, latido y ritmo recibidos y delega en el flujo real."""
         vistos["desde"], vistos["latido"] = desde_seq, latido_seg
-        return flujo_vivo(ejecucion, desde_seq, latido_seg)
+        vistos["ritmo"], vistos["brecha_vivo"] = kwargs.get("ritmo"), kwargs.get("brecha_max")
+        return flujo_vivo(ejecucion, desde_seq, latido_seg, **kwargs)
 
     monkeypatch.setattr(rutas, "flujo_sse", flujo_sse_espia)
     monkeypatch.setattr(rutas, "flujo_vivo", flujo_vivo_espia)
@@ -731,7 +732,31 @@ def test_get_pasa_la_brecha_y_el_latido_de_las_dependencias_a_los_flujos(falsos,
             await c.get(f"/api/runs/{ejecucion.run_id}/eventos", headers={"Last-Event-ID": "1"})  # en memoria
 
     correr(escenario())
-    assert vistos == {"brecha": 1.25, "desde": 1, "latido": 0.5}
+    assert vistos == {"brecha": 1.25, "desde": 1, "latido": 0.5, "ritmo": None, "brecha_vivo": 1.25}
+
+
+def test_get_pasa_el_ritmo_a_flujo_vivo_y_rechaza_valores_fuera_de_1_a_3(falsos, registro, ajustes, monkeypatch):
+    """?ritmo=2 llega a flujo_vivo junto con la brecha; 0 y 4 son 422."""
+    ajustes["brecha"] = 2.0
+    vistos = {}
+
+    def flujo_vivo_espia(ejecucion, desde_seq, latido_seg, **kwargs):
+        """Anota el ritmo recibido y delega en el flujo real."""
+        vistos["ritmo"] = kwargs.get("ritmo")
+        return flujo_vivo(ejecucion, desde_seq, latido_seg, **kwargs)
+
+    monkeypatch.setattr(rutas, "flujo_vivo", flujo_vivo_espia)
+
+    async def escenario():
+        ejecucion = await terminar_run(registro, eventos=2)
+        async with cliente_http() as c:
+            ok = await c.get(f"/api/runs/{ejecucion.run_id}/eventos?ritmo=2")
+            bajo = await c.get(f"/api/runs/{ejecucion.run_id}/eventos?ritmo=0")
+            alto = await c.get(f"/api/runs/{ejecucion.run_id}/eventos?ritmo=4")
+        return ok.status_code, bajo.status_code, alto.status_code
+
+    assert correr(escenario()) == (200, 422, 422)
+    assert vistos["ritmo"] == 2
 
 
 # --------------------------------------------------------------------------------------

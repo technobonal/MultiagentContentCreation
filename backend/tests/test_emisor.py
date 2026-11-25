@@ -591,3 +591,47 @@ def test_real_flujo_vivo_reanuda_una_ejecucion_completa_desde_el_seq_30():
         return await leer(ejecucion, desde_seq=30)
 
     assert [m["id"] for m in parsear_sse("".join(asyncio.run(escenario())))] == [31, 32]
+
+# --------------------------------------------------------------------------------------
+# flujo_vivo: repetición animada de un run guardado (parámetro ritmo)
+# --------------------------------------------------------------------------------------
+
+def _ejecucion_con_brechas(brechas: list[int]):
+    """Ejecución cerrada con un evento por brecha: el primero en 0 s y cada siguiente `brecha` s después."""
+
+    async def preparar():
+        ejecucion = hacer_ejecucion()
+        await llenar(ejecucion, len(brechas))
+        await ejecucion.cerrar()
+        segundo = 0
+        for evento, brecha in zip(ejecucion.eventos, brechas):
+            segundo += brecha
+            evento["timestamp"] = f"2026-11-11T20:00:{segundo:02d}-03:00"
+        return ejecucion
+
+    return preparar
+
+
+def test_flujo_vivo_con_ritmo_espacia_los_eventos_guardados_dividiendo_la_brecha(contrato_ok):
+    """Brechas de 4 s y 6 s con tope 5 y ritmo 2: esperas de 2,0 y 2,5 s (el tope se aplica antes de dividir)."""
+    esperas, dormir = reloj_falso()
+
+    async def escenario():
+        ejecucion = await _ejecucion_con_brechas([0, 4, 6])()
+        return await juntar(flujo_vivo(ejecucion, 0, 0.05, ritmo=2, brecha_max=5.0, dormir=dormir))
+
+    mensajes = asyncio.run(escenario())
+    assert esperas == [2.0, 2.5]
+    assert [m["id"] for m in parsear_sse("".join(mensajes))] == [1, 2, 3]
+
+
+def test_flujo_vivo_sin_ritmo_no_espacia(contrato_ok):
+    """Sin ritmo los eventos guardados salen de golpe, como siempre."""
+    esperas, dormir = reloj_falso()
+
+    async def escenario():
+        ejecucion = await _ejecucion_con_brechas([0, 4, 6])()
+        return await juntar(flujo_vivo(ejecucion, 0, 0.05, brecha_max=5.0, dormir=dormir))
+
+    asyncio.run(escenario())
+    assert esperas == []
