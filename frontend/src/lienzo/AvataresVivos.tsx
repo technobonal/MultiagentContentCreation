@@ -286,6 +286,7 @@ export function AvataresVivos({
               else elementos.current.delete(agente);
             }}
             className={clase}
+            data-agente={agente}
             data-accion={propia !== null ? propia.accion : "reposo"}
           >
             {/* El cuerpo flota con un desfase distinto por agente. */}

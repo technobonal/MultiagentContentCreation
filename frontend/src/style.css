@@ -879,7 +879,7 @@ input[type="range"] {
   }
 }
 
-/* ---------- Escena de la foto: el director de arte recorta y coloca (colocarImagenEnVivo.ts) ---------- */
+/* ---------- Escena de la foto: el avatar del director de arte la lleva y la coloca (colocarImagenEnVivo.ts) ---------- */
 .foto-escena {
   position: absolute;
   inset: 0;
@@ -919,21 +919,7 @@ input[type="range"] {
   object-fit: cover;
   display: block;
 }
-/* Marco de recorte que se cierra sobre la foto. */
-.foto-recorte {
-  position: absolute;
-  border: 3px dashed #38bdf8;
-  box-shadow: 0 0 0 9999px rgb(2 6 23 / 0.35);
-}
-/* Línea de escaneo que baja mientras se recorta. */
-.foto-escaneo {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: #38bdf8;
-  box-shadow: 0 0 14px 3px rgb(56 189 248 / 0.9);
-}
+
 /* Cartel grande con lo que hace el agente. */
 .foto-cartel {
   position: absolute;
@@ -960,4 +946,12 @@ input[type="range"] {
 .foto-cartel-texto {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Copia del avatar que lleva la foto: del tamaño del avatar real; GSAP lo agranda. */
+.foto-portador {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.55));
 }

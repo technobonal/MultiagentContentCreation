@@ -46,29 +46,33 @@ function montar(conTamano = true) {
   marco.innerHTML = `<svg><g data-campo="{{imagen_producto}}">
       <rect x="80" y="698" width="920" height="422"/>
       <image x="80" y="698" width="920" height="422" data-cargada="true" href="/api/runs/r/imagenes/foto-2"/>
-    </g></svg>`;
+    </g></svg>
+    <div class="avatar" data-agente="director_arte"><div class="avatar-cuerpo"><svg class="cara"></svg></div></div>`;
   document.body.appendChild(marco);
   const grupo = marco.querySelector("g") as unknown as SVGElement;
   const img = marco.querySelector("image") as unknown as SVGImageElement;
   if (conTamano) {
     medir(marco, 0, 0, 540, 675);
     medir(marco.querySelector("rect") as Element, 40, 349, 460, 211);
+    medir(marco.querySelector(".avatar") as Element, 10, 620, 44, 44);
   }
   return { marco, grupo, img };
 }
 
-const OPCIONES = { nombreAgente: "Director de arte", descripcion: "Imagen de la página 3 de la fuente", slide: 2 };
+const OPCIONES = { agente: "director_arte", nombreAgente: "Director de arte", descripcion: "Imagen de la página 3 de la fuente", slide: 2 };
 
 describe("colocarImagenEnVivo", () => {
-  it("monta la escena: foto grande, foco, onda, destello y un cartel con el agente", () => {
+  it("monta la escena: el avatar copiado con la foto en las manos, foco, onda, destello y cartel", () => {
     const { marco, grupo, img } = montar();
     const { restaurar } = colocarImagenEnVivo({ grupo, marco, ...OPCIONES });
     const escena = marco.querySelector(".foto-escena") as HTMLElement;
     expect(escena).not.toBeNull();
-    for (const clase of [".foto-foco", ".foto-onda", ".foto-flash", ".foto-tarjeta", ".foto-recorte", ".foto-escaneo", ".foto-cartel"]) {
+    for (const clase of [".foto-foco", ".foto-onda", ".foto-flash", ".foto-tarjeta", ".foto-portador", ".foto-cartel"]) {
       expect(escena.querySelector(clase), clase).not.toBeNull();
     }
     expect(escena.querySelector(".foto-cartel-agente")?.textContent).toBe("Director de arte");
+    // El que lleva la foto es una copia del avatar del agente (el real lo mueve AvataresVivos).
+    expect(escena.querySelector(".foto-portador .avatar-cuerpo svg.cara")).not.toBeNull();
     expect((escena.querySelector(".foto-tarjeta-img") as HTMLImageElement).getAttribute("src")).toBe("/api/runs/r/imagenes/foto-2");
     // La foto real queda oculta hasta el aterrizaje y el fundido CSS no compite con GSAP.
     expect(img.style.opacity).toBe("0");
@@ -76,10 +80,13 @@ describe("colocarImagenEnVivo", () => {
     restaurar();
   });
 
-  it("restaurar quita la escena y devuelve la foto al CSS; una segunda vez no falla", () => {
+  it("restaurar quita la escena, vuelve a mostrar el avatar real y devuelve la foto al CSS; una segunda vez no falla", () => {
     const { marco, grupo, img } = montar();
     const { restaurar } = colocarImagenEnVivo({ grupo, marco, ...OPCIONES });
+    const avatar = marco.querySelector(".avatar") as HTMLElement;
+    avatar.style.visibility = "hidden"; // como lo deja la escena mientras su copia trabaja
     restaurar();
+    expect(avatar.style.visibility).toBe("");
     expect(marco.querySelector(".foto-escena")).toBeNull();
     expect(img.style.opacity).toBe("");
     expect(img.style.transition).toBe("");
@@ -123,5 +130,16 @@ describe("duración de la escena", () => {
     expect(b.timeline.duration()).toBeCloseTo(a.timeline.duration() / 2, 1);
     a.restaurar();
     b.restaurar();
+  });
+});
+
+describe("sin avatar en el marco", () => {
+  it("la escena igual funciona (el portador sale vacío desde la esquina)", () => {
+    const { marco, grupo } = montar();
+    marco.querySelector(".avatar")?.remove();
+    const { timeline, restaurar } = colocarImagenEnVivo({ grupo, marco, ...OPCIONES });
+    expect(marco.querySelector(".foto-portador")).not.toBeNull();
+    expect(timeline.duration()).toBeGreaterThan(2.6);
+    restaurar();
   });
 });

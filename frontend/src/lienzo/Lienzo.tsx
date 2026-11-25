@@ -267,6 +267,7 @@ export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) 
         const colocacion = colocarImagenEnVivo({
           grupo,
           marco: marcoEl,
+          agente: ultimoEv.agente ?? "director_arte",
           nombreAgente: nombreAgente(ultimoEv.agente ?? "director_arte", idioma),
           descripcion: vista.estado.lienzo.imagenes[fotoNueva.slide]?.[fotoNueva.campo]?.texto_alternativo ?? "foto de la fuente",
           slide: fotoNueva.slide,

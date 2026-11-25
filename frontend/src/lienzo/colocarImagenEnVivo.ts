@@ -1,28 +1,36 @@
 // ---------------------------------------------------------------------------
-// colocarImagenEnVivo.ts — Escena del director de arte al colocar una foto en un hueco de la plantilla. Es grande a
-// propósito: el avatar mide 44 px y un borde que late no se nota, así que la acción se cuenta con elementos visibles.
-//  1. RECORTANDO: destello de cámara; la foto aparece grande al centro con un marco de recorte que se cierra y una línea
-//     de escaneo, y un cartel dice qué hace el agente.
-//  2. COLOCANDO: el resto del lienzo se oscurece (foco sobre el hueco) y la foto VUELA hasta él.
-//  3. ATERRIZAJE: onda de impacto y destello; el cartel pasa a «Foto colocada».
-// Se espera a que la imagen cargue antes de empezar. Las partes puras (qué foto es nueva) están aparte para probarlas.
+// colocarImagenEnVivo.ts — Escena del director de arte colocando una foto: EL AVATAR LA LLEVA.
+//  1. TOMA LA FOTO: el avatar del agente se agranda en su lugar y la foto aparece en sus manos.
+//  2. LA LLEVA: vuela con ella en una curva hasta encima del hueco; el resto del lienzo se oscurece.
+//  3. LA COLOCA: la foto se despega de sus manos y se ajusta al hueco con un rebote; el avatar empuja.
+//  4. SE VA: onda de impacto, «Foto colocada ✓», y el avatar vuelve a su tamaño y se desvanece.
+// Se usa una COPIA del avatar (el real lo mueve AvataresVivos cuadro a cuadro y pisaría cualquier transform); el real
+// queda oculto durante la escena para que no se vean dos. Avatar y foto viajan juntos porque se animan con los mismos
+// tiempos y la misma curva. Las partes puras (qué foto es nueva) están aparte para probarlas sin DOM.
 // ---------------------------------------------------------------------------
 import gsap from "gsap";
 import type { Estado } from "../timeline/types.ts";
 
 // Duraciones base (s, a 1x; se dividen por la velocidad). La suma (~3 s) tiene que caber en la pausa que el backend deja
 // entre foto y foto (`FOTOS_PAUSA_SEG`, 3,5 s): un evento nuevo corta la escena en curso.
-const FLASH_S = 0.3;
-const APARECER_S = 0.5;
-const ESCANEO_S = 0.8; // el marco de recorte se cierra y la línea de escaneo baja
-const PAUSA_ANTES_VUELO_S = 0.15;
-const FOCO_S = 0.3;
-const VUELO_S = 0.9;
-const ATERRIZAJE_S = 0.7; // onda y destello
-const SALIDA_S = 0.35;
+const TOMAR_S = 0.45; // el avatar crece y la foto aparece en sus manos
+const LEVANTAR_S = 0.3; // gesto de levantar la foto antes de salir
+const VUELO_S = 1.1;
+const COLOCAR_S = 0.55;
+const ONDA_S = 0.65;
+const SALIDA_DESDE_S = 0.2; // tras colocar, el avatar empieza a irse así de tarde
+const SALIDA_S = 0.45;
 const CARTEL_S = 0.25;
-// Ancho de la tarjeta al centro, como fracción del ancho del marco.
-const FRACCION_TARJETA = 0.5;
+const FOCO_S = 0.35;
+// Tamaño del avatar en reposo (px, como .avatar en style.css) y cuánto crece al trabajar.
+const TAM_AVATAR = 44;
+const ESCALA_AVATAR = 2.4;
+// Altura del arco del vuelo (px hacia arriba en el punto medio).
+const ARCO_PX = 70;
+// Ancho de la foto en las manos: fracción del ancho del hueco, acotada.
+const FRACCION_FOTO_EN_MANOS = 0.42;
+const FOTO_EN_MANOS_MIN_PX = 110;
+const FOTO_EN_MANOS_MAX_PX = 240;
 // Un hueco que mide menos que esto (por ejemplo, oculto) no se anima.
 const TAMANO_MINIMO_PX = 4;
 // Si la imagen tarda más que esto en cargar, se anima igual (se verá el hueco o el error).
@@ -56,8 +64,10 @@ export function imagenNueva(previas: ReadonlyMap<string, string>, actuales: Read
 export interface OpcionesColocacion {
   /** Grupo `[data-campo]` del hueco de imagen (trae el rect punteado y el <image>). */
   readonly grupo: SVGElement;
-  /** Contenedor del lienzo (posición relativa): sobre él se monta la escena. */
+  /** Contenedor del lienzo (posición relativa): sobre él se monta la escena y en él viven los avatares. */
   readonly marco: HTMLElement;
+  /** Agente que coloca la foto (para encontrar su avatar). */
+  readonly agente?: string;
   readonly nombreAgente: string;
   /** Qué foto es (el texto alternativo trae la página de origen). */
   readonly descripcion: string;
@@ -68,7 +78,7 @@ export interface OpcionesColocacion {
 
 export interface ColocacionEnVivo {
   readonly timeline: gsap.core.Timeline;
-  /** Deja el hueco y el lienzo como si no hubiera escena (al cortarla por un evento nuevo o al terminar). Idempotente. */
+  /** Deja el hueco, el avatar y el lienzo como si no hubiera escena (al cortarla o al terminar). Idempotente. */
   readonly restaurar: () => void;
 }
 
@@ -94,6 +104,12 @@ function crear(clase: string, padre: HTMLElement, etiqueta = "div"): HTMLElement
   return el;
 }
 
+/** «Página N» a partir del texto alternativo («Imagen de la página 3 de la fuente»), o el texto entero si no la trae. */
+function origenCorto(descripcion: string): string {
+  const m = /p[aá]gina\s+(\d+)/i.exec(descripcion);
+  return m ? `la foto de la página ${m[1]}` : descripcion;
+}
+
 export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
   const { grupo, marco, nombreAgente, descripcion, slide } = o;
   const factor = Math.max(0.1, o.velocidad ?? 1);
@@ -110,10 +126,12 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
 
   const escena = crear("foto-escena", marco);
   escena.setAttribute("aria-hidden", "true");
+  const avatarReal = marco.querySelector<HTMLElement>(`.avatar[data-agente="${o.agente ?? "director_arte"}"]`);
 
   function restaurar(): void {
     gsap.killTweensOf(escena.querySelectorAll("*"));
     escena.remove();
+    if (avatarReal) avatarReal.style.removeProperty("visibility");
     if (img) {
       gsap.killTweensOf(img);
       // Se devuelve el control al CSS (visible cuando cargó) y se quita todo lo que puso la escena.
@@ -123,94 +141,122 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
   }
   tl.eventCallback("onComplete", restaurar);
 
-  // La foto real queda oculta hasta el aterrizaje; el fundido CSS se apaga mientras GSAP manda.
+  // La foto real queda oculta hasta que el avatar la coloca; el fundido CSS se apaga mientras GSAP manda.
   img.style.transition = "none";
   gsap.set(img, { opacity: 0 });
 
+  // --- Geometría (px, relativa al marco) ---
   const rMarco = marco.getBoundingClientRect();
   const hx = rHueco.left - rMarco.left;
   const hy = rHueco.top - rMarco.top;
   const proporcion = rHueco.width / rHueco.height;
+  const lado = TAM_AVATAR * ESCALA_AVATAR; // tamaño visible del avatar agrandado
+  // Foto en las manos.
+  const fw = Math.min(FOTO_EN_MANOS_MAX_PX, Math.max(FOTO_EN_MANOS_MIN_PX, rHueco.width * FRACCION_FOTO_EN_MANOS));
+  const fh = fw / proporcion;
+  // Dónde sostiene la foto respecto del CENTRO del avatar: abajo y un poco a la derecha, tapada en parte por las manos.
+  const manosX = -fw * 0.2;
+  const manosY = lado * 0.22;
+  // Origen: el avatar real (o, si no está, la esquina inferior izquierda del marco).
+  let cx0 = TAM_AVATAR;
+  let cy0 = rMarco.height - TAM_AVATAR;
+  if (avatarReal) {
+    const r = avatarReal.getBoundingClientRect();
+    if (r.width > 0) {
+      cx0 = r.left - rMarco.left + r.width / 2;
+      cy0 = r.top - rMarco.top + r.height / 2;
+    }
+  }
+  // Destino: el avatar queda encima del hueco y la foto, justo sobre su borde superior.
+  const cx1 = Math.min(rMarco.width - lado / 2, Math.max(lado / 2, hx + rHueco.width / 2 - manosX - fw / 2));
+  const cy1 = Math.max(lado / 2 + 4, hy - manosY - fh + 6);
 
-  // Elementos de la escena.
-  const foco = crear("foto-foco", escena); // oscurece todo menos el hueco (box-shadow enorme)
+  // --- Elementos (el orden es el de apilado: lo último queda arriba) ---
+  const foco = crear("foto-foco", escena); // oscurece todo menos el hueco
   const onda = crear("foto-onda", escena);
-  const flash = crear("foto-flash", escena);
   const tarjeta = crear("foto-tarjeta", escena);
   const foto = document.createElement("img");
   foto.className = "foto-tarjeta-img";
   foto.alt = "";
   foto.src = img.getAttribute("href") ?? "";
   tarjeta.appendChild(foto);
-  const recorte = crear("foto-recorte", tarjeta);
-  const linea = crear("foto-escaneo", tarjeta);
+  const portador = crear("foto-portador", escena); // la copia del avatar
+  const cuerpo = avatarReal?.querySelector(".avatar-cuerpo");
+  if (cuerpo) portador.innerHTML = cuerpo.outerHTML;
+  const flash = crear("foto-flash", escena);
   const cartel = crear("foto-cartel", escena);
   const cartelAgente = crear("foto-cartel-agente", cartel, "span");
   cartelAgente.textContent = nombreAgente;
   const cartelTexto = crear("foto-cartel-texto", cartel, "span");
 
-  // Posiciones: el foco y la onda coinciden con el hueco; la tarjeta empieza grande al centro.
-  for (const el of [foco, onda]) gsap.set(el, { left: hx, top: hy, width: rHueco.width, height: rHueco.height });
-  const anchoInicial = Math.max(rHueco.width, rMarco.width * FRACCION_TARJETA);
-  const altoInicial = anchoInicial / proporcion;
-  gsap.set(tarjeta, {
-    left: (rMarco.width - anchoInicial) / 2,
-    top: (rMarco.height - altoInicial) / 2 - 24,
-    width: anchoInicial,
-    height: altoInicial,
-    opacity: 0,
-    scale: 0.55,
-    rotation: -7,
-  });
-  gsap.set([foco, onda, flash], { opacity: 0 });
-  gsap.set(cartel, { opacity: 0, y: -18 });
-  gsap.set(recorte, { inset: "-9%" });
-  gsap.set(linea, { top: "0%", opacity: 0 });
+  // Posición de la foto en las manos para un centro de avatar dado.
+  const enManos = (cx: number, cy: number) => ({ left: cx + manosX, top: cy + manosY });
 
-  // 0. Espera a la imagen (si ya cargó, sigue de inmediato).
+  for (const el of [foco, onda]) gsap.set(el, { left: hx, top: hy, width: rHueco.width, height: rHueco.height, opacity: 0 });
+  gsap.set(flash, { opacity: 0 });
+  gsap.set(portador, { left: cx0 - TAM_AVATAR / 2, top: cy0 - TAM_AVATAR / 2, scale: 1, transformOrigin: "50% 50%", opacity: 1 });
+  gsap.set(tarjeta, { ...enManos(cx0, cy0), width: fw, height: fh, rotation: -8, scale: 0, transformOrigin: "50% 0%", opacity: 1 });
+  gsap.set(cartel, { opacity: 0, y: -18 });
+
+  // 0. Espera a la imagen (si ya cargó, sigue de inmediato) y oculta el avatar real.
   tl.add(() => {
+    if (avatarReal) avatarReal.style.visibility = "hidden";
     tl.pause();
     void esperarCarga(img).then(() => tl.resume());
   }, 0);
 
-  // 1. RECORTANDO: destello, la tarjeta aparece con rebote, el marco se cierra y la línea escanea.
-  const aparecer = APARECER_S / factor;
-  const escaneo = ESCANEO_S / factor;
+  // 1. TOMA LA FOTO: el avatar crece y la foto aparece en sus manos.
+  const tomar = TOMAR_S / factor;
   tl.add(() => {
-    cartelTexto.textContent = `Recortando · ${descripcion}`;
+    cartelTexto.textContent = `Tomando ${origenCorto(descripcion)}`;
   }, 0.01);
   tl.to(cartel, { opacity: 1, y: 0, duration: CARTEL_S / factor, ease: "power2.out" }, 0.01);
-  tl.fromTo(flash, { opacity: 0.85 }, { opacity: 0, duration: FLASH_S / factor, ease: "power2.out" }, 0.01);
-  tl.to(tarjeta, { opacity: 1, scale: 1, rotation: -3, duration: aparecer, ease: "back.out(1.8)" }, 0.01);
-  tl.to(recorte, { inset: "0%", duration: escaneo, ease: "power2.inOut" }, aparecer);
-  tl.fromTo(linea, { top: "0%", opacity: 1 }, { top: "100%", duration: escaneo, ease: "none" }, aparecer);
-  tl.to(linea, { opacity: 0, duration: 0.1 / factor }, aparecer + escaneo);
+  tl.to(portador, { scale: ESCALA_AVATAR, duration: tomar, ease: "back.out(2)" }, 0.01);
+  tl.to(tarjeta, { scale: 1, duration: tomar, ease: "back.out(1.6)" }, 0.01 + tomar * 0.4);
+  // Gesto de levantar la foto (los dos suben y bajan juntos).
+  const levantar = LEVANTAR_S / factor;
+  tl.to([portador, tarjeta], { y: -14, duration: levantar / 2, ease: "sine.out" }, tomar);
+  tl.to([portador, tarjeta], { y: 0, duration: levantar / 2, ease: "sine.in" }, tomar + levantar / 2);
 
-  // 2. COLOCANDO: el foco oscurece el resto y la foto vuela al hueco.
-  const t2 = aparecer + escaneo + PAUSA_ANTES_VUELO_S / factor;
+  // 2. LA LLEVA: mismo recorrido para avatar y foto (así viajan juntos) y un arco hacia arriba.
+  const t2 = tomar + levantar;
+  const vuelo = VUELO_S / factor;
   tl.add(() => {
-    cartelTexto.textContent = `Colocando en el slide ${slide}`;
+    cartelTexto.textContent = `Llevándola al slide ${slide}`;
   }, t2);
   tl.to(foco, { opacity: 1, duration: FOCO_S / factor }, t2);
+  tl.to(portador, { left: cx1 - TAM_AVATAR / 2, top: cy1 - TAM_AVATAR / 2, duration: vuelo, ease: "power2.inOut" }, t2);
+  tl.to(tarjeta, { ...enManos(cx1, cy1), rotation: -4, duration: vuelo, ease: "power2.inOut" }, t2);
+  tl.to([portador, tarjeta], { y: -ARCO_PX, duration: vuelo / 2, ease: "sine.out" }, t2);
+  tl.to([portador, tarjeta], { y: 0, duration: vuelo / 2, ease: "sine.in" }, t2 + vuelo / 2);
+
+  // 3. LA COLOCA: la foto se despega de las manos y llena el hueco con un rebote; el avatar empuja.
+  const t3 = t2 + vuelo;
+  const colocar = COLOCAR_S / factor;
+  tl.add(() => {
+    cartelTexto.textContent = `Colocándola en el slide ${slide}`;
+  }, t3);
   tl.to(
     tarjeta,
-    { left: hx, top: hy, width: rHueco.width, height: rHueco.height, rotation: 0, duration: VUELO_S / factor, ease: "power3.inOut" },
-    t2,
+    { left: hx, top: hy, width: rHueco.width, height: rHueco.height, rotation: 0, transformOrigin: "50% 50%", duration: colocar, ease: "back.out(1.2)" },
+    t3,
   );
+  tl.to(portador, { y: 12, rotation: 8, duration: colocar / 2, ease: "power1.out" }, t3);
+  tl.to(portador, { y: 0, rotation: 0, duration: colocar / 2, ease: "power1.in" }, t3 + colocar / 2);
 
-  // 3. ATERRIZAJE: la foto real aparece bajo la tarjeta, onda de impacto y destello.
-  const t3 = t2 + VUELO_S / factor;
-  tl.set(img, { opacity: 1 }, t3);
+  // 4. ATERRIZAJE Y SALIDA: aparece la foto real, onda y destello; el avatar se achica y se va.
+  const t4 = t3 + colocar;
+  tl.set(img, { opacity: 1 }, t4);
   tl.add(() => {
     cartelTexto.textContent = "Foto colocada ✓";
-  }, t3);
-  tl.fromTo(onda, { opacity: 0.95, scale: 1 }, { opacity: 0, scale: 1.18, duration: ATERRIZAJE_S / factor, ease: "power2.out" }, t3);
-  tl.fromTo(flash, { opacity: 0.45 }, { opacity: 0, duration: 0.35 / factor, ease: "power2.out" }, t3);
-  tl.to(tarjeta, { opacity: 0, duration: 0.3 / factor }, t3 + 0.05 / factor);
-
-  // 4. Salida: el foco y el cartel se retiran.
-  const t4 = t3 + 0.45 / factor; // se solapa con el final de la onda
-  tl.to(foco, { opacity: 0, duration: SALIDA_S / factor }, t4);
-  tl.to(cartel, { opacity: 0, y: -10, duration: SALIDA_S / factor }, t4);
+  }, t4);
+  tl.fromTo(onda, { opacity: 0.95, scale: 1 }, { opacity: 0, scale: 1.15, duration: ONDA_S / factor, ease: "power2.out" }, t4);
+  tl.fromTo(flash, { opacity: 0.35 }, { opacity: 0, duration: 0.3 / factor, ease: "power2.out" }, t4);
+  tl.to(tarjeta, { opacity: 0, duration: 0.25 / factor }, t4 + 0.05 / factor);
+  const t5 = t4 + SALIDA_DESDE_S / factor;
+  const salida = SALIDA_S / factor;
+  tl.to(portador, { scale: 1, opacity: 0, duration: salida, ease: "power2.in" }, t5);
+  tl.to(foco, { opacity: 0, duration: salida }, t5);
+  tl.to(cartel, { opacity: 0, y: -10, duration: salida }, t5);
   return { timeline: tl, restaurar };
 }
