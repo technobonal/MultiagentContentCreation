@@ -7,6 +7,7 @@ reemplazar en los tests: un «motor» es una función que recibe una imagen (num
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from statistics import median
 
 from app import config
@@ -65,18 +66,42 @@ def ordenar_en_filas(lineas: list[tuple[Caja, str]]) -> list[str]:
     return [" ".join(i[3] for i in sorted(fila, key=lambda i: i[1])) for fila in filas]
 
 
-def ocr_de_paginas(doc: object, motor: Motor | None = None) -> list[list[str]]:
-    """Lee con OCR cada página de un documento PyMuPDF abierto: una lista de filas de texto por página."""
+@dataclass(frozen=True)
+class PaginaLeida:
+    """Resultado crudo del OCR de una página: tamaño de la imagen leída y cada trozo de texto con su caja (en píxeles)."""
+    ancho: int
+    alto: int
+    lineas: tuple[tuple[Caja, str], ...]
+
+    def cajas_normalizadas(self) -> list[tuple[float, float, float, float]]:
+        """Cajas de texto como (x1, y1, x2, y2) entre 0 y 1: no dependen de la resolución a la que se leyó."""
+        cajas = []
+        for caja, texto in self.lineas:
+            if not texto.strip():
+                continue
+            xs = [p[0] for p in caja]
+            ys = [p[1] for p in caja]
+            cajas.append((min(xs) / self.ancho, min(ys) / self.alto, max(xs) / self.ancho, max(ys) / self.alto))
+        return cajas
+
+
+def leer_paginas(doc: object, motor: Motor | None = None) -> list[PaginaLeida]:
+    """Lee con OCR cada página de un documento PyMuPDF abierto, conservando las cajas del texto."""
     import numpy as np
     import pymupdf
 
     motor = motor or motor_por_defecto()
-    paginas: list[list[str]] = []
+    paginas: list[PaginaLeida] = []
     for pagina in doc:  # type: ignore[attr-defined]
         ancho, alto = pagina.rect.width, pagina.rect.height
         # 150 ppp como mucho, y el lado mayor nunca pasa de PDF_OCR_LADO_MAX_PX (las páginas grandes tardan mucho).
         zoom = min(150 / 72, config.PDF_OCR_LADO_MAX_PX / max(ancho, alto, 1))
         pix = pagina.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), colorspace=pymupdf.csRGB)
         imagen = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3)
-        paginas.append(ordenar_en_filas(motor(imagen)))
+        paginas.append(PaginaLeida(pix.width, pix.height, tuple(motor(imagen))))
     return paginas
+
+
+def ocr_de_paginas(doc: object, motor: Motor | None = None) -> list[list[str]]:
+    """Lee con OCR cada página de un documento PyMuPDF abierto: una lista de filas de texto por página."""
+    return [ordenar_en_filas(list(p.lineas)) for p in leer_paginas(doc, motor)]
