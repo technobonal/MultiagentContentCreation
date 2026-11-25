@@ -46,7 +46,8 @@ from app.agentes.comun import AgenteError
 from app.agentes.director_arte import componer_carrusel as _componer_carrusel
 from app.agentes.director_arte import componer_slide as _componer_slide
 from app.agentes.estratega import generar_brief as _generar_brief
-from app.agentes.foto_de_fuente import preparar_foto as _preparar_foto
+from app.agentes.foto_de_fuente import huecos_de_ficha
+from app.agentes.foto_de_fuente import preparar_fotos as _preparar_fotos
 from app.agentes.redactor import TextoSlide
 from app.agentes.redactor import redactar_slide as _redactar_slide
 from app.agentes.revisor_codigo import con_ids as _con_ids
@@ -70,7 +71,7 @@ class Agentes:
     con_ids: Callable[..., Any] = _con_ids
     componer_carrusel: Callable[..., Any] = _componer_carrusel
     componer_slide: Callable[..., Any] = _componer_slide
-    preparar_foto: Callable[..., Any] = _preparar_foto
+    preparar_fotos: Callable[..., Any] = _preparar_fotos
     ciclo: Callable[..., Any] = _ejecutar_ciclo
 
 
@@ -208,45 +209,41 @@ async def _emitir_arte(ejecucion: Ejecucion, eventos: list, solo_texto: bool = F
         await ejecucion.emitir(agente=evento.agente, tipo=evento.tipo, payload=evento.payload, slide=evento.slide)
 
 
-def _campo_de_imagen(ficha: dict) -> tuple[int, str] | None:
-    """(slide, campo sin llaves) del primer campo de imagen de la ficha, o None si la plantilla no tiene."""
-    for slide in ficha["slides"]:
-        for campo in slide.get("campos", []):
-            if campo.get("tipo") == "imagen":
-                return slide["numero"], campo["nombre"].strip("{}")
-    return None
+async def _colocar_fotos(ejecucion: Ejecucion, fuente: FuenteCargada, agentes: Agentes) -> None:
+    """Coloca en los huecos de imagen de la plantilla fotos recortadas de la fuente (PDF), una distinta por hueco.
 
-
-async def _colocar_foto(ejecucion: Ejecucion, fuente: FuenteCargada, agentes: Agentes) -> None:
-    """Coloca en el hueco de imagen de la plantilla una foto recortada de la fuente (PDF), si se puede.
-
-    Es opcional y nunca tumba el run: sin licencia liberada (`FOTOS_LICENCIA`), sin hueco en la plantilla, sin foto
-    que sirva o ante cualquier falla local, el carrusel sale igual, solo con texto. La licencia bloqueada por defecto
-    evita incluso el trabajo de recortar.
+    Es opcional y nunca tumba el run: sin licencia liberada (`FOTOS_LICENCIA`), sin huecos en la plantilla, sin fotos
+    que sirvan o ante cualquier falla local, el carrusel sale igual, solo con texto. La licencia bloqueada por defecto
+    evita incluso el trabajo de recortar. Un hueco sin foto simplemente queda oculto.
     """
     licencia = config.FOTOS_LICENCIA
     if not licencia:
         return
     if not 2 <= len(licencia) <= 120:  # el contrato exige de 2 a 120 caracteres: no se arriesga un evento inválido
-        log.warning("FOTOS_LICENCIA debe tener entre 2 y 120 caracteres; no se coloca la foto")
+        log.warning("FOTOS_LICENCIA debe tener entre 2 y 120 caracteres; no se colocan fotos")
         return
-    destino = _campo_de_imagen(ejecucion.resolucion.ficha)
-    if destino is None:
+    huecos = huecos_de_ficha(ejecucion.resolucion.ficha)
+    if not huecos:
         return
-    slide, campo = destino
-    referencia = f"foto-{slide}"
     try:
-        foto = await agentes.preparar_foto(fuente)
-        if foto is None:
-            return
-        ejecucion.guardar_imagen(referencia, foto.datos, foto.mime)
-    except Exception as exc:  # la foto es opcional: se registra y se sigue sin ella
-        log.warning("No se pudo preparar la foto de la fuente (%s): %s", type(exc).__name__, exc)
+        fotos = await agentes.preparar_fotos(fuente, huecos)
+    except Exception as exc:  # las fotos son opcionales: se registra y se sigue sin ellas
+        log.warning("No se pudieron preparar las fotos de la fuente (%s): %s", type(exc).__name__, exc)
         return
-    await ejecucion.emitir(
-        agente="director_arte", tipo="colocar_imagen", slide=slide,
-        payload={"campo": campo, "referencia": referencia, "licencia": licencia, "texto_alternativo": foto.texto_alternativo},
-    )
+    for hueco in huecos:  # en orden de slide, así el lienzo las ve colocarse de la primera a la última
+        foto = fotos.get(hueco.campo)
+        if foto is None:
+            continue
+        referencia = f"foto-{hueco.slide}"
+        try:
+            ejecucion.guardar_imagen(referencia, foto.datos, foto.mime)
+        except ValueError as exc:  # una imagen que el run no acepta no impide las demás
+            log.warning("No se guardó la foto del slide %s: %s", hueco.slide, exc)
+            continue
+        await ejecucion.emitir(
+            agente="director_arte", tipo="colocar_imagen", slide=hueco.slide,
+            payload={"campo": hueco.campo, "referencia": referencia, "licencia": licencia, "texto_alternativo": foto.texto_alternativo},
+        )
 
 
 def _crear_corrector(
@@ -338,8 +335,8 @@ async def _correr(
     # El director de arte compone todo el carrusel con los textos ya redactados.
     with medidor.etapa("director_arte"):
         await _emitir_arte(ejecucion, agentes.componer_carrusel(resolucion, kit, textos))
-    with medidor.etapa("foto"):
-        await _colocar_foto(ejecucion, fuente, agentes)
+    with medidor.etapa("fotos"):
+        await _colocar_fotos(ejecucion, fuente, agentes)
 
     # Ciclo de corrección con el revisor real (código + fidelidad) y el corrector envuelto.
     revisor = RevisorCarrusel(

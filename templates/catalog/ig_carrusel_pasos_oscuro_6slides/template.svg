@@ -55,6 +55,10 @@
   <defs>
     <!-- Esquinas redondeadas de la foto: el mismo rectángulo que el borde punteado del hueco imagen-producto. -->
     <clipPath id="recorte-foto"><rect x="80" y="698" width="920" height="422" rx="16"/></clipPath>
+    <clipPath id="recorte-foto-1"><rect x="80" y="850" width="920" height="280" rx="16"/></clipPath>
+    <clipPath id="recorte-foto-3"><rect x="80" y="880" width="920" height="250" rx="16"/></clipPath>
+    <clipPath id="recorte-foto-4"><rect x="80" y="880" width="920" height="250" rx="16"/></clipPath>
+    <clipPath id="recorte-foto-5"><rect x="80" y="830" width="920" height="300" rx="16"/></clipPath>
   </defs>
   <rect id="fondo" width="1080" height="1350" fill="#0F172A"/>
 
@@ -67,6 +71,11 @@
     <foreignObject x="80" y="660" width="920" height="150" data-campo="{{subtitulo}}" data-lineas-max="3" data-fuente-min="32" data-opcional="true">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:50px;height:150px;opacity:.8;">{{subtitulo}}</div>
     </foreignObject>
+    <g id="imagen-portada" class="hueco-imagen" data-campo="{{imagen_portada}}" data-opcional="true">
+      <title>Foto de portada</title>
+      <rect x="80" y="850" width="920" height="280" rx="16" fill="#F8FAFC" fill-opacity=".06" stroke="#38BDF8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>
+      <image x="80" y="850" width="920" height="280" preserveAspectRatio="xMidYMid slice" clip-path="url(#recorte-foto-1)" href="{{imagen_portada}}"/>
+    </g>
     <g id="progreso-1">
       <rect x="80"  y="1180" width="140" height="6" fill="#38BDF8"/>
       <rect x="236" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
@@ -87,7 +96,7 @@
       <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:50px;height:200px;opacity:.85;">{{cuerpo}}</div>
     </foreignObject>
     <!-- Opcional: si el usuario no sube imagen, el renderizador oculta este grupo -->
-    <g id="imagen-producto" data-campo="{{imagen_producto}}" data-opcional="true">
+    <g id="imagen-producto" class="hueco-imagen" data-campo="{{imagen_producto}}" data-opcional="true">
       <title>Foto del producto</title>
       <rect x="80" y="698" width="920" height="422" rx="16" fill="#F8FAFC" fill-opacity=".06" stroke="#38BDF8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>
       <image x="80" y="698" width="920" height="422" preserveAspectRatio="xMidYMid slice" clip-path="url(#recorte-foto)" href="{{imagen_producto}}"/>
@@ -112,6 +121,11 @@
     <foreignObject x="116" y="528" width="884" height="312" data-campo="{{cuerpo}}" data-lineas-max="6" data-fuente-min="30">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:52px;height:312px;opacity:.85;">{{cuerpo}}</div>
     </foreignObject>
+    <g id="imagen-apoyo-3" class="hueco-imagen" data-campo="{{imagen_apoyo_3}}" data-opcional="true">
+      <title>Foto de apoyo</title>
+      <rect x="80" y="880" width="920" height="250" rx="16" fill="#F8FAFC" fill-opacity=".06" stroke="#38BDF8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>
+      <image x="80" y="880" width="920" height="250" preserveAspectRatio="xMidYMid slice" clip-path="url(#recorte-foto-3)" href="{{imagen_apoyo_3}}"/>
+    </g>
     <g id="progreso-3">
       <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
       <rect x="236" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
@@ -132,6 +146,11 @@
     <foreignObject x="116" y="528" width="884" height="312" data-campo="{{cuerpo}}" data-lineas-max="6" data-fuente-min="30">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:52px;height:312px;opacity:.85;">{{cuerpo}}</div>
     </foreignObject>
+    <g id="imagen-apoyo-4" class="hueco-imagen" data-campo="{{imagen_apoyo_4}}" data-opcional="true">
+      <title>Foto de apoyo</title>
+      <rect x="80" y="880" width="920" height="250" rx="16" fill="#F8FAFC" fill-opacity=".06" stroke="#38BDF8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>
+      <image x="80" y="880" width="920" height="250" preserveAspectRatio="xMidYMid slice" clip-path="url(#recorte-foto-4)" href="{{imagen_apoyo_4}}"/>
+    </g>
     <g id="progreso-4">
       <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
       <rect x="236" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
@@ -153,6 +172,11 @@
     <foreignObject x="128" y="580" width="824" height="162" data-campo="{{cta}}" data-lineas-max="3" data-fuente-min="36">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t sobre-acento" style="display:flex;align-items:center;font-size:40px;line-height:54px;height:162px;">{{cta}}</div>
     </foreignObject>
+    <g id="imagen-cierre" class="hueco-imagen" data-campo="{{imagen_cierre}}" data-opcional="true">
+      <title>Foto de cierre</title>
+      <rect x="80" y="830" width="920" height="300" rx="16" fill="#F8FAFC" fill-opacity=".06" stroke="#38BDF8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="10 8"/>
+      <image x="80" y="830" width="920" height="300" preserveAspectRatio="xMidYMid slice" clip-path="url(#recorte-foto-5)" href="{{imagen_cierre}}"/>
+    </g>
     <g id="progreso-5">
       <rect x="80"  y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>
       <rect x="236" y="1180" width="140" height="6" fill="#F8FAFC" fill-opacity=".2"/>

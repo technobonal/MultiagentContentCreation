@@ -866,15 +866,15 @@ input[type="range"] {
 }
 
 /* Foto de la fuente en el hueco de imagen: transparente hasta cargar y entra con un fundido. */
-#imagen-producto image {
+.hueco-imagen image {
   opacity: 0;
   transition: opacity 0.7s ease;
 }
-#imagen-producto image[data-cargada="true"] {
+.hueco-imagen image[data-cargada="true"] {
   opacity: 1;
 }
 @media (prefers-reduced-motion: reduce) {
-  #imagen-producto image {
+  .hueco-imagen image {
     transition: none;
   }
 }

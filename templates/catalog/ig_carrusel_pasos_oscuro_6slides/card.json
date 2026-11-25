@@ -18,7 +18,8 @@
       "rol": "gancho",
       "campos": [
         { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 3, "tamano_fuente_min": 56 },
-        { "nombre": "{{subtitulo}}", "tipo": "texto", "obligatorio": false, "origen_valor": "llm", "longitud_max": 120, "lineas_max": 3, "tamano_fuente_min": 32 }
+        { "nombre": "{{subtitulo}}", "tipo": "texto", "obligatorio": false, "origen_valor": "llm", "longitud_max": 120, "lineas_max": 3, "tamano_fuente_min": 32 },
+        { "nombre": "{{imagen_portada}}", "tipo": "imagen", "obligatorio": false, "origen_valor": "usuario", "texto_alternativo": "Foto de portada" }
       ]
     },
     {
@@ -35,7 +36,8 @@
       "rol": "desarrollo",
       "campos": [
         { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 2, "tamano_fuente_min": 48 },
-        { "nombre": "{{cuerpo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 220, "lineas_max": 6, "tamano_fuente_min": 30 }
+        { "nombre": "{{cuerpo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 220, "lineas_max": 6, "tamano_fuente_min": 30 },
+        { "nombre": "{{imagen_apoyo_3}}", "tipo": "imagen", "obligatorio": false, "origen_valor": "usuario", "texto_alternativo": "Foto de apoyo" }
       ]
     },
     {
@@ -43,7 +45,8 @@
       "rol": "desarrollo",
       "campos": [
         { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 2, "tamano_fuente_min": 48 },
-        { "nombre": "{{cuerpo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 220, "lineas_max": 6, "tamano_fuente_min": 30 }
+        { "nombre": "{{cuerpo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 220, "lineas_max": 6, "tamano_fuente_min": 30 },
+        { "nombre": "{{imagen_apoyo_4}}", "tipo": "imagen", "obligatorio": false, "origen_valor": "usuario", "texto_alternativo": "Foto de apoyo" }
       ]
     },
     {
@@ -51,7 +54,8 @@
       "rol": "cierre",
       "campos": [
         { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 2, "tamano_fuente_min": 48 },
-        { "nombre": "{{cta}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 100, "lineas_max": 3, "tamano_fuente_min": 36 }
+        { "nombre": "{{cta}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 100, "lineas_max": 3, "tamano_fuente_min": 36 },
+        { "nombre": "{{imagen_cierre}}", "tipo": "imagen", "obligatorio": false, "origen_valor": "usuario", "texto_alternativo": "Foto de cierre" }
       ]
     },
     {
