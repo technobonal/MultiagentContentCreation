@@ -878,3 +878,86 @@ input[type="range"] {
     transition: none;
   }
 }
+
+/* ---------- Escena de la foto: el director de arte recorta y coloca (colocarImagenEnVivo.ts) ---------- */
+.foto-escena {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  pointer-events: none;
+}
+/* Foco: oscurece todo el lienzo menos el hueco donde cae la foto. */
+.foto-foco {
+  position: absolute;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.62), 0 0 28px 6px rgb(56 189 248 / 0.7);
+}
+.foto-onda {
+  position: absolute;
+  border-radius: 12px;
+  border: 5px solid #38bdf8;
+  box-shadow: 0 0 24px 4px rgb(56 189 248 / 0.8);
+}
+.foto-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+}
+/* La foto que el agente recorta y lleva al hueco. */
+.foto-tarjeta {
+  position: absolute;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.55);
+  outline: 4px solid #f8fafc;
+  outline-offset: -4px;
+}
+.foto-tarjeta-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* Marco de recorte que se cierra sobre la foto. */
+.foto-recorte {
+  position: absolute;
+  border: 3px dashed #38bdf8;
+  box-shadow: 0 0 0 9999px rgb(2 6 23 / 0.35);
+}
+/* Línea de escaneo que baja mientras se recorta. */
+.foto-escaneo {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #38bdf8;
+  box-shadow: 0 0 14px 3px rgb(56 189 248 / 0.9);
+}
+/* Cartel grande con lo que hace el agente. */
+.foto-cartel {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 92%;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgb(15 23 42 / 0.92);
+  border: 2px solid #38bdf8;
+  color: #f8fafc;
+  font-size: 1.05rem;
+  white-space: nowrap;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.5);
+}
+.foto-cartel-agente {
+  font-weight: 700;
+  color: #38bdf8;
+}
+.foto-cartel-texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

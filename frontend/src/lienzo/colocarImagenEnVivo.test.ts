@@ -35,69 +35,91 @@ describe("imagenesColocadas e imagenNueva", () => {
   });
 });
 
-function montar() {
-  const marco = document.createElement("div");
-  marco.innerHTML = `<svg><g data-campo="{{imagen_producto}}">
-      <rect x="80" y="698" width="920" height="422" stroke-opacity=".5"/>
-      <image x="80" y="698" width="920" height="422" data-cargada="true"/>
-    </g></svg><span class="etiqueta"></span>`;
-  document.body.appendChild(marco);
-  const grupo = marco.querySelector("g") as unknown as SVGElement;
-  const etiqueta = marco.querySelector(".etiqueta") as HTMLElement;
-  const img = marco.querySelector("image") as unknown as SVGImageElement;
-  return { marco, grupo, etiqueta, img };
+/** Mide un elemento a la fuerza: el DOM simulado no hace layout y todo mediría 0. */
+function medir(el: Element, left: number, top: number, width: number, height: number): void {
+  (el as unknown as { getBoundingClientRect: () => DOMRect }).getBoundingClientRect = () =>
+    ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
 }
 
+function montar(conTamano = true) {
+  const marco = document.createElement("div");
+  marco.innerHTML = `<svg><g data-campo="{{imagen_producto}}">
+      <rect x="80" y="698" width="920" height="422"/>
+      <image x="80" y="698" width="920" height="422" data-cargada="true" href="/api/runs/r/imagenes/foto-2"/>
+    </g></svg>`;
+  document.body.appendChild(marco);
+  const grupo = marco.querySelector("g") as unknown as SVGElement;
+  const img = marco.querySelector("image") as unknown as SVGImageElement;
+  if (conTamano) {
+    medir(marco, 0, 0, 540, 675);
+    medir(marco.querySelector("rect") as Element, 40, 349, 460, 211);
+  }
+  return { marco, grupo, img };
+}
+
+const OPCIONES = { nombreAgente: "Director de arte", descripcion: "Imagen de la página 3 de la fuente", slide: 2 };
+
 describe("colocarImagenEnVivo", () => {
-  it("al empezar oculta la foto, muestra la etiqueta con el agente y agrega la barra de luz", () => {
-    const { marco, grupo, etiqueta, img } = montar();
-    const { restaurar } = colocarImagenEnVivo({ grupo, etiqueta, marco, nombreAgente: "Director de arte" });
-    expect(etiqueta.textContent).toBe("Director de arte");
+  it("monta la escena: foto grande, foco, onda, destello y un cartel con el agente", () => {
+    const { marco, grupo, img } = montar();
+    const { restaurar } = colocarImagenEnVivo({ grupo, marco, ...OPCIONES });
+    const escena = marco.querySelector(".foto-escena") as HTMLElement;
+    expect(escena).not.toBeNull();
+    for (const clase of [".foto-foco", ".foto-onda", ".foto-flash", ".foto-tarjeta", ".foto-recorte", ".foto-escaneo", ".foto-cartel"]) {
+      expect(escena.querySelector(clase), clase).not.toBeNull();
+    }
+    expect(escena.querySelector(".foto-cartel-agente")?.textContent).toBe("Director de arte");
+    expect((escena.querySelector(".foto-tarjeta-img") as HTMLImageElement).getAttribute("src")).toBe("/api/runs/r/imagenes/foto-2");
+    // La foto real queda oculta hasta el aterrizaje y el fundido CSS no compite con GSAP.
     expect(img.style.opacity).toBe("0");
-    expect(img.style.transition).toBe("none"); // el fundido CSS no compite con GSAP
-    expect(grupo.querySelectorAll("rect").length).toBe(2); // el hueco y la barra
+    expect(img.style.transition).toBe("none");
     restaurar();
   });
 
-  it("restaurar devuelve el hueco al CSS: sin estilos de la animación y sin la barra", () => {
-    const { marco, grupo, etiqueta, img } = montar();
-    const { restaurar } = colocarImagenEnVivo({ grupo, etiqueta, marco, nombreAgente: "Director de arte" });
+  it("restaurar quita la escena y devuelve la foto al CSS; una segunda vez no falla", () => {
+    const { marco, grupo, img } = montar();
+    const { restaurar } = colocarImagenEnVivo({ grupo, marco, ...OPCIONES });
     restaurar();
+    expect(marco.querySelector(".foto-escena")).toBeNull();
     expect(img.style.opacity).toBe("");
-    expect(img.style.filter).toBe("");
     expect(img.style.transition).toBe("");
-    expect(grupo.querySelectorAll("rect").length).toBe(1);
-    expect(etiqueta.style.opacity).toBe("0");
-    restaurar(); // idempotente: no falla la segunda vez
+    expect(() => restaurar()).not.toThrow();
   });
 
-  it("sin <image> o sin hueco no falla y no deja nada a medias", () => {
+  it("si un hueco no se ve (medida 0) no monta nada y no toca la imagen", () => {
+    const { marco, grupo, img } = montar(false);
+    const { restaurar } = colocarImagenEnVivo({ grupo, marco, ...OPCIONES });
+    expect(marco.querySelector(".foto-escena")).toBeNull();
+    expect(img.style.opacity).toBe("");
+    expect(() => restaurar()).not.toThrow();
+  });
+
+  it("sin <image> no falla", () => {
     const marco = document.createElement("div");
-    marco.innerHTML = `<svg><g data-campo="{{x}}"></g></svg><span></span>`;
+    marco.innerHTML = `<svg><g data-campo="{{x}}"></g></svg>`;
     const grupo = marco.querySelector("g") as unknown as SVGElement;
-    const etiqueta = marco.querySelector("span") as HTMLElement;
-    expect(() => colocarImagenEnVivo({ grupo, etiqueta, marco, nombreAgente: "A" }).restaurar()).not.toThrow();
+    expect(() => colocarImagenEnVivo({ grupo, marco, ...OPCIONES }).restaurar()).not.toThrow();
   });
 });
 
-// El backend deja FOTOS_PAUSA_SEG (3,5 s) entre foto y foto, y un evento nuevo corta la animación en curso:
-// la coreografía a 1x tiene que caber con margen, pero ser lo bastante larga para que el ojo la note.
+// El backend deja FOTOS_PAUSA_SEG (3,5 s) entre foto y foto, y un evento nuevo corta la escena en curso:
+// a 1x tiene que caber con margen, pero ser lo bastante larga para que el ojo la note.
 const PAUSA_DEL_BACKEND_S = 3.5;
 
-describe("duración de la coreografía", () => {
-  it("a 1x dura entre 2,8 s y la pausa del backend menos un margen", () => {
-    const { marco, grupo, etiqueta } = montar();
-    const { timeline, restaurar } = colocarImagenEnVivo({ grupo, etiqueta, marco, nombreAgente: "A", velocidad: 1 });
-    expect(timeline.duration()).toBeGreaterThan(2.8);
+describe("duración de la escena", () => {
+  it("a 1x dura entre 2,6 s y la pausa del backend menos un margen", () => {
+    const { marco, grupo } = montar();
+    const { timeline, restaurar } = colocarImagenEnVivo({ grupo, marco, ...OPCIONES, velocidad: 1 });
+    expect(timeline.duration()).toBeGreaterThan(2.6);
     expect(timeline.duration()).toBeLessThan(PAUSA_DEL_BACKEND_S - 0.2);
     restaurar();
   });
 
   it("a 2x dura la mitad", () => {
     const uno = montar();
-    const a = colocarImagenEnVivo({ grupo: uno.grupo, etiqueta: uno.etiqueta, marco: uno.marco, nombreAgente: "A", velocidad: 1 });
+    const a = colocarImagenEnVivo({ grupo: uno.grupo, marco: uno.marco, ...OPCIONES, velocidad: 1 });
     const dos = montar();
-    const b = colocarImagenEnVivo({ grupo: dos.grupo, etiqueta: dos.etiqueta, marco: dos.marco, nombreAgente: "A", velocidad: 2 });
+    const b = colocarImagenEnVivo({ grupo: dos.grupo, marco: dos.marco, ...OPCIONES, velocidad: 2 });
     expect(b.timeline.duration()).toBeCloseTo(a.timeline.duration() / 2, 1);
     a.restaurar();
     b.restaurar();

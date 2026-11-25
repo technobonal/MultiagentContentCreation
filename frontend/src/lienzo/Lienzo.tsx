@@ -266,9 +266,10 @@ export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) 
       if (grupo) {
         const colocacion = colocarImagenEnVivo({
           grupo,
-          etiqueta,
           marco: marcoEl,
           nombreAgente: nombreAgente(ultimoEv.agente ?? "director_arte", idioma),
+          descripcion: vista.estado.lienzo.imagenes[fotoNueva.slide]?.[fotoNueva.campo]?.texto_alternativo ?? "foto de la fuente",
+          slide: fotoNueva.slide,
           velocidad: vista.velocidad,
         });
         animacion.current = colocacion.timeline;
