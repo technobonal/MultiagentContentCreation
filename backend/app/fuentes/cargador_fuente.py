@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app import config
+from app.fuentes.ocr_pdf import Motor, ocr_de_paginas
 
 # Extensiones aceptadas (en minúsculas).
 EXTENSIONES_OK = (".md", ".txt", ".pdf")
@@ -128,7 +129,7 @@ def quitar_encabezados_y_pies(paginas: list[list[str]]) -> list[list[str]]:
     return limpias
 
 
-def _texto_de_pdf(datos: bytes, nombre: str) -> str:
+def _texto_de_pdf(datos: bytes, nombre: str, motor_ocr: Motor | None = None) -> str:
     """Extrae el texto de un PDF con texto: un párrafo por bloque, separados por una línea en blanco.
 
     Lanza FuenteError si el archivo no es un PDF legible, está protegido, tiene demasiadas páginas
@@ -171,13 +172,34 @@ def _texto_de_pdf(datos: bytes, nombre: str) -> str:
                     parrafos.append(texto)
         paginas = doc.page_count
 
-    texto = "\n\n".join(b for pagina in quitar_encabezados_y_pies(por_pagina) for b in pagina)
-    # Un PDF escaneado casi no trae texto: se avisa en vez de seguir con una fuente vacía.
-    if len(texto) < config.PDF_MIN_CARACTERES_POR_PAGINA * max(1, paginas):
+        def armar(bloques_por_pagina: list[list[str]]) -> str:
+            return "\n\n".join(b for pagina in quitar_encabezados_y_pies(bloques_por_pagina) for b in pagina)
+
+        def basta(texto: str) -> bool:
+            return len(texto) >= config.PDF_MIN_CARACTERES_POR_PAGINA * max(1, paginas)
+
+        texto = armar(por_pagina)
+        # Un PDF escaneado casi no trae capa de texto: se lee con OCR (si está encendido y cabe en el tope de páginas).
+        if not basta(texto) and config.PDF_OCR:
+            if paginas > config.PDF_OCR_MAX_PAGINAS:
+                raise FuenteError(
+                    "pdf_demasiadas_paginas_ocr",
+                    f"«{nombre}» es un PDF escaneado de {paginas} páginas y el OCR lee como mucho {config.PDF_OCR_MAX_PAGINAS}.",
+                )
+            try:
+                texto = armar(ocr_de_paginas(doc, motor_ocr))
+            except ImportError as exc:  # pragma: no cover - depende del entorno
+                raise FuenteError("ocr_no_disponible", "El servidor no tiene instalado el OCR (rapidocr).") from exc
+            ocr_usado = True
+        else:
+            ocr_usado = False
+
+    if not basta(texto):
+        detalle = "El OCR no encontró texto legible." if ocr_usado else "El OCR está apagado (PDF_OCR=0)."
         raise FuenteError(
             "pdf_sin_texto",
-            f"«{nombre}» casi no tiene texto (¿PDF escaneado?). El OCR todavía no está conectado: "
-            "convierte el PDF a .md o .txt y revisa el texto.",
+            f"«{nombre}» casi no tiene texto (¿PDF escaneado?). {detalle} "
+            "Convierte el PDF a .md o .txt y revisa el texto.",
         )
     return texto
 

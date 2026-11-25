@@ -87,6 +87,11 @@ PDF_MAX_BYTES = int(os.environ.get("PDF_MAX_BYTES", str(10 * 1024 * 1024)))  # p
 PDF_MAX_PAGINAS = int(os.environ.get("PDF_MAX_PAGINAS", "40"))
 PDF_MIN_CARACTERES_POR_PAGINA = int(os.environ.get("PDF_MIN_CARACTERES_POR_PAGINA", "80"))
 
+# OCR de PDF escaneados (rapidocr, local, sin red). Solo se usa cuando el PDF no trae capa de texto; con PDF_OCR=0 un
+# PDF escaneado se rechaza como antes (`pdf_sin_texto`). Tarda unos 3 s por página, por eso el tope de páginas.
+PDF_OCR_MAX_PAGINAS = int(os.environ.get("PDF_OCR_MAX_PAGINAS", "20"))
+PDF_OCR_LADO_MAX_PX = int(os.environ.get("PDF_OCR_LADO_MAX_PX", "2000"))  # lado mayor de la imagen que se lee
+
 # --- Paso 2 (fase 2): cliente LLM (Groq) ---
 
 # Clave de Groq. Vacía = sin clave (el modo real no arranca; MODO_RUN=relleno sigue disponible).
@@ -294,3 +299,6 @@ APROBACION_HUMANA = _booleano(os.environ.get("APROBACION_HUMANA", ""), True)
 # Segundos que el run espera esa decisión (el tope RUN_TIMEOUT_SEG solo cubre el trabajo de los agentes, no esta espera).
 # Si vence, el run termina con estado `requiere_humano` y libera su cupo. 0 o menos = espera sin límite.
 APROBACION_TIMEOUT_SEG = float(os.environ.get("APROBACION_TIMEOUT_SEG", "900"))
+
+# OCR de PDF escaneados: ver PDF_OCR_MAX_PAGINAS arriba. Arranca encendido; PDF_OCR=0 vuelve a rechazarlos con `pdf_sin_texto`.
+PDF_OCR = _booleano(os.environ.get("PDF_OCR", ""), True)
