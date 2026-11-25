@@ -302,3 +302,16 @@ APROBACION_TIMEOUT_SEG = float(os.environ.get("APROBACION_TIMEOUT_SEG", "900"))
 
 # OCR de PDF escaneados: ver PDF_OCR_MAX_PAGINAS arriba. Arranca encendido; PDF_OCR=0 vuelve a rechazarlos con `pdf_sin_texto`.
 PDF_OCR = _booleano(os.environ.get("PDF_OCR", ""), True)
+
+# Visión (describir imágenes) por OpenRouter, solo con modelos gratis. La key va en el .env (`OPENROUTER_API_KEY`) y nunca
+# se imprime. Los modelos se prueban en orden: salta al siguiente ante 429, 5xx, timeout o respuesta vacía. Los gratis de
+# OpenRouter se limitan seguido y pueden usar lo que se les envía para entrenar: no mandarles fuentes privadas.
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+OPENROUTER_MODELOS_VISION = tuple(
+    m.strip() for m in os.environ.get(
+        "OPENROUTER_MODELOS_VISION",
+        "nvidia/nemotron-3.5-super-vl:free,google/gemma-4-31b-it:free,inclusionai/ling-3.2-flash:free",
+    ).split(",") if m.strip()
+)
+OPENROUTER_TIMEOUT_SEG = float(os.environ.get("OPENROUTER_TIMEOUT_SEG", "60"))

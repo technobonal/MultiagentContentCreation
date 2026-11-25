@@ -18,4 +18,4 @@ pymupdf>=1.24      # extrae el texto de un PDF (se importa como fitz)
 
 # --- Pruebas ---
 pytest>=8.0        # runner de pruebas (orden por seq, reanudación, rechazo de evento inválido)
-httpx>=0.27        # cliente HTTP que usa el TestClient de FastAPI para probar el endpoint
+httpx>=0.27        # cliente HTTP que usa el TestClient de FastAPI para probar el endpointpillow>=10      # reducir imágenes antes de mandarlas a un modelo de visión
