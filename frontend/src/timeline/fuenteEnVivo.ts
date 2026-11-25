@@ -5,6 +5,9 @@
 // evento pasa por el reductor apenas llega; en pausa se acumula y se aplica de golpe
 // al reanudar. Ante un hueco se cierra y se reconecta con ?desde=<último seq recibido>.
 // Así Lienzo, MesaAgentes y useReproductor no cambian.
+// Fallos del run: el evento nombrado `run_error` del servidor corta la conexión con un error
+// visible (si no, el EventSource reconecta solo y el servidor reenvía el error sin fin). Como red
+// de seguridad, varias reconexiones seguidas sin ningún evento nuevo también terminan en error.
 // ---------------------------------------------------------------------------
 import { resumirErrores, validarEvento } from "../lib/validar.ts";
 import type { ResultadoValidacion } from "../lib/validar.ts";
@@ -15,6 +18,9 @@ import type { Evento } from "./types.ts";
 
 // Cuántos huecos seguidos se intentan resolver reconectando antes de mostrar un error.
 export const MAX_REINTENTOS_HUECO = 3;
+
+// Cuántas reconexiones seguidas, sin recibir ningún evento nuevo, se toleran antes de mostrar un error.
+export const MAX_RECONEXIONES_SIN_PROGRESO = 5;
 
 // Valor de readyState de EventSource cuando el navegador desistió de reconectar.
 const ESTADO_CERRADO = 2;
@@ -75,6 +81,18 @@ function describirRechazo(crudo: unknown): string {
   }
 }
 
+// Redacta el aviso a partir del evento nombrado `run_error` que envía el servidor cuando el run falla.
+function describirRunError(crudo: unknown): string {
+  try {
+    const info = JSON.parse(String(crudo)) as { motivos?: unknown };
+    // Los motivos vienen como lista de textos; si no hay, se avisa sin detalle.
+    const motivos = Array.isArray(info.motivos) ? info.motivos.map(String).join("; ") : "sin detalle";
+    return `La ejecución falló en el servidor: ${motivos}`;
+  } catch {
+    return "La ejecución falló en el servidor (sin detalle legible).";
+  }
+}
+
 // Crea la fuente en vivo y conecta de inmediato. `urlBase` p. ej. "/api/runs/run_x/eventos".
 export function crearFuenteEnVivo(
   urlBase: string,
@@ -94,6 +112,7 @@ export function crearFuenteEnVivo(
   let conexion: EstadoConexion = "conectando";
   let mensaje: string | null = null;
   let reintentosHueco = 0;
+  let reconexionesSinProgreso = 0; // cortes seguidos sin que haya entrado ningún evento nuevo
   let destruido = false;
   let actual: FuenteSse | null = null;
   const oyentes = new Set<Oyente>();
@@ -218,6 +237,7 @@ export function crearFuenteEnVivo(
     buffer = [...buffer, evento];
     ultimoRecibido = evento.seq;
     reintentosHueco = 0;
+    reconexionesSinProgreso = 0; // entró un evento nuevo: hubo progreso
 
     // run_finalizada cierra el flujo: así el navegador no reconecta inútilmente.
     if (evento.tipo === "run_finalizada") {
@@ -283,11 +303,26 @@ export function crearFuenteEnVivo(
       fallar(describirRechazo(ev.data));
     });
 
+    // Mensaje nombrado del backend: el run falló. Se corta aquí; si no, el EventSource reconectaría
+    // solo y el servidor volvería a enviar el mismo error indefinidamente.
+    fuente.addEventListener("run_error", (ev) => {
+      if (!vigente()) return;
+      fallar(describirRunError(ev.data));
+    });
+
     fuente.addEventListener("error", () => {
       if (!vigente()) return;
       // El navegador desistió (404, 400, 204...): no reconectará solo.
       if (fuente.readyState === ESTADO_CERRADO) {
         fallar("El servidor cerró la conexión antes de terminar la ejecución (¿existe el run_id?).");
+        return;
+      }
+      // Red de seguridad: reconectar una y otra vez sin recibir nada nuevo no lleva a ningún lado.
+      reconexionesSinProgreso += 1;
+      if (reconexionesSinProgreso > MAX_RECONEXIONES_SIN_PROGRESO) {
+        fallar(
+          `Se perdió la conexión ${reconexionesSinProgreso} veces seguidas sin recibir eventos nuevos; se detiene el reintento.`,
+        );
         return;
       }
       // Corte de red: EventSource reconecta solo y reenvía Last-Event-ID.
@@ -306,6 +341,7 @@ export function crearFuenteEnVivo(
     aplicados = 0;
     flujoCompleto = false;
     reintentosHueco = 0;
+    reconexionesSinProgreso = 0;
     reproduciendo = true;
     conexion = "conectando";
     mensaje = null;

@@ -1,10 +1,11 @@
 // ---------------------------------------------------------------------------
 // fuenteEnVivo.test.ts — Pruebas de la fuente SSE con un EventSource falso:
 // orden, idempotencia, huecos, evento inválido, cierre, pausa con acumulación,
-// seek, reinicio y destrucción. El validador se inyecta para no depender del esquema.
+// seek, reinicio y destrucción, run_error del servidor y tope de reconexiones sin progreso.
+// El validador se inyecta para no depender del esquema.
 // ---------------------------------------------------------------------------
 import { describe, expect, it, vi } from "vitest";
-import { MAX_REINTENTOS_HUECO, crearFuenteEnVivo } from "./fuenteEnVivo.ts";
+import { MAX_RECONEXIONES_SIN_PROGRESO, MAX_REINTENTOS_HUECO, crearFuenteEnVivo } from "./fuenteEnVivo.ts";
 import type { FuenteSse } from "./fuenteEnVivo.ts";
 import type { Evento } from "./types.ts";
 
@@ -184,6 +185,58 @@ describe("fuenteEnVivo", () => {
     expect(fuente.obtenerEnVivo().mensaje).toContain("seq 5");
     expect(fuente.obtenerEnVivo().mensaje).toContain("no cumple");
     expect(conexion(0).cerrada).toBe(true);
+  });
+
+  it("el mensaje run_error del servidor corta con error visible y no reconecta", () => {
+    const { fuente, fuentes, conexion } = montar();
+    conexion(0).mensaje(ev(1));
+    conexion(0).emitir("run_error", { motivos: ["el modelo no respondió"] });
+    expect(fuente.obtenerEnVivo().conexion).toBe("error");
+    expect(fuente.obtenerEnVivo().mensaje).toContain("el modelo no respondió");
+    expect(conexion(0).cerrada).toBe(true);
+    // Tras el run_error el stream se cierra y el navegador avisa con "error": ya no debe cambiar nada.
+    conexion(0).emitir("error");
+    expect(fuente.obtenerEnVivo().conexion).toBe("error");
+    expect(fuentes).toHaveLength(1); // no se abrió ninguna conexión nueva
+    expect(fuente.obtener().total).toBe(1); // lo recibido antes del fallo se conserva
+  });
+
+  it("un run_error sin datos legibles muestra un aviso genérico", () => {
+    const { fuente, conexion } = montar();
+    conexion(0).emitir("run_error", "esto no es json");
+    expect(fuente.obtenerEnVivo().conexion).toBe("error");
+    expect(fuente.obtenerEnVivo().mensaje).toContain("sin detalle legible");
+  });
+
+  it("varias reconexiones seguidas sin eventos nuevos terminan en error", () => {
+    const { fuente, fuentes, conexion } = montar();
+    // Hasta el tope se tolera: el navegador reconecta solo y el estado es "reconectando".
+    for (let i = 0; i < MAX_RECONEXIONES_SIN_PROGRESO; i++) {
+      conexion(0).emitir("error");
+      expect(fuente.obtenerEnVivo().conexion).toBe("reconectando");
+    }
+    // Un corte más allá del tope se muestra como error y se cierra la conexión.
+    conexion(0).emitir("error");
+    expect(fuente.obtenerEnVivo().conexion).toBe("error");
+    expect(fuente.obtenerEnVivo().mensaje).toContain("sin recibir eventos nuevos");
+    expect(conexion(0).cerrada).toBe(true);
+    expect(fuentes).toHaveLength(1);
+  });
+
+  it("un evento nuevo reinicia el contador de reconexiones", () => {
+    const { fuente, conexion } = montar();
+    for (let i = 0; i < MAX_RECONEXIONES_SIN_PROGRESO; i++) conexion(0).emitir("error");
+    conexion(0).mensaje(ev(1)); // hubo progreso: el contador vuelve a cero
+    for (let i = 0; i < MAX_RECONEXIONES_SIN_PROGRESO; i++) conexion(0).emitir("error");
+    expect(fuente.obtenerEnVivo().conexion).toBe("reconectando"); // sigue tolerando
+  });
+
+  it("reiniciar también reinicia el contador de reconexiones", () => {
+    const { fuente, conexion } = montar();
+    for (let i = 0; i < MAX_RECONEXIONES_SIN_PROGRESO; i++) conexion(0).emitir("error");
+    fuente.reiniciar();
+    for (let i = 0; i < MAX_RECONEXIONES_SIN_PROGRESO; i++) conexion(1).emitir("error");
+    expect(fuente.obtenerEnVivo().conexion).toBe("reconectando");
   });
 
   it("run_finalizada cierra la conexión y marca terminado", () => {
