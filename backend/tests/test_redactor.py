@@ -195,12 +195,11 @@ def test_validar_tolerante_no_rechaza_citas_no_literales():
 
 @pytest.mark.parametrize("cambio, fragmento_motivo", [
     ({"campos": {"titulo": "x"}}, "exactamente estas claves"),
-    ({"campos": {"titulo": "x" * 61, "cuerpo": "y"}}, "supera 60"),
     ({"hechos": "no es lista"}, "lista de textos"),
     ({"hechos": ["El Sprint dura un mes como máximo."] * (MAX_HECHOS + 1)}, f"el máximo es {MAX_HECHOS}"),
 ])
 def test_validar_tolerante_sigue_exigiendo_la_estructura(cambio, fragmento_motivo):
-    """El modo tolerante solo perdona las citas (no literales o demasiado largas): campos, límites y tipos se exigen siempre."""
+    """El modo tolerante perdona las citas y el exceso de longitud (se recorta): claves, tipos y cantidad se exigen siempre."""
     motivos = validar_redaccion({**json.loads(_resp()), **cambio}, CAMPOS, FRAGMENTOS, exigir_citas=False)
     assert any(fragmento_motivo in m for m in motivos), motivos
 
@@ -252,15 +251,15 @@ def test_reintento_tras_cita_inventada_pide_corregirla():
 
 def test_cita_no_literal_en_ambos_intentos_se_descarta_sin_abortar():
     """Antes esto tumbaba el run (salida_invalida); ahora se conserva el texto y se descarta la cita."""
-    c = ClienteFalso([_resp(hechos=["inventada"])] * 3)
+    c = ClienteFalso([_resp(hechos=["inventada"])] * 2)
     r = _redactar(c)
-    assert len(c.llamadas) == 3  # intento inicial más dos reintentos, sin cuarta llamada
+    assert len(c.llamadas) == 2  # intento inicial más un reintento, sin tercera llamada
     assert r.hechos == () and r.campos["titulo"] == "Sprints de un mes"  # cita descartada, texto intacto
 
 
 def test_el_ultimo_intento_conserva_solo_las_citas_literales():
     buena = "El Sprint dura un mes como máximo."
-    c = ClienteFalso([_resp(hechos=["inventada"]), _resp(hechos=["inventada"]), _resp(hechos=["inventada", buena])])
+    c = ClienteFalso([_resp(hechos=["inventada"]), _resp(hechos=["inventada", buena])])
     r = _redactar(c)
     assert [h.texto for h in r.hechos] == [buena]  # la mala se descarta y la buena queda ubicada
 
@@ -269,16 +268,16 @@ def test_cita_demasiado_larga_en_ambos_intentos_se_descarta_sin_abortar(caplog):
     """Con una fuente larga (PDF) el modelo copia pasajes enteros: la cita larga se descarta, el slide se conserva."""
     buena = "El Sprint dura un mes como máximo."
     larga = "x" * (HECHO_MAX_CHARS + 1)
-    c = ClienteFalso([_resp(hechos=[larga]), _resp(hechos=[larga]), _resp(hechos=[larga, buena])])
+    c = ClienteFalso([_resp(hechos=[larga]), _resp(hechos=[larga, buena])])
     with caplog.at_level(logging.WARNING, logger="app.agentes.redactor"):
         r = _redactar(c)
-    assert len(c.llamadas) == 3
+    assert len(c.llamadas) == 2
     assert [h.texto for h in r.hechos] == [buena] and r.campos["titulo"] == "Sprints de un mes"
     assert "descartada" in caplog.text
 
 
 def test_cita_descartada_deja_aviso_en_el_log(caplog):
-    c = ClienteFalso([_resp(hechos=["inventada"])] * 3)
+    c = ClienteFalso([_resp(hechos=["inventada"])] * 2)
     with caplog.at_level(logging.WARNING, logger="app.agentes.redactor"):
         _redactar(c)
     # El aviso dice qué slide y qué cita se descartó, para poder revisarlo en el log del servidor.
@@ -301,10 +300,10 @@ def test_salida_truncada_falla_tras_un_reintento():
 def test_salida_invalida_tras_agotar_reintentos():
     """La estructura inválida sigue abortando el run aunque el último intento sea tolerante con las citas."""
     mala = json.dumps({"campos": {}, "hechos": []})
-    c = ClienteFalso([mala, mala, mala])
+    c = ClienteFalso([mala, mala])
     with pytest.raises(AgenteError) as e:
         _redactar(c)
-    assert e.value.codigo == "salida_invalida" and len(c.llamadas) == 3
+    assert e.value.codigo == "salida_invalida" and len(c.llamadas) == 2
     assert "respuesta válida" in e.value.mensaje  # el mensaje ya no dice «JSON válido» (el JSON sí era válido)
 
 
@@ -325,7 +324,55 @@ def test_campo_que_se_pasa_del_limite_se_corrige_en_un_reintento_con_el_motivo()
     assert "supera 60 caracteres (66)" in c.llamadas[1]["mensajes"][-1]["content"]
 
 
-def test_campo_que_se_pasa_del_limite_dos_veces_se_corrige_en_el_tercer_intento():
-    mala = _resp(campos={"titulo": "x" * 66, "cuerpo": "Duran un mes."})
-    c = ClienteFalso([mala, mala, _resp()])
-    assert _redactar(c).campos["titulo"] == "Sprints de un mes" and len(c.llamadas) == 3
+def test_campo_que_se_pasa_del_limite_dos_veces_se_recorta_sin_abortar(caplog):
+    """Antes abortaba el run (salida_invalida); ahora el último intento recorta el campo y deja aviso en el log."""
+    titulo = "Los derechos del paciente. Incluyen trato digno, información clara y medicamentos"  # 81 > 60
+    mala = _resp(campos={"titulo": titulo, "cuerpo": "Duran un mes."})
+    c = ClienteFalso([mala, mala])
+    with caplog.at_level(logging.WARNING, logger="app.agentes.redactor"):
+        r = _redactar(c)
+    assert len(c.llamadas) == 2
+    # La primera oración (26) deja menos de la mitad del límite (60): se corta en la coma y se conserva más texto.
+    assert r.campos["titulo"] == "Los derechos del paciente. Incluyen trato digno…"
+    assert titulo.startswith(r.campos["titulo"].removesuffix("…"))
+    assert "recortado" in caplog.text and "titulo" in caplog.text
+
+
+# ---------------------------- recortar_a_limite ----------------------------
+
+from app.agentes.redactor import recortar_a_limite  # noqa: E402
+
+
+def test_recorte_un_texto_que_cabe_no_cambia():
+    assert recortar_a_limite("  Corto.  ", 20) == "Corto."
+
+
+def test_recorte_prefiere_la_ultima_oracion_completa():
+    texto = "El Sprint dura un mes. El equipo tiene diez personas. Se revisa al final."
+    assert recortar_a_limite(texto, 55) == "El Sprint dura un mes. El equipo tiene diez personas."
+
+
+def test_recorte_en_una_coma_si_la_oracion_deja_poco():
+    texto = "Derechos: trato digno, información clara, medicamentos necesarios y quejas"
+    r = recortar_a_limite(texto, 50)
+    assert len(r) <= 50 and r.endswith("…") and texto.startswith(r[:-1])
+    assert r == "Derechos: trato digno, información clara…"
+
+
+def test_recorte_en_un_espacio_si_no_hay_comas():
+    texto = "palabra " * 20
+    r = recortar_a_limite(texto, 30)
+    assert len(r) <= 30 and r.endswith("…") and not r[:-1].endswith(" ")
+
+
+def test_recorte_en_seco_como_ultimo_recurso():
+    r = recortar_a_limite("x" * 100, 10)
+    assert r == "x" * 9 + "…" and len(r) == 10
+
+
+@pytest.mark.parametrize("maximo", [20, 60, 100, 220])
+def test_recorte_nunca_pasa_del_limite_y_siempre_es_prefijo(maximo):
+    texto = ("El artículo 4° garantiza la salud, el acceso a medicamentos; y la atención. " * 6).strip()
+    r = recortar_a_limite(texto, maximo)
+    assert len(r) <= maximo
+    assert texto.startswith(r.removesuffix("…"))

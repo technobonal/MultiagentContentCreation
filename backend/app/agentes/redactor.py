@@ -29,6 +29,7 @@ Para que el prefijo se reutilice, el orquestador debe llamar a los slides en SEC
 """
 
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -43,10 +44,17 @@ log = logging.getLogger(__name__)
 # Tokens de salida que se piden (y se reservan en el límite por minuto).
 MAX_TOKENS_REDACTOR = 2000
 
-# Reintentos de CONTENIDO del redactor (campo que se pasa del límite, cita no literal): el mensaje de cada reintento le dice
-# al modelo qué corregir, y con una fuente larga (PDF) uno solo no alcanzaba (`titulo` 66 de 60 y `cta` 117 de 100 abortaron
-# dos runs seguidos). El último intento es el tolerante. Cada reintento extra cuesta ~1.400 tokens y solo ocurre si hace falta.
-REINTENTOS_CONTENIDO_REDACTOR = 2
+# Reintentos de CONTENIDO del redactor (campo que se pasa del límite, cita no literal): el reintento le dice al modelo qué
+# corregir. El último intento es el tolerante: descarta las citas que no sirven y RECORTA el campo que se pasa del límite
+# (`recortar_a_limite`), así que un exceso ya no aborta el run. Con eso alcanza un reintento (cada uno cuesta ~1.500 tokens):
+# en las pruebas con un PDF ni tres intentos evitaban que `cuerpo` saliera con 275 o 344 caracteres de 220.
+REINTENTOS_CONTENIDO_REDACTOR = 1
+
+# Un recorte por oración que deje menos de esta fracción del límite pierde demasiado: se prueba en una coma o un espacio.
+RECORTE_MIN_FRACCION = 0.5
+
+# Final de oración dentro de un campo: signo de cierre (con comilla o paréntesis opcional) seguido de un blanco o del final.
+_FIN_ORACION = re.compile(r"[.!?…][\"')\]»”]?(?=\s|$)")
 
 # Temperatura del primer intento y del reintento tras una respuesta vacía o cortada.
 TEMPERATURA_REDACTOR = 0.2
@@ -121,6 +129,31 @@ def construir_mensajes(
     ]
 
 
+def recortar_a_limite(texto: str, maximo: int) -> str:
+    """Recorta `texto` para que quepa en `maximo` caracteres sin inventar nada: siempre es un prefijo del original.
+
+    Prefiere cortar al final de una oración; si eso deja menos de la mitad del límite, corta en la última coma,
+    punto y coma o espacio y cierra con «…». Solo como último recurso corta en seco. Un texto que ya cabe no se toca.
+    """
+    texto = texto.strip()
+    if len(texto) <= maximo:
+        return texto
+    minimo = int(maximo * RECORTE_MIN_FRACCION)
+    # 1) Última oración completa que quepa.
+    ventana = texto[: maximo + 1]
+    finales = [m.end() for m in _FIN_ORACION.finditer(ventana) if m.end() <= maximo]
+    if finales and finales[-1] >= minimo:
+        return texto[: finales[-1]].strip()
+    # 2) Última coma, punto y coma o espacio, dejando lugar para «…».
+    ventana = texto[: maximo - 1]
+    for separadores in (",;:", " "):
+        corte = max(ventana.rfind(s) for s in separadores)
+        if corte >= minimo:
+            return texto[:corte].rstrip(" ,;:") + "…"
+    # 3) Corte en seco.
+    return texto[: maximo - 1].rstrip() + "…"
+
+
 def validar_redaccion(
     dato: Any, campos: list[tuple[str, int]], fragmentos: list, exigir_citas: bool = True
 ) -> list[str]:
@@ -152,7 +185,8 @@ def validar_redaccion(
                 continue  # su ausencia ya se informó arriba
             if not isinstance(valor, str) or not valor.strip():
                 motivos.append(f"el campo '{nombre}' debe ser un texto no vacío")
-            elif len(valor.strip()) > maximo:
+            # En el modo tolerante (último intento) el exceso no se rechaza: `redactar_slide` recorta el campo.
+            elif len(valor.strip()) > maximo and exigir_citas:
                 motivos.append(f"el campo '{nombre}' supera {maximo} caracteres ({len(valor.strip())})")
 
     hechos = dato.get("hechos")
@@ -258,9 +292,19 @@ async def redactar_slide(
             "Redactor: slide %s, %d cita(s) no literal(es) descartada(s) tras el reintento: %s",
             numero, len(faltan), [h[:CITA_LOG_MAX_CHARS] for h in faltan],
         )
+    # Un campo que sigue pasándose del límite tras el reintento se recorta (prefijo del original, nunca texto nuevo).
+    textos = {}
+    for nombre, maximo in campos:
+        original = dato["campos"][nombre].strip()
+        textos[nombre] = recortar_a_limite(original, maximo)
+        if textos[nombre] != original:
+            log.warning(
+                "Redactor: slide %s, campo '%s' recortado de %d a %d caracteres (límite %d) tras el reintento",
+                numero, nombre, len(original), len(textos[nombre]), maximo,
+            )
     return TextoSlide(
         numero=numero,
-        campos={nombre: dato["campos"][nombre].strip() for nombre, _ in campos},
+        campos=textos,
         hechos=tuple(ubicados),
         modelo=resp.modelo,
         fallback=resp.fallback,
