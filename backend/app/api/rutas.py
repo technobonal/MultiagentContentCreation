@@ -1,4 +1,4 @@
-"""Rutas HTTP del backend: iniciar una ejecución (POST) y su canal SSE de eventos (GET).
+"""Rutas HTTP del backend: iniciar una ejecución (POST), su canal SSE de eventos (GET) y su aprobación (POST).
 
 Modo de ejecución: lo decide el lifespan UNA vez al arrancar (app.state.contexto). Si hay contexto,
 POST /api/runs lanza el orquestador real; si es None, el de relleno (simulado).
@@ -15,6 +15,7 @@ from app.events.emisor import filtrar_desde, flujo_sse, flujo_vivo
 from app.events.validador import comprobar_entrada
 from app.fuentes.cargador_fuente import FuenteError, cargar_fuente
 from app.resolution import cargar_fichas, resolver
+from app.runs.aprobacion import DecisionInvalida, validar_decision
 from app.runs.contexto_real import ORIGEN_REAL, ContextoReal
 from app.runs.orquestador import ejecutar_run
 from app.runs.orquestador_real import ejecutar_run_real
@@ -105,6 +106,34 @@ async def iniciar_run(
     else:
         registro.lanzar(ejecutar_run(ejecucion, ritmo_relleno))
     return {"run_id": ejecucion.run_id, "url_eventos": f"/api/runs/{ejecucion.run_id}/eventos"}
+
+
+@router.post("/runs/{run_id}/aprobacion", status_code=202)
+async def aprobar_run(run_id: str, request: Request, registro: RegistroRuns = Depends(obtener_registro_runs)):
+    """Registra la decisión de la persona sobre un run que espera aprobación (HITL).
+
+    Cuerpo: {"ediciones": [{"slide": 2, "campo": "cuerpo", "texto": "..."}], "comentario": "..."}, con las dos
+    claves opcionales. Responde 202: los eventos `editada`, `aprobada` y `run_finalizada` los emite el run y
+    llegan por el SSE. 404 si el run no existe, 409 si no está esperando (no lo pidió, ya se decidió o venció el
+    tiempo) y 422 con los motivos si la decisión no cumple las reglas.
+    """
+    ejecucion = registro.obtener(run_id)
+    if ejecucion is None:
+        raise HTTPException(status_code=404, detail=f"No existe la ejecución {run_id}")
+    if not ejecucion.esperando_decision:
+        return _rechazo(409, ["El run no está esperando una aprobación (no la pidió, ya se decidió o venció el tiempo)."])
+    try:
+        cuerpo = await request.json()
+    except ValueError:  # cuerpo vacío, no JSON o con codificación inválida
+        return _rechazo(422, ["el cuerpo no es un JSON válido"])
+    try:
+        decision = validar_decision(cuerpo, ejecucion.eventos, ejecucion.resolucion.ficha)
+    except DecisionInvalida as exc:
+        return _rechazo(422, exc.motivos)
+    # Entre la comprobación y aquí no hay ningún await: si otra decisión llegó primero, esta pierde.
+    if not ejecucion.registrar_decision(decision):
+        return _rechazo(409, ["El run ya recibió una decisión."])
+    return {"run_id": run_id, "ediciones": len(decision.ediciones)}
 
 
 @router.get("/runs/{run_id}/eventos")
