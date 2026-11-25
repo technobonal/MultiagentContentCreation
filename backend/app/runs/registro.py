@@ -7,6 +7,7 @@ No hay base de datos: todo vive en la memoria del proceso (la app debe correr co
 
 import asyncio
 import logging
+import re
 import secrets
 from collections.abc import Coroutine
 from datetime import datetime
@@ -17,6 +18,13 @@ from app import config
 from app.events.validador import comprobar_evento
 
 log = logging.getLogger(__name__)
+
+
+# Imágenes de un run (recortes de la fuente): referencia segura para una URL, tipos permitidos y topes de memoria.
+REFERENCIA_IMAGEN = re.compile(r"[a-z0-9_-]{1,40}")
+MIME_IMAGEN = ("image/jpeg", "image/png")
+IMAGEN_MAX_BYTES = 2 * 1024 * 1024
+IMAGENES_MAX_POR_RUN = 8
 
 
 class EstadoRun(str, Enum):
@@ -56,6 +64,24 @@ class Ejecucion:
         self._esperando_decision = False
         self._decision = None  # la `Decision` registrada (aprobacion.py); solo se acepta una
         self._decision_lista = asyncio.Event()
+        # Imágenes del run (recortes de la fuente) que el navegador pide por URL: referencia -> (bytes, tipo MIME).
+        self._imagenes: dict[str, tuple[bytes, str]] = {}
+
+    def guardar_imagen(self, referencia: str, datos: bytes, mime: str) -> None:
+        """Guarda una imagen del run. Lanza ValueError si la referencia, el tipo o el tamaño no valen, o si ya hay demasiadas."""
+        if not REFERENCIA_IMAGEN.fullmatch(referencia):
+            raise ValueError(f"Referencia de imagen inválida: {referencia!r} (solo a-z, 0-9, _ y -, hasta 40).")
+        if mime not in MIME_IMAGEN:
+            raise ValueError(f"Tipo de imagen no permitido: {mime!r}.")
+        if not datos or len(datos) > IMAGEN_MAX_BYTES:
+            raise ValueError(f"La imagen debe pesar entre 1 byte y {IMAGEN_MAX_BYTES} bytes.")
+        if referencia not in self._imagenes and len(self._imagenes) >= IMAGENES_MAX_POR_RUN:
+            raise ValueError(f"Un run guarda como mucho {IMAGENES_MAX_POR_RUN} imágenes.")
+        self._imagenes[referencia] = (datos, mime)
+
+    def obtener_imagen(self, referencia: str) -> tuple[bytes, str] | None:
+        """(bytes, MIME) de la imagen guardada, o None si no existe."""
+        return self._imagenes.get(referencia)
 
     @property
     def esperando_decision(self) -> bool:

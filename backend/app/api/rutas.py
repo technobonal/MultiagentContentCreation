@@ -136,6 +136,24 @@ async def aprobar_run(run_id: str, request: Request, registro: RegistroRuns = De
     return {"run_id": run_id, "ediciones": len(decision.ediciones)}
 
 
+@router.get("/runs/{run_id}/imagenes/{referencia}")
+async def imagen_de_run(run_id: str, referencia: str, registro: RegistroRuns = Depends(obtener_registro_runs)):
+    """Sirve una imagen del run (un recorte de la fuente) para que el lienzo la dibuje; 404 si no existe.
+
+    `nosniff` impide que el navegador reinterprete los bytes, y el caché es privado: la imagen puede venir de una
+    fuente con licencia sin confirmar.
+    """
+    ejecucion = registro.obtener(run_id)
+    if ejecucion is None:
+        raise HTTPException(status_code=404, detail=f"No existe la ejecución {run_id}")
+    imagen = ejecucion.obtener_imagen(referencia)
+    if imagen is None:
+        raise HTTPException(status_code=404, detail=f"El run {run_id} no tiene la imagen {referencia}")
+    datos, mime = imagen
+    return Response(content=datos, media_type=mime, headers={
+        "X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=3600"})
+
+
 @router.get("/runs/{run_id}/eventos")
 async def eventos_de_run(
     run_id: str,
