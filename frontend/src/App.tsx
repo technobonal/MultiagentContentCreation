@@ -16,6 +16,7 @@ import { idiomaDeGuia, leerEleccion } from "./lienzo/fase.ts";
 import type { EleccionIdioma, IdiomaFase } from "./lienzo/fase.ts";
 import { Lienzo } from "./lienzo/Lienzo.tsx";
 import { MesaAgentes } from "./lienzo/MesaAgentes.tsx";
+import { AvisoEspera } from "./lienzo/AvisoEspera.tsx";
 import { PanelAprobacion } from "./lienzo/PanelAprobacion.tsx";
 // NUEVO: reglas del slide elegido a mano.
 import { aplicarSlideManual, slideManualVigente } from "./lienzo/slideManual.ts";
@@ -281,6 +282,8 @@ function PantallaServidor({ fuente, svg, runId }: { fuente: FuenteEnVivo; svg: s
       </p>
       {/* Errores y avisos del canal: visibles, nunca ocultos. */}
       {vivo.mensaje && <pre role="alert">{vivo.mensaje}</pre>}
+      {/* Silencio largo con el run abierto (p. ej. espera de cupo de Groq): que no parezca congelado. */}
+      <AvisoEspera estado={estado} />
       <Pantalla
         reproductor={fuente}
         svg={svg}

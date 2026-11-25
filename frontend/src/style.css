@@ -855,3 +855,12 @@ input[type="range"] {
 .panel-aprobacion-cerrado {
   font-size: 0.8125rem;
 }
+
+/* Aviso de espera del servidor: discreto, no tapa el lienzo. */
+.aviso-espera {
+  margin: 0.4rem 0;
+  padding: 0.4rem 0.7rem;
+  border-left: 3px solid #b7791f;
+  background: rgba(183, 121, 31, 0.12);
+  font-size: 0.9rem;
+}
