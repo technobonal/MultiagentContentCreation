@@ -110,7 +110,8 @@ Lo que sigue, en este orden:
 - [ ] Reusar el OCR que ya hizo el cargador al elegir las fotos (hoy se lee el PDF dos veces y suma ~15 s al run)
 - [ ] Texto alternativo descriptivo de cada foto con la cascada de visión (opcional; manda las imágenes a OpenRouter)
 - [ ] Recorte en vivo con la página original (opcional; cambia el contrato)
-- [ ] Subir a GitHub los 46 commits locales (todos con autor `technobonal <technobonal@gmail.com>`) y borrar la rama `backup-antes-de-autor` cuando Frank lo confirme
+- [x] Subidos a GitHub los 47 commits del día (2026-11-25, `cdf7e62..2b879bb`, autor `technobonal <technobonal@gmail.com>`)
+- [ ] Borrar la rama local `backup-antes-de-autor` (historial anterior al cambio de autor) cuando Frank lo confirme
 
 ### Pendiente
 
