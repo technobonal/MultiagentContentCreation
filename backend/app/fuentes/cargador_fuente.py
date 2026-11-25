@@ -89,6 +89,45 @@ def _validar_extension(nombre: str) -> None:
         )
 
 
+# Un encabezado o pie se repite casi igual en muchas páginas, solo cambia el número de página.
+_DIGITOS = re.compile(r"\d+")
+_BLOQUES_DE_BORDE = 2  # cuántos bloques del inicio y del final de cada página se miran
+_MIN_PAGINAS_PARA_LIMPIAR = 4  # con menos páginas no hay forma fiable de saber qué se repite
+
+
+def quitar_encabezados_y_pies(paginas: list[list[str]]) -> list[list[str]]:
+    """Quita los bloques de borde que se repiten en la mayoría de las páginas (encabezados, pies, números de página).
+
+    Un bloque cuenta como repetido si, con los dígitos reemplazados, aparece en el borde de al menos la mitad de las
+    páginas (y no menos de 3). Un número de página suelto en el borde también se quita. El texto del medio de la
+    página nunca se toca, y con menos de 4 páginas no se limpia nada.
+    """
+    if len(paginas) < _MIN_PAGINAS_PARA_LIMPIAR:
+        return paginas
+
+    def clave(texto: str) -> str:
+        return _DIGITOS.sub("#", texto)
+
+    def indices_de_borde(n: int) -> set[int]:
+        return set(range(min(_BLOQUES_DE_BORDE, n))) | set(range(max(0, n - _BLOQUES_DE_BORDE), n))
+
+    paginas_por_clave: dict[str, set[int]] = {}
+    for i, bloques in enumerate(paginas):
+        for j in indices_de_borde(len(bloques)):
+            paginas_por_clave.setdefault(clave(bloques[j]), set()).add(i)
+    minimo = max(3, (len(paginas) + 1) // 2)
+    repetidas = {k for k, donde in paginas_por_clave.items() if len(donde) >= minimo}
+
+    limpias: list[list[str]] = []
+    for bloques in paginas:
+        borde = indices_de_borde(len(bloques))
+        limpias.append([
+            b for j, b in enumerate(bloques)
+            if not (j in borde and (clave(b) in repetidas or re.fullmatch(r"\d{1,4}", b)))
+        ])
+    return limpias
+
+
 def _texto_de_pdf(datos: bytes, nombre: str) -> str:
     """Extrae el texto de un PDF con texto: un párrafo por bloque, separados por una línea en blanco.
 
@@ -117,8 +156,10 @@ def _texto_de_pdf(datos: bytes, nombre: str) -> str:
                 "pdf_demasiadas_paginas",
                 f"El PDF tiene {doc.page_count} páginas y el máximo es {config.PDF_MAX_PAGINAS}.",
             )
-        parrafos: list[str] = []
+        por_pagina: list[list[str]] = []
         for pagina in doc:
+            parrafos: list[str] = []
+            por_pagina.append(parrafos)
             # sort=True ordena los bloques en el orden de lectura; el tipo 0 es texto (el 1 es imagen).
             for bloque in pagina.get_text("blocks", sort=True):
                 if bloque[6] != 0:
@@ -130,7 +171,7 @@ def _texto_de_pdf(datos: bytes, nombre: str) -> str:
                     parrafos.append(texto)
         paginas = doc.page_count
 
-    texto = "\n\n".join(parrafos)
+    texto = "\n\n".join(b for pagina in quitar_encabezados_y_pies(por_pagina) for b in pagina)
     # Un PDF escaneado casi no trae texto: se avisa en vez de seguir con una fuente vacía.
     if len(texto) < config.PDF_MIN_CARACTERES_POR_PAGINA * max(1, paginas):
         raise FuenteError(
