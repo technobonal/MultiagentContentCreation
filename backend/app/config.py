@@ -178,8 +178,15 @@ GROQ_MODELO_RESPALDO = os.environ.get("GROQ_MODELO_RESPALDO", "openai/gpt-oss-20
 GROQ_FALLBACK_ESTRATEGA = _lista_de_texto(
     os.environ.get("GROQ_FALLBACK_ESTRATEGA", f"{GROQ_MODELO_ESTRATEGA},{GROQ_MODELO_RESPALDO}")
 )
+# Último recurso del redactor (y del corrector): el modelo principal del revisor. Solo entra si qwen y el 20b no tienen
+# cupo (run_d95dcd67: 45 s de espera con ambos llenos). Rompe la independencia con el revisor solo en ese caso, y el log
+# lo marca con fallback=True. Para quitarlo: GROQ_FALLBACK_REDACTOR="qwen/qwen3.8-27b,openai/gpt-oss-20b".
+GROQ_MODELO_RESPALDO_FINAL = os.environ.get("GROQ_MODELO_RESPALDO_FINAL", GROQ_MODELO_REVISOR_A)
 GROQ_FALLBACK_REDACTOR = _lista_de_texto(
-    os.environ.get("GROQ_FALLBACK_REDACTOR", f"{GROQ_MODELO_REDACTOR},{GROQ_MODELO_RESPALDO}")
+    os.environ.get(
+        "GROQ_FALLBACK_REDACTOR",
+        f"{GROQ_MODELO_REDACTOR},{GROQ_MODELO_RESPALDO},{GROQ_MODELO_RESPALDO_FINAL}",
+    )
 )
 
 # Roles cuyo respaldo entra SOLO ante una falla técnica (429, 413, 5xx, timeout, conexión) y no por falta de cupo:
