@@ -241,43 +241,44 @@ def test_slide_sin_campos_no_llama_al_modelo():
     assert r == TextoSlide(2, {}, (), "", False) and c.llamadas == []
 
 
-def test_reintento_tras_cita_inventada_pide_corregirla():
-    c = ClienteFalso([_resp(hechos=["El Sprint dura dos meses."]), _resp()])
+def test_una_cita_inventada_no_provoca_reintento_y_se_descarta():
+    """Reintentar por una cita cuesta ~1.500 tokens y nada aguas abajo usa las citas del redactor: se descarta."""
+    c = ClienteFalso([_resp(hechos=["El Sprint dura dos meses."])])
     r = _redactar(c)
-    assert len(c.llamadas) == 2 and len(r.hechos) == 1
-    # El segundo pedido le devuelve al modelo el motivo del rechazo.
-    assert "no aparece literal" in c.llamadas[1]["mensajes"][-1]["content"]
-
-
-def test_cita_no_literal_en_ambos_intentos_se_descarta_sin_abortar():
-    """Antes esto tumbaba el run (salida_invalida); ahora se conserva el texto y se descarta la cita."""
-    c = ClienteFalso([_resp(hechos=["inventada"])] * 2)
-    r = _redactar(c)
-    assert len(c.llamadas) == 2  # intento inicial más un reintento, sin tercera llamada
+    assert len(c.llamadas) == 1
     assert r.hechos == () and r.campos["titulo"] == "Sprints de un mes"  # cita descartada, texto intacto
 
 
-def test_el_ultimo_intento_conserva_solo_las_citas_literales():
+def test_se_conservan_solo_las_citas_literales_en_una_sola_llamada():
     buena = "El Sprint dura un mes como máximo."
-    c = ClienteFalso([_resp(hechos=["inventada"]), _resp(hechos=["inventada", buena])])
+    c = ClienteFalso([_resp(hechos=["inventada", buena])])
     r = _redactar(c)
+    assert len(c.llamadas) == 1
     assert [h.texto for h in r.hechos] == [buena]  # la mala se descarta y la buena queda ubicada
 
 
-def test_cita_demasiado_larga_en_ambos_intentos_se_descarta_sin_abortar(caplog):
+def test_una_cita_demasiado_larga_no_provoca_reintento_y_se_descarta(caplog):
     """Con una fuente larga (PDF) el modelo copia pasajes enteros: la cita larga se descarta, el slide se conserva."""
     buena = "El Sprint dura un mes como máximo."
     larga = "x" * (HECHO_MAX_CHARS + 1)
-    c = ClienteFalso([_resp(hechos=[larga]), _resp(hechos=[larga, buena])])
+    c = ClienteFalso([_resp(hechos=[larga, buena])])
     with caplog.at_level(logging.WARNING, logger="app.agentes.redactor"):
         r = _redactar(c)
-    assert len(c.llamadas) == 2
+    assert len(c.llamadas) == 1
     assert [h.texto for h in r.hechos] == [buena] and r.campos["titulo"] == "Sprints de un mes"
     assert "descartada" in caplog.text
 
 
+def test_el_reintento_por_longitud_no_menciona_las_citas():
+    """Si hay que reintentar por longitud, el motivo que recibe el modelo no le pide corregir citas."""
+    c = ClienteFalso([_resp(campos={"titulo": "x" * 66, "cuerpo": "y"}, hechos=["inventada"]), _resp()])
+    _redactar(c)
+    motivo = c.llamadas[1]["mensajes"][-1]["content"]
+    assert "supera 60" in motivo and "no aparece literal" not in motivo
+
+
 def test_cita_descartada_deja_aviso_en_el_log(caplog):
-    c = ClienteFalso([_resp(hechos=["inventada"])] * 2)
+    c = ClienteFalso([_resp(hechos=["inventada"])])
     with caplog.at_level(logging.WARNING, logger="app.agentes.redactor"):
         _redactar(c)
     # El aviso dice qué slide y qué cita se descartó, para poder revisarlo en el log del servidor.

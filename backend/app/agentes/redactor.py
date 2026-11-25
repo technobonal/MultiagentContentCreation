@@ -155,16 +155,22 @@ def recortar_a_limite(texto: str, maximo: int) -> str:
 
 
 def validar_redaccion(
-    dato: Any, campos: list[tuple[str, int]], fragmentos: list, exigir_citas: bool = True
+    dato: Any,
+    campos: list[tuple[str, int]],
+    fragmentos: list,
+    exigir_citas: bool = True,
+    exigir_longitud: bool | None = None,
 ) -> list[str]:
     """Comprueba el JSON del redactor y devuelve los motivos de rechazo (lista vacía = válido).
 
-    Con `exigir_citas=True` (modo estricto, el de los primeros intentos) incluye la verificación
-    literal: un hecho que no aparece en los fragmentos es un motivo de rechazo, así el reintento
-    le pide al modelo que cite bien. Con `exigir_citas=False` (modo tolerante, último intento)
-    esa verificación se omite: las citas no literales las descarta `redactar_slide`. La
-    estructura (campos, límites, tipos de 'hechos') se exige siempre.
+    `exigir_citas=True` rechaza las citas no literales o de más de HECHO_MAX_CHARS (así un reintento
+    le pide al modelo que cite bien); con False se aceptan y `redactar_slide` las descarta.
+    `exigir_longitud` (por defecto, igual que `exigir_citas`) rechaza el campo que se pasa de su
+    límite; con False se acepta y `redactar_slide` lo recorta. Claves, tipos y cantidad de citas
+    se exigen siempre.
     """
+    if exigir_longitud is None:
+        exigir_longitud = exigir_citas
     # Debe ser un objeto.
     if not isinstance(dato, dict):
         return ["la respuesta debe ser un objeto JSON"]
@@ -185,8 +191,8 @@ def validar_redaccion(
                 continue  # su ausencia ya se informó arriba
             if not isinstance(valor, str) or not valor.strip():
                 motivos.append(f"el campo '{nombre}' debe ser un texto no vacío")
-            # En el modo tolerante (último intento) el exceso no se rechaza: `redactar_slide` recorta el campo.
-            elif len(valor.strip()) > maximo and exigir_citas:
+            # Sin exigir la longitud (último intento) el exceso no se rechaza: `redactar_slide` recorta el campo.
+            elif len(valor.strip()) > maximo and exigir_longitud:
                 motivos.append(f"el campo '{nombre}' supera {maximo} caracteres ({len(valor.strip())})")
 
     hechos = dato.get("hechos")
@@ -261,8 +267,10 @@ async def redactar_slide(
 
     `correcciones` (opcional) activa la reescritura: lo que el revisor pidió cambiar.
     Con fallback permitido (un run caído pesa más que mezclar familias; queda registrado en
-    `TextoSlide.modelo`). Una respuesta vacía o cortada se reintenta una vez. Una cita que sigue
-    sin ser literal tras el reintento se descarta (con aviso en el log) en vez de abortar el run.
+    `TextoSlide.modelo`). Una respuesta vacía o cortada se reintenta una vez. Las citas no literales o
+    demasiado largas NO provocan un reintento (cuesta ~1.500 tokens y nada aguas abajo usa las citas del
+    redactor: el revisor verifica por su cuenta): se descartan con aviso en el log. Solo se reintenta por
+    estructura o por un campo que se pasa del límite; si el exceso sigue, el campo se recorta.
     Lanza AgenteError (salida truncada o inválida) o LLMError (cliente).
     """
     slide = next(s for s in resolucion.ficha["slides"] if s["numero"] == numero)
@@ -275,21 +283,21 @@ async def redactar_slide(
     fragmentos = [fuente.fragmentos[i] for i in brief.fragmentos_por_slide[numero]]
     mensajes = construir_mensajes(entrada, brief, slide, campos, fragmentos, tuple(correcciones))
 
-    # Estricto en los primeros intentos (pide corregir las citas); tolerante en el último (las descarta).
+    # Primer intento: exige estructura y longitud, pero no reintenta por citas. Último: tolera también la longitud.
     dato, resp = await _pedir_redaccion(
         cliente,
         mensajes,
-        lambda d: validar_redaccion(d, campos, fragmentos),
-        lambda d: validar_redaccion(d, campos, fragmentos, exigir_citas=False),
+        lambda d: validar_redaccion(d, campos, fragmentos, exigir_citas=False, exigir_longitud=True),
+        lambda d: validar_redaccion(d, campos, fragmentos, exigir_citas=False, exigir_longitud=False),
     )
-    # Una cita de más de HECHO_MAX_CHARS que sobrevivió al último intento tolerante se descarta sin ubicarla.
+    # Una cita de más de HECHO_MAX_CHARS se descarta sin ubicarla.
     largos = [h for h in dato["hechos"] if len(h) > HECHO_MAX_CHARS]
     ubicados, faltan = ubicar_hechos([h for h in dato["hechos"] if len(h) <= HECHO_MAX_CHARS], fragmentos)
     faltan = [*faltan, *largos]
     # Las citas que siguen sin ser literales se descartan; el texto del slide se conserva y queda constancia.
     if faltan:
         log.warning(
-            "Redactor: slide %s, %d cita(s) no literal(es) descartada(s) tras el reintento: %s",
+            "Redactor: slide %s, %d cita(s) no literal(es) o demasiado larga(s) descartada(s): %s",
             numero, len(faltan), [h[:CITA_LOG_MAX_CHARS] for h in faltan],
         )
     # Un campo que sigue pasándose del límite tras el reintento se recorta (prefijo del original, nunca texto nuevo).

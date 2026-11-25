@@ -12,6 +12,7 @@ byte a byte en cada llamada.
 """
 
 import json
+import logging
 import re
 from collections.abc import Callable
 from functools import lru_cache
@@ -19,6 +20,11 @@ from pathlib import Path
 from typing import Any
 
 from app.agentes.cliente_llm import ClienteLLM, RespuestaLLM
+
+log = logging.getLogger(__name__)
+
+# Cuántos caracteres de los motivos de un reintento se escriben en el log.
+MOTIVOS_LOG_MAX_CHARS = 200
 
 # Carpeta con los prompts (uno por archivo .md), junto a este módulo.
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
@@ -145,6 +151,8 @@ async def pedir_json(
 
         # Quedan reintentos: se devuelve al modelo su respuesta y qué corregir.
         if intento < reintentos:
+            # Cada reintento cuesta una llamada entera: queda en el log por qué, para poder medirlo.
+            log.info("Reintento de %s (intento %d): %s", rol, intento + 2, "; ".join(motivos)[:MOTIVOS_LOG_MAX_CHARS])
             dialogo = dialogo + [
                 {"role": "assistant", "content": resp.texto},
                 {
