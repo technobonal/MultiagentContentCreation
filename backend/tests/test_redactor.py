@@ -1,7 +1,12 @@
-"""Pruebas del redactor: campos, mensajes, validación (incluida la cita literal) y redactar_slide con cliente falso."""
+"""Pruebas del redactor: campos, mensajes, validación (incluida la cita literal) y redactar_slide con cliente falso.
+
+Incluye el degradado de citas: en el último intento una cita que no es literal se descarta
+(con aviso en el log) en vez de abortar el run; los errores de estructura siguen abortando.
+"""
 
 import asyncio
 import json
+import logging
 from types import SimpleNamespace
 
 import pytest
@@ -127,6 +132,12 @@ def test_mensaje_de_usuario_lista_campos_limites_y_fragmentos_numerados():
     assert "Idioma de salida: es" in u and "rol: gancho" in u
 
 
+def test_prompt_del_redactor_explica_como_copiar_las_citas():
+    """El prompt fijo trae la regla de copia exacta y los comentarios HTML no llegan al modelo."""
+    prompt = construir_mensajes(ENTRADA, _brief(), SLIDE_GANCHO, CAMPOS, [FRAGMENTOS[0]])[0]["content"]
+    assert "Cómo copiar bien una cita" in prompt and "<!--" not in prompt
+
+
 # ---------------------------- validar_redaccion ----------------------------
 
 def test_validar_redaccion_correcta():
@@ -164,6 +175,35 @@ def test_validar_rechaza(cambio, fragmento_motivo):
 def test_validar_informa_cada_cita_inventada_por_separado():
     motivos = _validar(json.loads(_resp(hechos=["inventado uno", "inventado dos"])))
     assert sum("no aparece literal" in m for m in motivos) == 2
+
+
+def test_validar_rechaza_cita_con_la_mayuscula_cambiada():
+    """Caso real: el modelo «arregla» el inicio de la cita (aquí baja la mayúscula) y deja de ser literal."""
+    motivos = _validar(json.loads(_resp(hechos=["el Product Owner ordena el Product Backlog."])))
+    assert any("no aparece literal" in m for m in motivos), motivos
+
+
+# ---------------------------- validar_redaccion: modo tolerante (último intento) ----------------------------
+
+def test_validar_tolerante_no_rechaza_citas_no_literales():
+    """En modo tolerante una cita inventada ya no es motivo de rechazo (se descartará al ubicarla)."""
+    dato = json.loads(_resp(hechos=["El Sprint dura dos meses.", "inventada"]))
+    assert validar_redaccion(dato, CAMPOS, FRAGMENTOS, exigir_citas=False) == []
+    # Y el modo estricto (el de por defecto) sigue rechazándolas.
+    assert any("no aparece literal" in m for m in _validar(dato))
+
+
+@pytest.mark.parametrize("cambio, fragmento_motivo", [
+    ({"campos": {"titulo": "x"}}, "exactamente estas claves"),
+    ({"campos": {"titulo": "x" * 61, "cuerpo": "y"}}, "supera 60"),
+    ({"hechos": "no es lista"}, "lista de textos"),
+    ({"hechos": ["El Sprint dura un mes como máximo."] * (MAX_HECHOS + 1)}, f"el máximo es {MAX_HECHOS}"),
+    ({"hechos": ["a" * (HECHO_MAX_CHARS + 1)]}, f"más de {HECHO_MAX_CHARS}"),
+])
+def test_validar_tolerante_sigue_exigiendo_la_estructura(cambio, fragmento_motivo):
+    """El modo tolerante solo perdona las citas no literales: campos, límites y tipos se exigen siempre."""
+    motivos = validar_redaccion({**json.loads(_resp()), **cambio}, CAMPOS, FRAGMENTOS, exigir_citas=False)
+    assert any(fragmento_motivo in m for m in motivos), motivos
 
 
 # ---------------------------- redactar_slide ----------------------------
@@ -205,24 +245,50 @@ def test_reintento_tras_cita_inventada_pide_corregirla():
     assert "no aparece literal" in c.llamadas[1]["mensajes"][-1]["content"]
 
 
+def test_cita_no_literal_en_ambos_intentos_se_descarta_sin_abortar():
+    """Antes esto tumbaba el run (salida_invalida); ahora se conserva el texto y se descarta la cita."""
+    c = ClienteFalso([_resp(hechos=["inventada"]), _resp(hechos=["inventada"])])
+    r = _redactar(c)
+    assert len(c.llamadas) == 2  # intento inicial más un reintento, sin tercera llamada
+    assert r.hechos == () and r.campos["titulo"] == "Sprints de un mes"  # cita descartada, texto intacto
+
+
+def test_el_ultimo_intento_conserva_solo_las_citas_literales():
+    buena = "El Sprint dura un mes como máximo."
+    c = ClienteFalso([_resp(hechos=["inventada"]), _resp(hechos=["inventada", buena])])
+    r = _redactar(c)
+    assert [h.texto for h in r.hechos] == [buena]  # la mala se descarta y la buena queda ubicada
+
+
+def test_cita_descartada_deja_aviso_en_el_log(caplog):
+    c = ClienteFalso([_resp(hechos=["inventada"]), _resp(hechos=["inventada"])])
+    with caplog.at_level(logging.WARNING, logger="app.agentes.redactor"):
+        _redactar(c)
+    # El aviso dice qué slide y qué cita se descartó, para poder revisarlo en el log del servidor.
+    assert "descartada" in caplog.text and "inventada" in caplog.text and "slide 1" in caplog.text
+
+
 def test_reintento_tras_json_roto():
     c = ClienteFalso(['{"campos"', _resp()])
     assert _redactar(c).campos["titulo"] == "Sprints de un mes" and len(c.llamadas) == 2
 
 
-def test_salida_truncada_falla_sin_reintentar():
-    c = ClienteFalso([(_resp()[:30], "length")])
+def test_salida_truncada_falla_tras_un_reintento():
+    # Dos respuestas cortadas: el intento inicial y su único reintento.
+    c = ClienteFalso([(_resp()[:30], "length"), (_resp()[:30], "length")])
     with pytest.raises(AgenteError) as e:
         _redactar(c)
-    assert e.value.codigo == "salida_truncada" and len(c.llamadas) == 1
+    assert e.value.codigo == "salida_truncada" and len(c.llamadas) == 2
 
 
 def test_salida_invalida_tras_agotar_reintentos():
+    """La estructura inválida sigue abortando el run aunque el último intento sea tolerante con las citas."""
     mala = json.dumps({"campos": {}, "hechos": []})
     c = ClienteFalso([mala, mala])
     with pytest.raises(AgenteError) as e:
         _redactar(c)
     assert e.value.codigo == "salida_invalida" and len(c.llamadas) == 2
+    assert "respuesta válida" in e.value.mensaje  # el mensaje ya no dice «JSON válido» (el JSON sí era válido)
 
 
 def test_hechos_repetidos_se_ubican_una_sola_vez():

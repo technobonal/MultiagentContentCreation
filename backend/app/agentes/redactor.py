@@ -17,6 +17,13 @@ intermitente, en un slide cualquiera). `pedir_json` no lo reintenta porque repet
 pedido idéntico lo volvería a cortar; aquí se reintenta UNA vez con una temperatura algo mayor,
 para que la segunda respuesta no sea una copia de la primera.
 
+Citas no literales: mientras quedan reintentos, una cita que no aparece literal en los
+fragmentos se rechaza y se le devuelve al modelo para que la corrija. En el ÚLTIMO intento ya
+no se rechaza (`exigir_citas=False`): esa cita se descarta, se conserva el texto del slide y
+queda un aviso en el log. No se inventa respaldo: el revisor de fidelidad verifica el texto del
+slide por su cuenta contra los fragmentos. Los errores de estructura (campos, límites, JSON)
+sí siguen cortando el run.
+
 Orden del prompt (para el caché de Groq): prompt fijo primero, datos variables al final.
 Para que el prefijo se reutilice, el orquestador debe llamar a los slides en SECUENCIA.
 """
@@ -26,7 +33,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.agentes.cliente_llm import ClienteLLM
-from app.agentes.comun import AgenteError, cargar_prompt, pedir_json
+from app.agentes.comun import AgenteError, Validador, cargar_prompt, pedir_json
 from app.agentes.estratega import Brief
 from app.agentes.verificar_hechos import HechoUbicado, ubicar_hechos
 from app.fuentes.cargador_fuente import FuenteCargada
@@ -46,6 +53,9 @@ REINTENTOS_SALIDA_TRUNCADA = 1
 # Límites de los hechos citados.
 MAX_HECHOS = 6
 HECHO_MAX_CHARS = 300
+
+# Cuántos caracteres de una cita descartada se escriben en el log (para no inflarlo).
+CITA_LOG_MAX_CHARS = 120
 
 
 @dataclass(frozen=True)
@@ -106,11 +116,16 @@ def construir_mensajes(
     ]
 
 
-def validar_redaccion(dato: Any, campos: list[tuple[str, int]], fragmentos: list) -> list[str]:
+def validar_redaccion(
+    dato: Any, campos: list[tuple[str, int]], fragmentos: list, exigir_citas: bool = True
+) -> list[str]:
     """Comprueba el JSON del redactor y devuelve los motivos de rechazo (lista vacía = válido).
 
-    Incluye la verificación literal: un hecho que no aparece en los fragmentos es un motivo de
-    rechazo, así el reintento le pide al modelo que cite bien.
+    Con `exigir_citas=True` (modo estricto, el de los primeros intentos) incluye la verificación
+    literal: un hecho que no aparece en los fragmentos es un motivo de rechazo, así el reintento
+    le pide al modelo que cite bien. Con `exigir_citas=False` (modo tolerante, último intento)
+    esa verificación se omite: las citas no literales las descarta `redactar_slide`. La
+    estructura (campos, límites, tipos de 'hechos') se exige siempre.
     """
     # Debe ser un objeto.
     if not isinstance(dato, dict):
@@ -146,6 +161,10 @@ def validar_redaccion(dato: Any, campos: list[tuple[str, int]], fragmentos: list
     if largos:
         motivos.append(f"hay citas de más de {HECHO_MAX_CHARS} caracteres; usa citas más cortas")
 
+    # Modo tolerante: no se rechaza por citas no literales (se descartarán al ubicarlas).
+    if not exigir_citas:
+        return motivos
+
     # Verificación literal contra los fragmentos del slide.
     _, faltan = ubicar_hechos(hechos, fragmentos)
     # Se muestran recortadas para no inflar el mensaje de corrección.
@@ -154,12 +173,18 @@ def validar_redaccion(dato: Any, campos: list[tuple[str, int]], fragmentos: list
     return motivos
 
 
-async def _pedir_redaccion(cliente: ClienteLLM, mensajes: list[dict[str, str]], validar) -> tuple[Any, Any]:
+async def _pedir_redaccion(
+    cliente: ClienteLLM,
+    mensajes: list[dict[str, str]],
+    validar: Validador,
+    validar_ultimo: Validador | None = None,
+) -> tuple[Any, Any]:
     """Pide la redacción al LLM y reintenta si la respuesta llega vacía o cortada.
 
     Solo se reintenta el código `salida_truncada`; cualquier otro error (JSON inválido tras sus
     reintentos, fallos del cliente) se propaga sin tocar. El reintento usa una temperatura mayor.
-    Devuelve (dato_validado, respuesta), igual que `pedir_json`.
+    `validar_ultimo` (opcional) es el validador tolerante que `pedir_json` aplica en el último
+    intento de cada pedido. Devuelve (dato_validado, respuesta), igual que `pedir_json`.
     """
     # Intento inicial más los reintentos permitidos por salida vacía o cortada.
     for intento in range(REINTENTOS_SALIDA_TRUNCADA + 1):
@@ -172,6 +197,7 @@ async def _pedir_redaccion(cliente: ClienteLLM, mensajes: list[dict[str, str]], 
                 max_tokens=MAX_TOKENS_REDACTOR,
                 permitir_fallback=True,
                 temperatura=TEMPERATURA_REDACTOR if intento == 0 else TEMPERATURA_REINTENTO,
+                validar_ultimo=validar_ultimo,
             )
         except AgenteError as exc:
             # Otro tipo de fallo, o ya no quedan reintentos: se deja pasar el error tal cual.
@@ -194,8 +220,9 @@ async def redactar_slide(
 
     `correcciones` (opcional) activa la reescritura: lo que el revisor pidió cambiar.
     Con fallback permitido (un run caído pesa más que mezclar familias; queda registrado en
-    `TextoSlide.modelo`). Una respuesta vacía o cortada se reintenta una vez. Lanza AgenteError
-    (salida truncada o inválida) o LLMError (cliente).
+    `TextoSlide.modelo`). Una respuesta vacía o cortada se reintenta una vez. Una cita que sigue
+    sin ser literal tras el reintento se descarta (con aviso en el log) en vez de abortar el run.
+    Lanza AgenteError (salida truncada o inválida) o LLMError (cliente).
     """
     slide = next(s for s in resolucion.ficha["slides"] if s["numero"] == numero)
     campos = campos_del_redactor(slide)
@@ -207,8 +234,20 @@ async def redactar_slide(
     fragmentos = [fuente.fragmentos[i] for i in brief.fragmentos_por_slide[numero]]
     mensajes = construir_mensajes(entrada, brief, slide, campos, fragmentos, tuple(correcciones))
 
-    dato, resp = await _pedir_redaccion(cliente, mensajes, lambda d: validar_redaccion(d, campos, fragmentos))
-    ubicados, _ = ubicar_hechos(dato["hechos"], fragmentos)  # ya validados: aquí solo se calcula la posición
+    # Estricto en los primeros intentos (pide corregir las citas); tolerante en el último (las descarta).
+    dato, resp = await _pedir_redaccion(
+        cliente,
+        mensajes,
+        lambda d: validar_redaccion(d, campos, fragmentos),
+        lambda d: validar_redaccion(d, campos, fragmentos, exigir_citas=False),
+    )
+    ubicados, faltan = ubicar_hechos(dato["hechos"], fragmentos)
+    # Las citas que siguen sin ser literales se descartan; el texto del slide se conserva y queda constancia.
+    if faltan:
+        log.warning(
+            "Redactor: slide %s, %d cita(s) no literal(es) descartada(s) tras el reintento: %s",
+            numero, len(faltan), [h[:CITA_LOG_MAX_CHARS] for h in faltan],
+        )
     return TextoSlide(
         numero=numero,
         campos={nombre: dato["campos"][nombre].strip() for nombre, _ in campos},

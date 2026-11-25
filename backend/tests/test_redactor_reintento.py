@@ -76,3 +76,40 @@ def test_a_la_primera_no_reintenta(monkeypatch):
     _correr(redactor._pedir_redaccion(object(), [], lambda d: []))
 
     assert temperaturas == [redactor.TEMPERATURA_REDACTOR]
+
+
+def test_reenvia_el_validador_tolerante_en_cada_pedido(monkeypatch):
+    """`validar_ultimo` llega a `pedir_json` tanto en el intento inicial como en el reintento por salida cortada."""
+    recibidos: list = []
+    resultados: list = [_truncada(), ({"campos": {}}, "ok")]
+
+    async def falso(cliente, rol, mensajes, validar, **kw):
+        """Anota el validador tolerante recibido y reproduce un fallo seguido de un acierto."""
+        recibidos.append(kw.get("validar_ultimo"))
+        siguiente = resultados.pop(0)
+        if isinstance(siguiente, Exception):
+            raise siguiente
+        return siguiente
+
+    monkeypatch.setattr(redactor, "pedir_json", falso)
+    tolerante = lambda d: []  # noqa: E731 - validador de prueba
+
+    _correr(redactor._pedir_redaccion(object(), [], lambda d: ["estricto"], tolerante))
+
+    assert recibidos == [tolerante, tolerante]  # el mismo validador en las dos llamadas
+
+
+def test_sin_validador_tolerante_se_envia_none(monkeypatch):
+    """Si el llamador no da `validar_ultimo`, `pedir_json` lo recibe como None (comportamiento anterior)."""
+    recibidos: list = []
+
+    async def falso(cliente, rol, mensajes, validar, **kw):
+        """Anota lo recibido y devuelve un resultado válido."""
+        recibidos.append(kw.get("validar_ultimo", "ausente"))
+        return {"campos": {}}, "ok"
+
+    monkeypatch.setattr(redactor, "pedir_json", falso)
+
+    _correr(redactor._pedir_redaccion(object(), [], lambda d: []))
+
+    assert recibidos == [None]

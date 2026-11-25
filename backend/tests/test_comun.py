@@ -2,6 +2,8 @@
 
 Sin red: se usa un cliente falso con la misma interfaz `completar`. Los casos async corren con
 asyncio.run para no depender de ningún plugin de pytest.
+
+`validar_ultimo` (validador tolerante del último intento) tiene su propio bloque de pruebas al final.
 """
 
 import asyncio
@@ -106,6 +108,7 @@ def test_agota_reintentos_con_salida_invalida():
     with pytest.raises(AgenteError) as e:
         _correr(c, reintentos=1)
     assert e.value.codigo == "salida_invalida" and "falta 'a'" in e.value.mensaje
+    assert "respuesta válida" in e.value.mensaje  # el JSON sí era válido: lo que falló fue el contenido
     assert len(c.vistos) == 2  # un intento inicial y un solo reintento
 
 
@@ -121,3 +124,75 @@ def test_respuesta_vacia_cuenta_como_truncada():
     with pytest.raises(AgenteError) as e:
         _correr(c)
     assert e.value.codigo == "salida_truncada"
+
+
+# ---------------------------- pedir_json: validar_ultimo (validador tolerante) ----------------------------
+
+def _cualquier_objeto(d):
+    """Validador tolerante de prueba: acepta cualquier objeto JSON (perdona lo que `_ok` exige)."""
+    return [] if isinstance(d, dict) else ["debe ser un objeto"]
+
+
+def test_tolerante_acepta_en_el_ultimo_intento_lo_que_el_estricto_rechazo():
+    c = ClienteFalso(['{"b": 1}', '{"b": 2}'])
+    dato, _ = _correr(c, validar_ultimo=_cualquier_objeto)
+    assert dato == {"b": 2} and len(c.vistos) == 2  # el primero lo rechazó el estricto; el segundo, el tolerante
+    # El reintento sí recibió el motivo del validador estricto.
+    assert "falta 'a'" in c.vistos[1][-1]["content"]
+
+
+def test_cada_validador_se_usa_en_su_intento():
+    estrictos: list = []
+    tolerantes: list = []
+
+    def estricto(d):
+        """Anota lo que recibe y rechaza siempre, para forzar el reintento."""
+        estrictos.append(d)
+        return ["rechazo estricto"]
+
+    def tolerante(d):
+        """Anota lo que recibe y acepta."""
+        tolerantes.append(d)
+        return []
+
+    c = ClienteFalso(['{"n": 1}', '{"n": 2}'])
+    asyncio.run(pedir_json(c, "r", [{"role": "user", "content": "x"}], estricto, max_tokens=10, validar_ultimo=tolerante))
+    # El estricto solo vio el intento inicial; el tolerante, solo el último.
+    assert estrictos == [{"n": 1}] and tolerantes == [{"n": 2}]
+
+
+def test_sin_validador_tolerante_todos_los_intentos_usan_el_estricto():
+    c = ClienteFalso(['{"b": 1}', '{"b": 2}'])
+    with pytest.raises(AgenteError) as e:
+        _correr(c, validar_ultimo=None)
+    assert e.value.codigo == "salida_invalida" and len(c.vistos) == 2
+
+
+def test_con_cero_reintentos_el_unico_intento_es_el_ultimo():
+    c = ClienteFalso(['{"b": 1}'])
+    dato, _ = _correr(c, reintentos=0, validar_ultimo=_cualquier_objeto)
+    assert dato == {"b": 1} and len(c.vistos) == 1  # el tolerante se aplica de inmediato
+
+
+def test_si_el_tolerante_tambien_rechaza_falla_con_sus_motivos():
+    c = ClienteFalso(['{"b": 1}', '{"b": 2}'])
+    with pytest.raises(AgenteError) as e:
+        _correr(c, validar_ultimo=lambda d: ["sigue mal"])
+    # El mensaje final lleva los motivos del último intento, que son los del validador tolerante.
+    assert e.value.codigo == "salida_invalida" and "sigue mal" in e.value.mensaje
+    assert "falta 'a'" not in e.value.mensaje and len(c.vistos) == 2
+
+
+def test_json_roto_en_el_ultimo_intento_falla_aunque_haya_tolerante():
+    c = ClienteFalso(['{"a"', '{"a"'])
+    with pytest.raises(AgenteError) as e:
+        _correr(c, validar_ultimo=_cualquier_objeto)
+    # El validador tolerante no llega a ejecutarse: el JSON ni siquiera se pudo leer.
+    assert e.value.codigo == "salida_invalida" and "no es JSON válido" in e.value.mensaje
+
+
+def test_la_salida_truncada_sigue_sin_reintentarse_con_tolerante():
+    c = ClienteFalso([('{"a": 1', "length")])
+    with pytest.raises(AgenteError) as e:
+        _correr(c, validar_ultimo=_cualquier_objeto)
+    assert e.value.codigo == "salida_truncada" and len(c.vistos) == 1

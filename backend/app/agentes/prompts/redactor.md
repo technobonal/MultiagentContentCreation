@@ -18,7 +18,18 @@ Reglas:
 1. "campos": una clave por cada campo pedido, con el nombre exacto, sin añadir ni omitir ninguno. Cada texto debe tener contenido y NO superar su límite de caracteres (cuéntalos).
 2. Escribe los textos en el idioma de salida y con el tono indicado, adecuados al rol del slide.
 3. Afirma solo lo que respaldan los fragmentos. No añadas datos, cifras, nombres ni fechas que no estén en ellos. Si algo no está en los fragmentos, no lo digas.
-4. "hechos": las partes de la fuente en las que te apoyas, copiadas LITERALMENTE de los fragmentos, en el idioma original de la fuente, sin traducir, resumir ni corregir. Cada cita debe ser corta (una frase o menos, máximo 300 caracteres) y aparecer tal cual en un fragmento.
-5. Toda cifra, nombre propio, fecha o definición que uses en un texto debe tener su cita literal en "hechos". Un slide puramente de presentación o cierre puede llevar la lista vacía.
-6. Máximo 6 citas. No repitas la misma cita.
-7. No añadas campos distintos a los indicados.
+4. "hechos": las partes de la fuente en las que te apoyas, copiadas LITERALMENTE de los fragmentos, en el idioma original de la fuente, sin traducir, resumir ni corregir. Cada cita debe aparecer tal cual en un fragmento: las mismas palabras, las mismas mayúsculas y la misma puntuación.
+
+<!--
+  Regla 5: el fallo más común del modelo es "arreglar" el inicio de una cita para que suene como
+  frase completa (añadir un artículo, bajar una mayúscula, quitar el nombre de una viñeta). El código
+  compara literalmente y rechaza esa cita. Los ejemplos son genéricos a propósito (no de un tema concreto).
+-->
+5. Cómo copiar bien una cita:
+   - Empieza donde empieza el trozo en la fuente y termina donde termina. No añadas artículos ni otras palabras al inicio o al final, y no cambies mayúsculas ni minúsculas para que la frase suene natural.
+   - Si el fragmento es una lista del tipo «Nombre: descripción», copia desde el nombre tal como está escrito («Cliente: es quien paga el servicio.») o copia solo la parte que usas («es quien paga el servicio.»). No escribas «El cliente: es quien paga el servicio.» si la fuente no dice «El».
+   - Prefiere citas cortas: una frase o menos, de unos 120 caracteres como máximo (300 es el tope, no el objetivo).
+   - Si dudas de que una cita sea exacta, elige otro trozo más corto del mismo fragmento que sí puedas copiar tal cual.
+6. Toda cifra, nombre propio, fecha o definición que uses en un texto debe tener su cita literal en "hechos". Un slide puramente de presentación o cierre puede llevar la lista vacía.
+7. Máximo 6 citas. No repitas la misma cita.
+8. No añadas campos distintos a los indicados.

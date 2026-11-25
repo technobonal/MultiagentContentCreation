@@ -90,6 +90,7 @@ async def pedir_json(
     temperatura: float = 0.2,
     permitir_fallback: bool | None = None,
     extra: dict[str, Any] | None = None,
+    validar_ultimo: Validador | None = None,
 ) -> tuple[Any, RespuestaLLM]:
     """Pide un JSON al LLM del `rol`, lo valida y reintenta si la respuesta no sirve.
 
@@ -98,6 +99,12 @@ async def pedir_json(
     Una salida truncada NO se reintenta: repetir el mismo pedido la volvería a cortar.
     Los errores del cliente (LLMError: sin cupo, pedido grande, API) se propagan sin tocar.
 
+    `validar_ultimo` (opcional) es un validador más tolerante que se usa SOLO en el último
+    intento, cuando ya no quedan correcciones por pedir. Sirve para aceptar con una pérdida
+    menor (por ejemplo, descartar un detalle que el modelo no supo corregir) en vez de tumbar
+    todo el pedido. Sin él, todos los intentos usan `validar`. Con `reintentos=0` el único
+    intento es también el último.
+
     Lanza AgenteError con código `salida_truncada` o `salida_invalida`.
     """
     dialogo = list(mensajes)  # copia: no se modifica la lista del llamador
@@ -105,6 +112,10 @@ async def pedir_json(
 
     # Intento inicial más los reintentos permitidos.
     for intento in range(reintentos + 1):
+        # En el último intento se usa el validador tolerante (si lo hay); antes, el estricto.
+        es_ultimo = intento == reintentos
+        validador = validar_ultimo if (es_ultimo and validar_ultimo is not None) else validar
+
         resp = await cliente.completar(
             rol,
             dialogo,
@@ -123,7 +134,7 @@ async def pedir_json(
 
         try:
             dato = extraer_json(resp.texto)
-            motivos = validar(dato)  # [] si cumple las reglas del agente
+            motivos = validador(dato)  # [] si cumple las reglas del agente
         except ValueError as exc:
             motivos = [str(exc)]
             dato = None
@@ -145,4 +156,4 @@ async def pedir_json(
             ]
 
     # Se agotaron los intentos con la última respuesta todavía inválida.
-    raise AgenteError("salida_invalida", "El modelo no devolvió un JSON válido: " + "; ".join(motivos))
+    raise AgenteError("salida_invalida", "El modelo no devolvió una respuesta válida: " + "; ".join(motivos))
