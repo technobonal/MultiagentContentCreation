@@ -9,6 +9,10 @@ referencing>=0.30  # registro de esquemas por $id (dependencia de jsonschema 4.1
 fastapi>=0.110     # framework web; expone el endpoint SSE con soporte de Last-Event-ID
 uvicorn>=0.29      # servidor ASGI que ejecuta la app FastAPI
 
+# --- Fase 2, paso 2: agentes reales (MODO_RUN=real) ---
+groq>=1.0          # cliente del LLM (estratega, redactor y revisor); sin él no arranca el modo real
+python-dotenv>=1.0 # lee el .env de la raíz (GROQ_API_KEY, GROQ_MARGEN...); config.py funciona sin él, pero ignora el .env
+
 # --- Fase 2: fuentes en PDF con texto ---
 pymupdf>=1.24      # extrae el texto de un PDF (se importa como fitz)
 
