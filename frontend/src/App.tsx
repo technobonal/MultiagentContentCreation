@@ -16,6 +16,7 @@ import { idiomaDeGuia, leerEleccion } from "./lienzo/fase.ts";
 import type { EleccionIdioma, IdiomaFase } from "./lienzo/fase.ts";
 import { Lienzo } from "./lienzo/Lienzo.tsx";
 import { MesaAgentes } from "./lienzo/MesaAgentes.tsx";
+import { PanelAprobacion } from "./lienzo/PanelAprobacion.tsx";
 // NUEVO: reglas del slide elegido a mano.
 import { aplicarSlideManual, slideManualVigente } from "./lienzo/slideManual.ts";
 import type { SeleccionManual } from "./lienzo/slideManual.ts";
@@ -266,8 +267,10 @@ function ModoGrabacion({ svg }: { svg: string }) {
 }
 
 // Pantalla de una fuente en vivo ya creada: estado de la conexión y el lienzo.
-function PantallaServidor({ fuente, svg }: { fuente: FuenteEnVivo; svg: string }) {
+function PantallaServidor({ fuente, svg, runId }: { fuente: FuenteEnVivo; svg: string; runId: string }) {
   const vivo = useEnVivo(fuente);
+  // El estado del reductor decide si hay que pedir una aprobación a la persona.
+  const estado = useReproductor(fuente).estado;
   // Con el buffer vacío todavía no hay guía de la cual sacar el idioma.
   const idiomaGuia: IdiomaFase = vivo.eventos.length === 0 ? "es" : idiomaDeGuia(vivo.eventos);
 
@@ -285,6 +288,8 @@ function PantallaServidor({ fuente, svg }: { fuente: FuenteEnVivo; svg: string }
         eventos={vivo.eventos}
         runFallido={vivo.conexion === "error"}
       />
+      {/* Aprobación humana: solo aparece mientras el run espera la decisión (y deja un aviso si se editó algo). */}
+      <PanelAprobacion estado={estado} runId={runId} />
     </>
   );
 }
@@ -324,7 +329,7 @@ function ModoServidor({ svg }: { svg: string }) {
       </form>
 
       {/* La clave por run reinicia el lienzo completo al cambiar de ejecución. */}
-      {fuente && runActivo !== "" && <PantallaServidor key={runActivo} fuente={fuente} svg={svg} />}
+      {fuente && runActivo !== "" && <PantallaServidor key={runActivo} fuente={fuente} svg={svg} runId={runActivo} />}
     </>
   );
 }

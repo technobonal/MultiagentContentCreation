@@ -765,3 +765,93 @@ input[type="range"] {
     transition: none;
   }
 }
+/* Panel de aprobación humana (modo Servidor): aparece mientras el run espera la decisión. */
+.panel-aprobacion {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--acento);
+  border-radius: 8px;
+}
+
+.panel-aprobacion h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.panel-aprobacion-sello {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.panel-aprobacion-aviso {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  opacity: 0.75;
+}
+
+.panel-aprobacion-campo {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.8125rem;
+}
+
+.panel-aprobacion-campo textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--texto);
+  font: inherit;
+  resize: vertical;
+}
+
+.panel-aprobacion-campo textarea:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 1px;
+}
+
+/* Barra fija al borde inferior (mismo ancho que la app): el botón siempre se ve, aunque el panel quede más abajo. */
+.panel-aprobacion {
+  padding-bottom: 76px; /* deja lugar para que la barra no tape el último campo */
+}
+
+.panel-aprobacion-barra {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  border-top: 1px solid var(--acento);
+  background: var(--fondo);
+}
+
+.panel-aprobacion-errores {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  max-height: 96px;
+  overflow-y: auto; /* con muchos motivos la barra no tapa la pantalla */
+  color: var(--error);
+  font-size: 0.8125rem;
+}
+
+.panel-aprobacion-botones {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-aprobacion-estado {
+  font-size: 0.8125rem;
+  opacity: 0.75;
+}
+
+/* Tras decidir: solo el aviso de lo que se editó a mano. */
+.panel-aprobacion-cerrado {
+  font-size: 0.8125rem;
+}
