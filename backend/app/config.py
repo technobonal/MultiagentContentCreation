@@ -320,7 +320,8 @@ OPENROUTER_TIMEOUT_SEG = float(os.environ.get("OPENROUTER_TIMEOUT_SEG", "60"))
 # no coloca ninguna foto. Quien la define confirma que puede usar las imágenes de esa fuente; el texto va tal cual en el
 # evento `colocar_imagen` (2 a 120 caracteres), así que queda a la vista en el lienzo y en el slide de fuentes.
 FOTOS_LICENCIA = os.environ.get("FOTOS_LICENCIA", "").strip()
-# Pausa (s) antes de colocar cada foto: el lienzo anima de a un evento, así que cada una necesita su momento (el director de
-# arte «tarda» en colocarlas, y los textos del slide anterior terminan de escribirse). 0 las emite todas seguidas.
-FOTOS_PAUSA_SEG = float(os.environ.get("FOTOS_PAUSA_SEG", "1.5"))
+# Pausa (s) antes de colocar cada foto: el lienzo anima de a un evento y un evento nuevo CORTA la animación en curso, así que
+# la pausa tiene que ser mayor que lo que dura la coreografía de una foto en el lienzo (~3,15 s a 1x, ver
+# frontend/src/lienzo/colocarImagenEnVivo.ts). Con 1,5 s se veía cada foto a medias. 0 las emite todas seguidas.
+FOTOS_PAUSA_SEG = float(os.environ.get("FOTOS_PAUSA_SEG", "3.5"))
 FOTOS_MAX_PAGINAS = int(os.environ.get("FOTOS_MAX_PAGINAS", "6"))  # páginas del PDF que se miran en busca de fotos (el OCR tarda ~2 s por página)

@@ -9,13 +9,19 @@ import gsap from "gsap";
 import { colocarEtiqueta } from "./escrituraEnVivo.ts";
 import type { Estado } from "../timeline/types.ts";
 
-// Duraciones base (s, a 1x; se dividen por la velocidad).
-const LATIDO_S = 0.22;
-const LATIDOS = 3;
-const REVELADO_S = 1.1;
+// Duraciones base (s, a 1x; se dividen por la velocidad). La suma (~3,15 s) tiene que caber en la pausa que el backend
+// deja entre foto y foto (`FOTOS_PAUSA_SEG`, 3,5 s): un evento nuevo corta la animación en curso.
+const LATIDO_S = 0.25;
+const LATIDOS = 2; // idas y vueltas del borde punteado (cada una dura 2 × LATIDO_S)
+const REVELADO_S = 1.6;
 const BARRIDO_S = 0.9;
-const PAUSA_FINAL_S = 0.4;
+const SEGUNDO_BARRIDO_DESDE_S = 0.7; // el segundo barrido arranca así de tarde dentro del revelado
+const PAUSA_FINAL_S = 0.3;
 const DESVANECER_S = 0.25;
+const ANCHO_BARRA = 160;
+const ZOOM_INICIAL = 1.3;
+const DESENFOQUE_INICIAL_PX = 18;
+const BRILLO_INICIAL = 2.2;
 // Si la imagen tarda más que esto en cargar, se revela igual (se verá el hueco o el error).
 const ESPERA_CARGA_MAX_MS = 4000;
 
@@ -109,7 +115,7 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
 
   // El CSS tiene un fundido propio: se apaga mientras GSAP mueve la opacidad cuadro a cuadro.
   img.style.transition = "none";
-  gsap.set(img, { opacity: 0, scale: 1.14, transformOrigin: "50% 50%", filter: "blur(16px) brightness(1.9)" });
+  gsap.set(img, { opacity: 0, scale: ZOOM_INICIAL, transformOrigin: "50% 50%", filter: `blur(${DESENFOQUE_INICIAL_PX}px) brightness(${BRILLO_INICIAL})` });
 
   // 1. Etiqueta del agente sobre la esquina del hueco y borde que late.
   etiqueta.textContent = nombreAgente;
@@ -133,7 +139,7 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
   barra = document.createElementNS(ns, "rect");
   barra.setAttribute("x", String(x));
   barra.setAttribute("y", String(y));
-  barra.setAttribute("width", "110");
+  barra.setAttribute("width", String(ANCHO_BARRA));
   barra.setAttribute("height", String(alto));
   barra.setAttribute("fill", "#F8FAFC");
   barra.setAttribute("opacity", "0");
@@ -142,11 +148,18 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
   const barraEl = barra;
 
   tl.to(img, { opacity: 1, scale: 1, filter: "blur(0px) brightness(1)", duration: REVELADO_S / factor, ease: "power2.out" });
+  // Dos pasadas de la barra de luz por el hueco, de izquierda a derecha.
   tl.fromTo(
     barraEl,
-    { x: -110, opacity: 0.55 },
+    { x: -ANCHO_BARRA, opacity: 0.6 },
     { x: ancho, opacity: 0, duration: BARRIDO_S / factor, ease: "power1.inOut" },
     "<",
+  );
+  tl.fromTo(
+    barraEl,
+    { x: -ANCHO_BARRA, opacity: 0.4 },
+    { x: ancho, opacity: 0, duration: BARRIDO_S / factor, ease: "power1.inOut" },
+    `<+=${SEGUNDO_BARRIDO_DESDE_S / factor}`,
   );
 
   // 4. Un respiro con la etiqueta y se retira.

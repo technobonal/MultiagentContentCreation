@@ -79,3 +79,27 @@ describe("colocarImagenEnVivo", () => {
     expect(() => colocarImagenEnVivo({ grupo, etiqueta, marco, nombreAgente: "A" }).restaurar()).not.toThrow();
   });
 });
+
+// El backend deja FOTOS_PAUSA_SEG (3,5 s) entre foto y foto, y un evento nuevo corta la animación en curso:
+// la coreografía a 1x tiene que caber con margen, pero ser lo bastante larga para que el ojo la note.
+const PAUSA_DEL_BACKEND_S = 3.5;
+
+describe("duración de la coreografía", () => {
+  it("a 1x dura entre 2,8 s y la pausa del backend menos un margen", () => {
+    const { marco, grupo, etiqueta } = montar();
+    const { timeline, restaurar } = colocarImagenEnVivo({ grupo, etiqueta, marco, nombreAgente: "A", velocidad: 1 });
+    expect(timeline.duration()).toBeGreaterThan(2.8);
+    expect(timeline.duration()).toBeLessThan(PAUSA_DEL_BACKEND_S - 0.2);
+    restaurar();
+  });
+
+  it("a 2x dura la mitad", () => {
+    const uno = montar();
+    const a = colocarImagenEnVivo({ grupo: uno.grupo, etiqueta: uno.etiqueta, marco: uno.marco, nombreAgente: "A", velocidad: 1 });
+    const dos = montar();
+    const b = colocarImagenEnVivo({ grupo: dos.grupo, etiqueta: dos.etiqueta, marco: dos.marco, nombreAgente: "A", velocidad: 2 });
+    expect(b.timeline.duration()).toBeCloseTo(a.timeline.duration() / 2, 1);
+    a.restaurar();
+    b.restaurar();
+  });
+});
