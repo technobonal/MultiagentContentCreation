@@ -22,9 +22,14 @@ const SALIDA_DESDE_S = 0.2; // tras colocar, el avatar empieza a irse así de ta
 const SALIDA_S = 0.45;
 const CARTEL_S = 0.25;
 const FOCO_S = 0.35;
-// Tamaño del avatar en reposo (px, como .avatar en style.css) y cuánto crece al trabajar.
+// Tamaño del avatar en reposo (px, como .avatar en style.css) y cuánto crece al trabajar: hasta 2,4 veces, pero nunca
+// más que una fracción del ancho del lienzo (en un lienzo chico un avatar de 105 px tapaba todo y se salía del borde).
 const TAM_AVATAR = 44;
-const ESCALA_AVATAR = 2.4;
+const ESCALA_AVATAR_MAX = 2.4;
+const ESCALA_AVATAR_MIN = 1.6;
+const FRACCION_AVATAR = 0.17;
+// Margen superior que se deja libre para el cartel (px).
+const MARGEN_CARTEL_PX = 56;
 // Altura del arco del vuelo (px hacia arriba en el punto medio).
 const ARCO_PX = 70;
 // Ancho de la foto en las manos: fracción del ancho del hueco, acotada.
@@ -150,14 +155,19 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
   const hx = rHueco.left - rMarco.left;
   const hy = rHueco.top - rMarco.top;
   const proporcion = rHueco.width / rHueco.height;
-  const lado = TAM_AVATAR * ESCALA_AVATAR; // tamaño visible del avatar agrandado
+  const escalaAvatar = Math.min(ESCALA_AVATAR_MAX, Math.max(ESCALA_AVATAR_MIN, (rMarco.width * FRACCION_AVATAR) / TAM_AVATAR));
+  const lado = TAM_AVATAR * escalaAvatar; // tamaño visible del avatar agrandado
   // Foto en las manos.
   const fw = Math.min(FOTO_EN_MANOS_MAX_PX, Math.max(FOTO_EN_MANOS_MIN_PX, rHueco.width * FRACCION_FOTO_EN_MANOS));
   const fh = fw / proporcion;
   // Dónde sostiene la foto respecto del CENTRO del avatar: abajo y un poco a la derecha, tapada en parte por las manos.
   const manosX = -fw * 0.2;
   const manosY = lado * 0.22;
-  // Origen: el avatar real (o, si no está, la esquina inferior izquierda del marco).
+  // Centro del avatar acotado para que él y la foto en sus manos queden DENTRO del lienzo y bajo el cartel
+  // (el avatar real puede estar en una esquina, por ejemplo tras pintar el fondo, y la escena empezaba cortada).
+  const acotarX = (cx: number) => Math.min(rMarco.width - Math.max(lado / 2, fw + manosX) - 4, Math.max(lado / 2 + 4, cx));
+  const acotarY = (cy: number) => Math.min(rMarco.height - (manosY + fh) - 4, Math.max(MARGEN_CARTEL_PX + lado / 2, cy));
+  // Origen: el avatar real (o, si no está, abajo a la izquierda), siempre dentro del lienzo.
   let cx0 = TAM_AVATAR;
   let cy0 = rMarco.height - TAM_AVATAR;
   if (avatarReal) {
@@ -167,9 +177,11 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
       cy0 = r.top - rMarco.top + r.height / 2;
     }
   }
+  cx0 = acotarX(cx0);
+  cy0 = acotarY(cy0);
   // Destino: el avatar queda encima del hueco y la foto, justo sobre su borde superior.
-  const cx1 = Math.min(rMarco.width - lado / 2, Math.max(lado / 2, hx + rHueco.width / 2 - manosX - fw / 2));
-  const cy1 = Math.max(lado / 2 + 4, hy - manosY - fh + 6);
+  const cx1 = acotarX(hx + rHueco.width / 2 - manosX - fw / 2);
+  const cy1 = acotarY(hy - manosY - fh + 6);
 
   // --- Elementos (el orden es el de apilado: lo último queda arriba) ---
   const foco = crear("foto-foco", escena); // oscurece todo menos el hueco
@@ -211,7 +223,7 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
     cartelTexto.textContent = `Tomando ${origenCorto(descripcion)}`;
   }, 0.01);
   tl.to(cartel, { opacity: 1, y: 0, duration: CARTEL_S / factor, ease: "power2.out" }, 0.01);
-  tl.to(portador, { scale: ESCALA_AVATAR, duration: tomar, ease: "back.out(2)" }, 0.01);
+  tl.to(portador, { scale: escalaAvatar, duration: tomar, ease: "back.out(2)" }, 0.01);
   tl.to(tarjeta, { scale: 1, duration: tomar, ease: "back.out(1.6)" }, 0.01 + tomar * 0.4);
   // Gesto de levantar la foto (los dos suben y bajan juntos).
   const levantar = LEVANTAR_S / factor;

@@ -32,9 +32,10 @@ CATALOGO_DIR = RAIZ_PROYECTO / "templates" / "catalog"
 KITS_DIR = RAIZ_PROYECTO / "templates" / "brand-kits"
 KIT_MARCA = os.environ.get("KIT_MARCA", "mvp")
 
-# Brecha máxima, en segundos, entre dos eventos consecutivos al emitirlos.
-# Si el valor del entorno no es un número, falla al arrancar (error visible, no silencioso).
-BRECHA_MAX_SEG = float(os.environ.get("BRECHA_MAX_SEG", "2"))
+# Brecha máxima, en segundos, entre dos eventos consecutivos al emitirlos (repeticiones 1x/2x/3x de un run guardado).
+# Tiene que ser mayor que la pausa entre fotos (FOTOS_PAUSA_SEG, 3,5 s): con 2 s cada escena de foto (~3 s) se cortaba
+# antes de colocarla. Si el valor del entorno no es un número, falla al arrancar (error visible, no silencioso).
+BRECHA_MAX_SEG = float(os.environ.get("BRECHA_MAX_SEG", "4"))
 
 # Tamaño máximo de un evento serializado, en bytes (64 KB por defecto).
 TAM_MAX_EVENTO_BYTES = int(os.environ.get("TAM_MAX_EVENTO_BYTES", str(64 * 1024)))
