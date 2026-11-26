@@ -9,7 +9,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
   <title>Carrusel lista de pasos (estilo cápsula, 6 slides)</title>
   <style>
-  :root { --fondo:#D0E8FF; --texto:#101828; --acento:#3B49DF; --texto-sobre-acento:#FFFFFF; }
+  :root { --fondo:#BBDEFF; --texto:#101828; --acento:#3B49DF; --texto-sobre-acento:#FFFFFF; }
 
   /* Inter (variable): un solo archivo cubre los pesos 400, 600 y 700 de la plantilla. */
   @font-face {
@@ -50,7 +50,7 @@
     <clipPath id="recorte-foto-4"><rect x="80" y="750" width="920" height="420" rx="210"/></clipPath>
     <clipPath id="recorte-foto-5"><circle cx="540" cy="930" r="260"/></clipPath>
   </defs>
-  <rect id="fondo" width="1080" height="1350" fill="#D0E8FF"/>
+  <rect id="fondo" width="1080" height="1350" fill="#BBDEFF"/>
 
   <g id="slide-1" class="slide activo" data-rol="gancho">
     <rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/>
