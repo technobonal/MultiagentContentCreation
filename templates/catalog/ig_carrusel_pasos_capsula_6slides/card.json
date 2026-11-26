@@ -24,7 +24,7 @@
     {
       "numero": 1,
       "rol": "gancho",
-      "fondo": "#E3F2FD",
+      "fondo": "#D0E8FF",
       "campos": [
         { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 3, "tamano_fuente_min": 56 },
         { "nombre": "{{subtitulo}}", "tipo": "texto", "obligatorio": false, "origen_valor": "llm", "longitud_max": 120, "lineas_max": 3, "tamano_fuente_min": 32 },
@@ -44,7 +44,7 @@
     {
       "numero": 3,
       "rol": "desarrollo",
-      "fondo": "#E3F2FD",
+      "fondo": "#D0E8FF",
       "campos": [
         { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 2, "tamano_fuente_min": 48 },
         { "nombre": "{{cuerpo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 220, "lineas_max": 6, "tamano_fuente_min": 30 },
@@ -64,7 +64,7 @@
     {
       "numero": 5,
       "rol": "cierre",
-      "fondo": "#E3F2FD",
+      "fondo": "#D0E8FF",
       "campos": [
         { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 2, "tamano_fuente_min": 48 },
         { "nombre": "{{cta}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 100, "lineas_max": 3, "tamano_fuente_min": 36 },
