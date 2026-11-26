@@ -84,6 +84,28 @@ function pintarFondo(raiz: ParentNode, estado: Estado): void {
   rect.setAttribute("fill", color);
 }
 
+// Espacio por defecto entre un texto y el que lo sigue, en unidades del SVG.
+const SEPARACION_POR_DEFECTO = 32;
+
+/**
+ * Tipografía: un campo con `data-sigue="titulo"` sube hasta quedar justo debajo de las líneas que de verdad ocupa
+ * ese campo, para que con títulos cortos no quede un hueco. Solo SUBE desde su posición en la plantilla, así que
+ * nunca puede pisar lo que hay debajo. Sin el atributo (la plantilla no lo pide) o sin medida del otro campo, el
+ * campo vuelve a su sitio.
+ */
+export function acercarTextos(slide: ParentNode, resultados: readonly CampoPintado[], numero: number): void {
+  for (const seguidor of Array.from(slide.querySelectorAll<SVGElement>("[data-sigue]"))) {
+    if (seguidor.getAttribute("data-y-base") === null) seguidor.setAttribute("data-y-base", seguidor.getAttribute("y") ?? "");
+    const yBase = numeroDeAtributo(seguidor, "data-y-base");
+    const nombre = seguidor.getAttribute("data-sigue") ?? "";
+    const guia = slide.querySelector<SVGElement>(`[data-campo="{{${nombre}}}"]`);
+    const medida = resultados.find((r) => r.slide === numero && r.campo === nombre)?.resultado;
+    const separacion = seguidor.hasAttribute("data-separacion") ? numeroDeAtributo(seguidor, "data-separacion") : SEPARACION_POR_DEFECTO;
+    const yNueva = guia && medida ? numeroDeAtributo(guia, "y") + medida.lineas * medida.lineHeightPx + separacion : Number.NaN;
+    if (Number.isFinite(yBase)) seguidor.setAttribute("y", String(Number.isFinite(yNueva) ? Math.min(yBase, yNueva) : yBase));
+  }
+}
+
 /**
  * Pinta (o limpia) la imagen de un campo de imagen de la plantilla. La URL la sirve el backend por run y referencia.
  * Es idempotente: solo toca el <image> cuando cambia la referencia. Mientras carga queda transparente y, al cargar,
@@ -241,6 +263,8 @@ export function pintarLienzo(
 
       resultados.push({ slide: numero, campo: nombre, resultado });
     }
+    // Solo el slide activo tiene medidas; los demás se acomodan cuando se muestran.
+    if (activo) acercarTextos(slide, resultados, numero);
   }
 
   return resultados;

@@ -214,3 +214,50 @@ describe("pintarLienzo: imagen de la fuente", () => {
     expect(partes(raiz).img.getAttribute("href")).toBe("/api/runs/run%20x%2F..%2Fy/imagenes/foto-2");
   });
 });
+
+// --- Tipografía: el cuerpo sube hasta quedar bajo el título ------------------------------------------
+
+function raizConSeguidor(atributos = 'data-sigue="titulo" data-separacion="40"'): HTMLElement {
+  const raiz = document.createElement("div");
+  raiz.innerHTML = `<svg><g id="slide-1" class="slide">
+      <foreignObject x="80" y="200" width="920" height="222" data-campo="{{titulo}}" data-lineas-max="3" data-fuente-min="56"><div style="font-size:64px;line-height:74px;"></div></foreignObject>
+      <foreignObject x="80" y="500" width="920" height="150" data-campo="{{cuerpo}}" data-lineas-max="3" data-fuente-min="32" ${atributos}><div style="font-size:36px;line-height:50px;"></div></foreignObject>
+    </g></svg>`;
+  return raiz;
+}
+
+const yDelCuerpo = (raiz: HTMLElement) => raiz.querySelector('[data-campo="{{cuerpo}}"]')?.getAttribute("y");
+
+describe("pintarLienzo: el cuerpo acompaña al título", () => {
+  it("con un título de una línea sube hasta quedar debajo, con la separación pedida", () => {
+    const raiz = raizConSeguidor();
+    pintarLienzo(raiz, estadoCon({ 1: { titulo: "corto", cuerpo: "texto" } }), fabricaFalsa);
+    expect(yDelCuerpo(raiz)).toBe(String(200 + 74 + 40));
+  });
+
+  it("nunca baja de su sitio en la plantilla, aunque el título ocupe varias líneas", () => {
+    const raiz = raizConSeguidor('data-sigue="titulo" data-separacion="200"');
+    pintarLienzo(raiz, estadoCon({ 1: { titulo: "a".repeat(80), cuerpo: "texto" } }), fabricaFalsa);
+    expect(yDelCuerpo(raiz)).toBe("500");
+  });
+
+  it("al repintar con otro título parte de la posición original, no de la anterior", () => {
+    const raiz = raizConSeguidor();
+    pintarLienzo(raiz, estadoCon({ 1: { titulo: "corto" } }), fabricaFalsa);
+    pintarLienzo(raiz, estadoCon({ 1: { titulo: "a".repeat(40) } }), fabricaFalsa); // dos líneas
+    expect(yDelCuerpo(raiz)).toBe(String(200 + 2 * 74 + 40));
+  });
+
+  it("sin título vuelve a su sitio", () => {
+    const raiz = raizConSeguidor();
+    pintarLienzo(raiz, estadoCon({ 1: { titulo: "corto" } }), fabricaFalsa);
+    pintarLienzo(raiz, estadoCon({}), fabricaFalsa);
+    expect(yDelCuerpo(raiz)).toBe("500");
+  });
+
+  it("sin data-sigue no se mueve (la plantilla actual queda igual)", () => {
+    const raiz = raizConSeguidor("");
+    pintarLienzo(raiz, estadoCon({ 1: { titulo: "corto" } }), fabricaFalsa);
+    expect(yDelCuerpo(raiz)).toBe("500");
+  });
+});

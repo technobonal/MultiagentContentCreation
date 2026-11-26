@@ -70,3 +70,13 @@ def test_se_puede_pedir_en_modo_fijo_y_no_reemplaza_a_la_de_siempre_en_auto():
     auto, _ = resolver(entrada, cargar_fichas())
     fija, errores = resolver(entrada | {"diseno": {"plantilla": {"modo": "fijo", "valor": CAPSULA}}}, cargar_fichas())
     assert auto.plantilla_id == OSCURA and errores == [] and fija.plantilla_id == CAPSULA
+
+
+@pytest.mark.parametrize("n", range(1, 5))
+def test_el_cuerpo_acompana_a_un_titulo_que_existe_y_solo_puede_subir(n):
+    """`data-sigue` apunta a un campo del mismo slide que está por encima (el lienzo nunca baja un texto)."""
+    seguidores = re.findall(r'<foreignObject x="\d+" y="(\d+)"[^>]*data-sigue="(\w+)"', grupo(n))
+    assert len(seguidores) == 1
+    y_seguidor, guia = seguidores[0]
+    [y_guia] = re.findall(rf'<foreignObject x="\d+" y="(\d+)"[^>]*data-campo="\{{\{{{guia}\}}\}}"', grupo(n))
+    assert int(y_guia) < int(y_seguidor)
