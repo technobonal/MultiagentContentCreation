@@ -15,7 +15,14 @@
 
 body {
   margin: 0;
-  background: var(--fondo);
+  min-height: 100vh;
+  /* Fondo de pantalla (pedido de Frank): cuadrícula de puntos cada 14 px sobre un degradado de morado oscuro a azul noche. */
+  background-color: #16152c;
+  background-image:
+    radial-gradient(circle, rgb(150 142 205 / 0.24) 1px, transparent 1.6px),
+    linear-gradient(90deg, #1d152e 0%, #16152c 50%, #161a32 100%);
+  background-size: 14px 14px, 100% 100%;
+  background-attachment: fixed;
   color: var(--texto);
   font-family: "Inter", "Segoe UI", Arial, sans-serif;
 }

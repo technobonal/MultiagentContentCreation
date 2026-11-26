@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   template.svg · ig_carrusel_pasos_capsula_6slides · v0.1.0
-  Estilo Cápsula: fondos blanco y azul alternados (el color de cada slide sale de card.json, campo fondo, y lo pinta
+  Estilo Cápsula: fondos celeste y azul alternados (el color de cada slide sale de card.json, campo fondo, y lo pinta
   el evento colocar_fondo sobre <rect id="fondo">). Texto a todo el ancho (920 px) para que quepan los mismos límites
   que en la plantilla oscura. Las formas con class="zona-foto" son los lugares reservados para las fotos.
   Zona segura vertical: y 120..1200; la barra de progreso es decorativa, en y 1240.
@@ -9,7 +9,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
   <title>Carrusel lista de pasos (estilo cápsula, 6 slides)</title>
   <style>
-  :root { --fondo:#FFFFFF; --texto:#101828; --acento:#3B49DF; --texto-sobre-acento:#FFFFFF; }
+  :root { --fondo:#E3F2FD; --texto:#101828; --acento:#3B49DF; --texto-sobre-acento:#FFFFFF; }
 
   /* Inter (variable): un solo archivo cubre los pesos 400, 600 y 700 de la plantilla. */
   @font-face {
@@ -50,7 +50,7 @@
     <clipPath id="recorte-foto-4"><rect x="80" y="750" width="920" height="420" rx="210"/></clipPath>
     <clipPath id="recorte-foto-5"><circle cx="540" cy="930" r="260"/></clipPath>
   </defs>
-  <rect id="fondo" width="1080" height="1350" fill="#FFFFFF"/>
+  <rect id="fondo" width="1080" height="1350" fill="#E3F2FD"/>
 
   <g id="slide-1" class="slide activo" data-rol="gancho">
     <rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/>
