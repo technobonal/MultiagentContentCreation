@@ -69,7 +69,10 @@ function Pantalla({
 }) {
   const vista = useReproductor(reproductor);
   // La plantilla la decide el run (evento plantilla_elegida); mientras no llega, la de por defecto.
-  const { svg, error: errorSvg } = usePlantilla(vista.estado.plantilla?.plantilla_id);
+  const { svg, error: errorSvg } = usePlantilla(
+    vista.estado.plantilla?.plantilla_id,
+    vista.estado.plantilla?.variante?.reemplazos,
+  );
 
   // "auto" = idioma de la guía; si el usuario elige otro, manda su elección.
   // Esta pantalla se remonta al cambiar de fuente (key), así que vuelve a "auto".

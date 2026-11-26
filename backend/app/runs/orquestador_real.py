@@ -35,7 +35,7 @@ import contextlib
 import logging
 import time
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from app import config
@@ -56,6 +56,7 @@ from app.agentes.revisor_fidelidad import revisar_fidelidad as _revisar_fidelida
 from app.fuentes.cargador_fuente import FuenteCargada
 from app.runs.registro import Ejecucion, EventoInvalido
 from app.runs.sello import calcular_sello, decidir_estado_final, hallazgos_abiertos, referencia_fact_ledger
+from app.variantes import Variante, elegir_variante, ficha_con_variante, payload_con_variante
 
 log = logging.getLogger(__name__)
 
@@ -176,10 +177,10 @@ def _payload_fuente_indexada(fuente: FuenteCargada) -> dict:
     }
 
 
-def _payload_plantilla(resolucion: Any) -> dict:
+def _payload_plantilla(resolucion: Any, variante: Variante | None = None) -> dict:
     """Payload de plantilla_elegida con lo ya resuelto (el director de arte aún no elige con LLM)."""
     fijo = resolucion.modo_plantilla == "fijo"
-    return {
+    return payload_con_variante({
         "plantilla_id": resolucion.plantilla_id,
         "modo": resolucion.modo_plantilla,
         "motivo": (
@@ -188,7 +189,7 @@ def _payload_plantilla(resolucion: Any) -> dict:
             else "Plantilla compatible del catálogo (resolución determinista, sin LLM)"
         ),
         "confianza": 1.0,
-    }
+    }, variante)
 
 
 async def _emitir_textos_propuestos(ejecucion: Ejecucion, texto: TextoSlide, causa: int | None = None) -> None:
@@ -328,7 +329,10 @@ async def _correr(
     with medidor.etapa("estratega"):
         brief = await agentes.generar_brief(cliente, entrada, resolucion, fuente)
     await ejecucion.emitir(agente="estratega", tipo="brief_emitido", payload=brief.payload_evento(resolucion))
-    await ejecucion.emitir(agente="director_arte", tipo="plantilla_elegida", payload=_payload_plantilla(resolucion))
+    variante = elegir_variante(resolucion.ficha, ejecucion.run_id, config.VARIANTE_PLANTILLA)
+    await ejecucion.emitir(
+        agente="director_arte", tipo="plantilla_elegida", payload=_payload_plantilla(resolucion, variante)
+    )
 
     # El redactor trabaja los slides EN SECUENCIA para reutilizar el prefijo fijo del prompt (caché de Groq).
     textos: dict[int, TextoSlide] = {}
@@ -342,7 +346,9 @@ async def _correr(
 
     # El director de arte compone todo el carrusel con los textos ya redactados.
     with medidor.etapa("director_arte"):
-        await _emitir_arte(ejecucion, agentes.componer_carrusel(resolucion, kit, textos))
+        # Los fondos de la variante solo importan aquí: las reescrituras posteriores no vuelven a colocar el fondo.
+        pintada = replace(resolucion, ficha=ficha_con_variante(resolucion.ficha, variante)) if variante else resolucion
+        await _emitir_arte(ejecucion, agentes.componer_carrusel(pintada, kit, textos))
     with medidor.etapa("fotos"):
         await _colocar_fotos(ejecucion, fuente, agentes)
 

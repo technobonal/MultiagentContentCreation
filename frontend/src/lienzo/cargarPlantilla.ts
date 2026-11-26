@@ -21,6 +21,16 @@ export function aislarEstilos(texto: string): string {
   return texto.replace(/:root(?=\s*\{)/g, `.${CLASE_PLANTILLA}`);
 }
 
+/**
+ * Cambia colores del SVG según la variante que trae `plantilla_elegida` ("original" -> "nuevo").
+ * Es una sola pasada: un color recién puesto no vuelve a reemplazarse.
+ */
+export function aplicarVariante(texto: string, reemplazos: Readonly<Record<string, string>> | undefined): string {
+  const cambios = new Map(Object.entries(reemplazos ?? {}).map(([de, a]) => [de.toUpperCase(), a]));
+  if (cambios.size === 0) return texto;
+  return texto.replace(/#[0-9A-Fa-f]{6}\b/g, (color) => cambios.get(color.toUpperCase()) ?? color);
+}
+
 // Asegura que la base termine en "/".
 function conBarraFinal(base: string): string {
   return base.endsWith("/") ? base : `${base}/`;

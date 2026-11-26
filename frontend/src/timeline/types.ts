@@ -122,6 +122,8 @@ export interface PayloadBriefEmitido {
 }
 export interface PayloadPlantillaElegida {
   readonly plantilla_id: string;
+  /** Variante de color, si la plantilla declara variantes. */
+  readonly variante?: { readonly id: string; readonly reemplazos: Readonly<Record<string, string>> };
   readonly modo: Modo;
   readonly motivo: string;
   readonly confianza: number;

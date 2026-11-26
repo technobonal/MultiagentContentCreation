@@ -329,3 +329,5 @@ FOTOS_MAX_PAGINAS = int(os.environ.get("FOTOS_MAX_PAGINAS", "6"))  # páginas de
 
 # Plantilla que se usa con la plantilla en modo auto (si no cumple la entrada, la primera compatible por id).
 PLANTILLA_POR_DEFECTO = os.environ.get("PLANTILLA_POR_DEFECTO", "ig_carrusel_pasos_oscuro_6slides")
+# Fija una variante de color para probarla (por ejemplo "menta"). Vacía: la elige el código según el run_id.
+VARIANTE_PLANTILLA = os.environ.get("VARIANTE_PLANTILLA", "")

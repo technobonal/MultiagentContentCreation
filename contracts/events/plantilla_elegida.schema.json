@@ -28,6 +28,21 @@
           "minimum": 0,
           "maximum": 1,
           "description": "Confianza de la elección. Por debajo del umbral se usa una plantilla neutra y se avisa."
+        },
+        "variante": {
+          "$comment": "Variante de color de la plantilla, solo si su ficha declara variantes. Viaja completa para que el lienzo la aplique sin leer la ficha y el run conserve sus colores. Los fondos de colocar_fondo ya vienen con la variante aplicada.",
+          "type": "object",
+          "required": ["id", "reemplazos"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string", "pattern": "^[a-z0-9_]{3,40}$" },
+            "reemplazos": {
+              "$comment": "Color original de la plantilla -> color que lo sustituye. Vacío en la variante original.",
+              "type": "object",
+              "propertyNames": { "$ref": "../common.schema.json#/$defs/color_hex" },
+              "additionalProperties": { "$ref": "../common.schema.json#/$defs/color_hex" }
+            }
+          }
         }
       }
     }

@@ -49,11 +49,15 @@ def test_cada_slide_menos_el_de_fuentes_tiene_un_hueco_de_foto_que_no_pisa_el_te
     assert 'class="hueco-forma"' in grupo(n) and f"url(#recorte-foto-{n})" in grupo(n)
 
 
+@pytest.mark.parametrize("variante", FICHA["variantes"], ids=lambda v: v["id"])
 @pytest.mark.parametrize("slide", FICHA["slides"], ids=lambda s: f"slide{s['numero']}")
-def test_cada_texto_se_lee_sobre_su_fondo(slide):
+def test_cada_texto_se_lee_sobre_su_fondo_en_cada_paleta(slide, variante):
+    def pintar(color):
+        return variante["reemplazos"].get(color.upper(), color)
+
     for campo, color in campos_del_svg(slide["numero"]).items():
         fondo = FONDO_PROPIO_DEL_CAMPO.get((slide["numero"], campo), slide["fondo"])
-        assert razon_contraste(color, fondo) >= 4.5, f"{campo}: {color} sobre {fondo}"
+        assert razon_contraste(pintar(color), pintar(fondo)) >= 4.5, f"{campo}: {pintar(color)} sobre {pintar(fondo)}"
 
 
 def test_tiene_los_mismos_campos_de_texto_y_limites_que_la_oscura():

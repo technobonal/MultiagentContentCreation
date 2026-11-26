@@ -76,6 +76,27 @@
       "maxItems": 7,
       "items": { "$ref": "#/$defs/slide" }
     },
+    "variantes": {
+      "$comment": "Variantes de color opcionales. La primera es la original (sin reemplazos). Cada una cambia colores del SVG y de los fondos de los slides; el blanco no se reemplaza.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$comment": "Una variante: su identificador, su nombre visible y los colores que cambia.",
+        "type": "object",
+        "required": ["id", "nombre", "reemplazos"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_]{3,40}$" },
+          "nombre": { "type": "string", "minLength": 3, "maxLength": 40 },
+          "reemplazos": {
+            "$comment": "Color original -> color de esta variante.",
+            "type": "object",
+            "propertyNames": { "$ref": "../common.schema.json#/$defs/color_hex" },
+            "additionalProperties": { "$ref": "../common.schema.json#/$defs/color_hex" }
+          }
+        }
+      }
+    },
     "recursos": {
       "$comment": "Recursos que la plantilla necesita, con licencia registrada.",
       "type": "object",

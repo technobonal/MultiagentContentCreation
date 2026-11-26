@@ -2,8 +2,8 @@
  * usePlantilla.ts — La plantilla SVG que corresponde al run: la que dice el evento `plantilla_elegida` y, mientras no
  * llega, la plantilla por defecto. Si la pedida no se puede cargar, se informa el error en vez de dibujar con otra.
  */
-import { useEffect, useState } from "react";
-import { crearCargadorDePlantillas, ID_PLANTILLA_POR_DEFECTO } from "./cargarPlantilla.ts";
+import { useEffect, useMemo, useState } from "react";
+import { aplicarVariante, crearCargadorDePlantillas, ID_PLANTILLA_POR_DEFECTO } from "./cargarPlantilla.ts";
 
 const cargador = crearCargadorDePlantillas();
 
@@ -15,6 +15,7 @@ export interface PlantillaCargada {
 
 export function usePlantilla(
   plantillaId: string | undefined,
+  reemplazos?: Readonly<Record<string, string>>,
   cargar: (id: string) => Promise<string> = cargador,
 ): PlantillaCargada {
   const id = plantillaId ?? ID_PLANTILLA_POR_DEFECTO;
@@ -36,5 +37,8 @@ export function usePlantilla(
   }, [id, cargar]);
 
   // Mientras llega la plantilla nueva se sigue mostrando la anterior (evita un parpadeo); un error ajeno no se arrastra.
-  return { svg: carga.svg, error: carga.id === id ? carga.error : null };
+  // Los colores del run solo valen para SU plantilla: no se aplican a la anterior mientras llega la nueva.
+  const colores = carga.id === id ? reemplazos : undefined;
+  const svg = useMemo(() => (carga.svg === null ? null : aplicarVariante(carga.svg, colores)), [carga.svg, colores]);
+  return { svg, error: carga.id === id ? carga.error : null };
 }
