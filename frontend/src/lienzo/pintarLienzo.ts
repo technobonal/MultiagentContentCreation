@@ -91,7 +91,8 @@ function pintarFondo(raiz: ParentNode, estado: Estado): void {
  */
 function pintarImagen(campoEl: SVGElement, imagen: ImagenColocada | undefined, runId: string | null, opcional: boolean): void {
   const img = campoEl.querySelector("image");
-  const hueco = campoEl.querySelector<SVGElement>("rect");
+  // Contorno del hueco: una forma marcada con .hueco-forma (píldora, arco, círculo) o, si no, un rectángulo.
+  const hueco = campoEl.querySelector<SVGElement>(".hueco-forma, rect");
   if (!img) {
     // Sin <image> no hay dónde dibujar: se oculta si es opcional (como antes de que hubiera imágenes).
     if (opcional) campoEl.style.display = "none";

@@ -119,7 +119,7 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
   const { grupo, marco, nombreAgente, descripcion, slide } = o;
   const factor = Math.max(0.1, o.velocidad ?? 1);
   const img = grupo.querySelector<SVGImageElement>("image");
-  const hueco = grupo.querySelector<SVGElement>("rect");
+  const hueco = grupo.querySelector<SVGElement>(".hueco-forma, rect");
   const rHueco = (hueco ?? grupo).getBoundingClientRect();
   const tl = gsap.timeline();
 

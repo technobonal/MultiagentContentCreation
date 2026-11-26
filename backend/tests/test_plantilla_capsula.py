@@ -25,13 +25,28 @@ def grupo(n: int) -> str:
 
 def campos_del_svg(n: int) -> dict[str, str]:
     """campo -> color del texto, tal como está escrito en el SVG."""
-    patron = r'data-campo="\{\{(\w+)\}\}".*?<div[^>]*color:(#[0-9A-Fa-f]{6});'
+    patron = r'<foreignObject[^>]*data-campo="\{\{(\w+)\}\}"[^>]*>\s*<div[^>]*color:(#[0-9A-Fa-f]{6});'
     return {m.group(1): m.group(2) for m in re.finditer(patron, grupo(n), re.S)}
 
 
 @pytest.mark.parametrize("slide", FICHA["slides"], ids=lambda s: f"slide{s['numero']}")
 def test_la_ficha_y_el_svg_tienen_los_mismos_campos(slide):
-    assert set(campos_del_svg(slide["numero"])) == {c["nombre"].strip("{}") for c in slide["campos"]}
+    textos = {c["nombre"].strip("{}") for c in slide["campos"] if c["tipo"] != "imagen"}
+    assert set(campos_del_svg(slide["numero"])) == textos
+
+
+def cajas(n: int, etiqueta: str) -> list[tuple[int, int, int, int]]:
+    """(x1, y1, x2, y2) de cada <foreignObject> o <image> del slide."""
+    patron = rf'<{etiqueta} x="(\d+)" y="(\d+)" width="(\d+)" height="(\d+)"'
+    return [(x, y, x + w, y + h) for x, y, w, h in (tuple(map(int, m)) for m in re.findall(patron, grupo(n)))]
+
+
+@pytest.mark.parametrize("n", range(1, 6))
+def test_cada_slide_menos_el_de_fuentes_tiene_un_hueco_de_foto_que_no_pisa_el_texto(n):
+    [(fx1, fy1, fx2, fy2)] = cajas(n, "image")
+    for tx1, ty1, tx2, ty2 in cajas(n, "foreignObject"):
+        assert not (fx1 < tx2 and tx1 < fx2 and fy1 < ty2 and ty1 < fy2), f"la foto pisa el texto {(tx1, ty1, tx2, ty2)}"
+    assert 'class="hueco-forma"' in grupo(n) and f"url(#recorte-foto-{n})" in grupo(n)
 
 
 @pytest.mark.parametrize("slide", FICHA["slides"], ids=lambda s: f"slide{s['numero']}")
