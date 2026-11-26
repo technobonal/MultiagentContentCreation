@@ -94,6 +94,22 @@ LangGraph entra en la **Fase 2, después de que existan el revisor y el ciclo de
 - [ ] Prefiltro del revisor en código y recorte de `redactor.md`/`revisor.md`: solo si hace falta más de un run por minuto o el run con 3 rondas de corrección vuelve a pasar los ~21K tokens
 - [ ] Medir el run completo con el log de tiempos y comparar con el objetivo (30-60 s, estimado)
 
+### Para retomar (anotado el 2026-11-26) — EMPEZAR POR AQUÍ
+
+Dónde quedamos: van 6 de las 9 tandas de «Estilos y plantillas» (más abajo, con el detalle). La Cápsula azul funciona en vivo con fotos en píldora, arco y círculo, fondo celeste `#BBDEFF`, tipografía, especialidades visibles y recortes que no cortan cabezas. Último run de prueba aprobado por Frank: `run_68b4a97e` (los runs viven en memoria: se pierden al reiniciar el backend).
+
+Lo que sigue:
+- [ ] 7 y 8, variantes de composición y paleta: PRIMERO presentar el plan para que Frank lo apruebe (revisar si requiere cambio de contrato). Los colores quedan al límite en el título azul sobre el celeste (4,7 de 4,5 mínimo): no oscurecer más el fondo
+- [ ] 9, familia Geométrica (diagonales y rombos; maqueta aprobada)
+- [ ] Opcional: espaciar el arte para que se vea la burbuja de Tipografía (suma segundos al run; consultar antes)
+- [ ] Opcional: probar un run real que cubra la pausa tras la última foto (cubierta por test)
+
+Pedir la Cápsula: la interfaz todavía no permite elegirla; se envía `diseno.plantilla = {"modo": "fijo", "valor": "ig_carrusel_pasos_capsula_6slides"}` en `POST /api/runs`. En modo auto sale la plantilla oscura. Los colores de un run quedan grabados en sus eventos: un cambio de color solo se ve en runs nuevos.
+
+La plantilla Cápsula se generó con un script temporal fuera del repo: de aquí en adelante `templates/catalog/ig_carrusel_pasos_capsula_6slides/` (SVG y ficha) es la fuente de verdad y se edita a mano.
+
+Al verificar en el navegador, capturar la pantalla COMPLETA (así se detectó que el CSS de la plantilla pisaba el de la app). Cómo levantar todo: ver la sección del 2026-11-25, justo debajo.
+
 ### Para retomar (anotado el 2026-11-25)
 
 Dónde quedamos: las fotos del PDF ya salen en el lienzo (5 huecos, una foto distinta por slide) y la escena «el avatar del director de arte lleva la foto» funciona en vivo, verificada con un navegador real (Playwright) y por Frank. El detalle de cada paso está en las líneas «Fotos 1» a «Fotos 13» de la lista de Pendiente.
