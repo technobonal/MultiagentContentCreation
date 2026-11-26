@@ -110,7 +110,7 @@ def test_huecos_de_ficha_toma_los_campos_de_imagen_con_tamano_conocido_en_orden_
 
 def test_la_tabla_de_tamanos_coincide_con_la_plantilla_real():
     """Si alguien cambia un hueco del SVG sin tocar la tabla, las fotos saldrían con otra proporción."""
-    svg = next((RAIZ / "templates" / "catalog").glob("*/template.svg")).read_text(encoding="utf-8")
+    svg = (RAIZ / "templates" / "catalog" / "ig_carrusel_pasos_oscuro_6slides" / "template.svg").read_text(encoding="utf-8")
     encontrados = {}
     for m in re.finditer(r'<g id="[^"]+" class="hueco-imagen" data-campo="\{\{(\w+)\}\}"[^>]*>.*?<image[^>]*width="(\d+)" height="(\d+)"', svg, re.S):
         encontrados[m.group(1)] = (int(m.group(2)), int(m.group(3)))

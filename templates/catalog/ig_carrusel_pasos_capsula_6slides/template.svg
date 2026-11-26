@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  template.svg · ig_carrusel_pasos_capsula_6slides · v0.1.0
+  Estilo Cápsula: fondos blanco y azul alternados (el color de cada slide sale de card.json, campo fondo, y lo pinta
+  el evento colocar_fondo sobre <rect id="fondo">). Texto a todo el ancho (920 px) para que quepan los mismos límites
+  que en la plantilla oscura. Las formas con class="zona-foto" son los lugares reservados para las fotos.
+  Zona segura vertical: y 120..1200; la barra de progreso es decorativa, en y 1240.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <title>Carrusel lista de pasos (estilo cápsula, 6 slides)</title>
+  <style>
+  :root { --fondo:#FFFFFF; --texto:#101828; --acento:#3B49DF; --texto-sobre-acento:#FFFFFF; }
+
+  /* Inter (variable): un solo archivo cubre los pesos 400, 600 y 700 de la plantilla. */
+  @font-face {
+    font-family: "Inter";
+    src: url("../../typography/inter/Inter-Variable.ttf") format("truetype");
+    font-weight: 100 900;   /* rango de la fuente variable */
+    font-style: normal;
+    font-display: block;    /* no pintar con la fuente de respaldo mientras carga */
+  }
+
+  /* JetBrains Mono Regular: solo se usa en .mono (el sello de revisión), sin negrita. */
+  @font-face {
+    font-family: "JetBrains Mono";
+    src: url("../../typography/jetbrains-mono/JetBrainsMono-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: block;
+  }
+
+  .slide { display: none; }
+  .slide.activo { display: inline; }
+  .t { margin:0; padding:0; overflow:hidden; overflow-wrap:break-word; color:var(--texto);
+       font-family:"Inter", "Segoe UI", Arial, sans-serif; }
+  .titulo { font-weight:700; }
+  .cuerpo { font-weight:400; }
+  .mono { font-family:"JetBrains Mono", Consolas, monospace; }
+  .sobre-acento { color:var(--texto-sobre-acento); font-weight:600; }
+</style>
+
+  <defs>
+    <linearGradient id="degradado" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22C7E8"/>
+      <stop offset="1" stop-color="#6A5CF0"/>
+    </linearGradient>
+  </defs>
+  <rect id="fondo" width="1080" height="1350" fill="#FFFFFF"/>
+
+  <g id="slide-1" class="slide activo" data-rol="gancho">
+    <rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/>
+    <circle cx="262" cy="153" r="17" fill="#3B49DF"/>
+    <g class="zona-foto" data-foto="imagen_portada"><rect x="80" y="220" width="920" height="430" rx="215" fill="url(#degradado)"/></g>
+    <foreignObject x="80" y="710" width="920" height="222" data-campo="{{titulo}}" data-lineas-max="3" data-fuente-min="56">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:64px;line-height:74px;height:222px;color:#3B49DF;">{{titulo}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="970" width="920" height="150" data-campo="{{subtitulo}}" data-lineas-max="3" data-fuente-min="32" data-opcional="true">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:50px;height:150px;color:#344054;">{{subtitulo}}</div>
+    </foreignObject>
+    <g id="progreso-1"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="1"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/></g>
+  </g>
+  <g id="slide-2" class="slide" data-rol="segundo_gancho">
+    <rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/>
+    <circle cx="262" cy="153" r="17" fill="#FFFFFF"/>
+    <foreignObject x="80" y="220" width="920" height="210" data-campo="{{titulo}}" data-lineas-max="3" data-fuente-min="56">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:60px;line-height:70px;height:210px;color:#FFFFFF;">{{titulo}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="462" width="920" height="200" data-campo="{{cuerpo}}" data-lineas-max="4" data-fuente-min="32">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:50px;height:200px;color:#FFFFFF;">{{cuerpo}}</div>
+    </foreignObject>
+    <g class="zona-foto" data-foto="imagen_producto"><path d="M220 1200V1020A320 320 0 0 1 860 1020V1200Z" fill="url(#degradado)"/></g>
+    <g id="progreso-2"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="1"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/></g>
+  </g>
+  <g id="slide-3" class="slide" data-rol="desarrollo">
+    <g class="zona-foto" data-foto="imagen_apoyo_3"><path d="M430 0H1000V300A285 285 0 0 1 430 300Z" fill="url(#degradado)"/></g>
+    <rect x="80" y="250" width="200" height="335" rx="100" fill="#3B49DF" fill-opacity=".12"/>
+    <foreignObject x="80" y="660" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;color:#3B49DF;">{{titulo}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="826" width="920" height="312" data-campo="{{cuerpo}}" data-lineas-max="6" data-fuente-min="30">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:52px;height:312px;color:#344054;">{{cuerpo}}</div>
+    </foreignObject>
+    <g id="progreso-3"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="1"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/></g>
+  </g>
+  <g id="slide-4" class="slide" data-rol="desarrollo">
+    <rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/>
+    <circle cx="262" cy="153" r="17" fill="#FFFFFF"/>
+    <foreignObject x="80" y="220" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;color:#FFFFFF;">{{titulo}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="386" width="920" height="312" data-campo="{{cuerpo}}" data-lineas-max="6" data-fuente-min="30">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:52px;height:312px;color:#FFFFFF;">{{cuerpo}}</div>
+    </foreignObject>
+    <g class="zona-foto" data-foto="imagen_apoyo_4"><rect x="80" y="750" width="920" height="420" rx="210" fill="url(#degradado)"/></g>
+    <g id="progreso-4"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="1"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/></g>
+  </g>
+  <g id="slide-5" class="slide" data-rol="cierre">
+    <rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/>
+    <circle cx="262" cy="153" r="17" fill="#3B49DF"/>
+    <foreignObject x="80" y="220" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;color:#3B49DF;">{{titulo}}</div>
+    </foreignObject>
+    <rect x="92" y="396" width="920" height="226" rx="40" fill="#101828" fill-opacity=".18"/>
+    <rect x="80" y="384" width="920" height="226" rx="40" fill="#3B49DF"/>
+    <foreignObject x="132" y="416" width="816" height="162" data-campo="{{cta}}" data-lineas-max="3" data-fuente-min="36">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t sobre-acento" style="display:flex;align-items:center;font-size:40px;line-height:54px;height:162px;color:#FFFFFF;">{{cta}}</div>
+    </foreignObject>
+    <g class="zona-foto" data-foto="imagen_cierre"><circle cx="540" cy="930" r="260" fill="url(#degradado)"/></g>
+    <g id="progreso-5"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="1"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/></g>
+  </g>
+  <g id="slide-6" class="slide" data-rol="fuentes">
+    <rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/>
+    <circle cx="262" cy="153" r="17" fill="#FFFFFF"/>
+    <foreignObject x="80" y="415" width="920" height="120" data-campo="{{fuente_atribucion}}" data-lineas-max="3" data-fuente-min="24">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:28px;line-height:40px;height:120px;color:#FFFFFF;">{{fuente_atribucion}}</div>
+    </foreignObject>
+    <rect x="80" y="567" width="920" height="2" fill="#FFFFFF" fill-opacity=".35"/>
+    <foreignObject x="80" y="601" width="920" height="80" data-campo="{{fuente_licencia}}" data-lineas-max="2" data-fuente-min="24">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:28px;line-height:40px;height:80px;color:#FFFFFF;">{{fuente_licencia}}</div>
+    </foreignObject>
+    <rect x="80" y="713" width="920" height="2" fill="#FFFFFF" fill-opacity=".35"/>
+    <foreignObject x="80" y="745" width="920" height="40" data-campo="{{sello_revision}}" data-lineas-max="1" data-fuente-min="24">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t mono" style="font-size:24px;line-height:40px;height:40px;color:#FFFFFF;">{{sello_revision}}</div>
+    </foreignObject>
+    <rect x="640" y="900" width="580" height="260" rx="130" fill="url(#degradado)"/>
+    <g id="progreso-6"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="1"/></g>
+  </g>
+</svg>

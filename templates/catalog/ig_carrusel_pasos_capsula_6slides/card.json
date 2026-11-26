@@ -1,0 +1,97 @@
+{
+  "$comment": "Plantilla de lista de pasos, estilo Cápsula (píldoras, arcos y círculos; fondos blanco y azul alternados). Cada slide declara su fondo y sus colores de texto están pensados para él. Los campos y límites son los de la plantilla oscura.",
+  "id": "ig_carrusel_pasos_capsula_6slides",
+  "version": "0.1.0",
+  "plataforma": "instagram",
+  "formato": "carrusel_1080x1350",
+  "idiomas": [
+    "es",
+    "pt-BR"
+  ],
+  "tipo_mensaje": "lista_de_pasos",
+  "descripcion": "Carrusel de lista de pasos estilo cápsula, claro y azul, con formas redondeadas",
+  "etiquetas": [
+    "moderno",
+    "educativo",
+    "claro",
+    "azul"
+  ],
+  "zona_segura": {
+    "margen_superior_px": 120,
+    "margen_inferior_px": 150
+  },
+  "slides": [
+    {
+      "numero": 1,
+      "rol": "gancho",
+      "fondo": "#FFFFFF",
+      "campos": [
+        { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 3, "tamano_fuente_min": 56 },
+        { "nombre": "{{subtitulo}}", "tipo": "texto", "obligatorio": false, "origen_valor": "llm", "longitud_max": 120, "lineas_max": 3, "tamano_fuente_min": 32 }
+      ]
+    },
+    {
+      "numero": 2,
+      "rol": "segundo_gancho",
+      "fondo": "#3B49DF",
+      "campos": [
+        { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 3, "tamano_fuente_min": 56 },
+        { "nombre": "{{cuerpo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 160, "lineas_max": 4, "tamano_fuente_min": 32 }
+      ]
+    },
+    {
+      "numero": 3,
+      "rol": "desarrollo",
+      "fondo": "#FFFFFF",
+      "campos": [
+        { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 2, "tamano_fuente_min": 48 },
+        { "nombre": "{{cuerpo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 220, "lineas_max": 6, "tamano_fuente_min": 30 }
+      ]
+    },
+    {
+      "numero": 4,
+      "rol": "desarrollo",
+      "fondo": "#3B49DF",
+      "campos": [
+        { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 2, "tamano_fuente_min": 48 },
+        { "nombre": "{{cuerpo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 220, "lineas_max": 6, "tamano_fuente_min": 30 }
+      ]
+    },
+    {
+      "numero": 5,
+      "rol": "cierre",
+      "fondo": "#FFFFFF",
+      "campos": [
+        { "nombre": "{{titulo}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 60, "lineas_max": 2, "tamano_fuente_min": 48 },
+        { "nombre": "{{cta}}", "tipo": "texto", "obligatorio": true, "origen_valor": "llm", "longitud_max": 100, "lineas_max": 3, "tamano_fuente_min": 36 }
+      ]
+    },
+    {
+      "numero": 6,
+      "rol": "fuentes",
+      "fondo": "#3B49DF",
+      "campos": [
+        { "nombre": "{{fuente_atribucion}}", "tipo": "texto", "obligatorio": true, "origen_valor": "usuario", "longitud_max": 120, "lineas_max": 3, "tamano_fuente_min": 24 },
+        { "nombre": "{{fuente_licencia}}", "tipo": "texto", "obligatorio": true, "origen_valor": "usuario", "longitud_max": 80, "lineas_max": 2, "tamano_fuente_min": 24 },
+        { "nombre": "{{sello_revision}}", "tipo": "texto", "obligatorio": true, "origen_valor": "calculado", "longitud_max": 60, "lineas_max": 1, "tamano_fuente_min": 24 }
+      ]
+    }
+  ],
+  "recursos": {
+    "fuentes_tipograficas": [
+      {
+        "familia": "Inter",
+        "licencia": "pendiente_V10"
+      },
+      {
+        "familia": "JetBrains Mono",
+        "licencia": "pendiente_V10"
+      }
+    ]
+  },
+  "calidad": {
+    "autor": "Frank (technobonal)",
+    "fecha_revision": "2026-11-26",
+    "ejemplo_aprobado": "pendiente"
+  }
+}
