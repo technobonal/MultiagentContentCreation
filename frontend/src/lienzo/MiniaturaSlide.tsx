@@ -41,7 +41,9 @@ export function MiniaturaSlide({
   onSeleccionar,
 }: PropsMiniatura) {
   const contenedor = useRef<HTMLSpanElement | null>(null);
-  const [montado, setMontado] = useState(false);
+  // Qué plantilla está montada. No basta un sí/no: al cambiar de plantilla React junta el «desmontada» y el «montada»
+  // en uno, el valor no cambiaba y la miniatura nueva quedaba sin pintar.
+  const [montado, setMontado] = useState<string | null>(null);
 
   // Monta un clon propio de la plantilla (una vez por plantilla).
   useEffect(() => {
@@ -57,16 +59,16 @@ export function MiniaturaSlide({
       clon.style.height = "auto";
       clon.style.display = "block";
       cont.replaceChildren(clon);
-      setMontado(true);
+      setMontado(svg);
     } catch {
       // Si la plantilla no es válida, el lienzo principal ya muestra el error.
-      setMontado(false);
+      setMontado(null);
     }
 
     // Al desmontar se limpia el clon.
     return () => {
       cont.replaceChildren();
-      setMontado(false);
+      setMontado(null);
     };
   }, [svg]);
 

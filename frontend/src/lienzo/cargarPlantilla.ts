@@ -10,6 +10,17 @@ export const ID_PLANTILLA_POR_DEFECTO = "ig_carrusel_pasos_oscuro_6slides";
 // Prefijo relativo que usan los @font-face del SVG.
 const PREFIJO_FUENTES_SVG = "../../typography/";
 
+// Clase que llevan los SVG de plantilla incrustados en la página.
+export const CLASE_PLANTILLA = "plantilla-svg";
+
+/**
+ * El SVG se incrusta en la página, así que su <style> es CSS global: un `:root` con las variables de la plantilla
+ * (--fondo, --texto, --acento) pisaba las de la aplicación y dejaba la pantalla ilegible. Se acota al propio SVG.
+ */
+export function aislarEstilos(texto: string): string {
+  return texto.replace(/:root(?=\s*\{)/g, `.${CLASE_PLANTILLA}`);
+}
+
 // Asegura que la base termine en "/".
 function conBarraFinal(base: string): string {
   return base.endsWith("/") ? base : `${base}/`;
@@ -47,7 +58,7 @@ export async function cargarPlantillaSvg(
       `La ruta ${url} no devolvió un SVG (¿el servidor respondió con index.html?). Empieza con: ${texto.slice(0, 40)}`,
     );
   }
-  return reescribirRutasDeFuentes(texto, base);
+  return aislarEstilos(reescribirRutasDeFuentes(texto, base));
 }
 
 /**
@@ -78,7 +89,9 @@ export function parsearPlantilla(texto: string): SVGSVGElement {
   if (error) {
     throw new Error(`template.svg no es un SVG válido: ${error.textContent ?? ""}`);
   }
-  return doc.documentElement as unknown as SVGSVGElement;
+  const raiz = doc.documentElement as unknown as SVGSVGElement;
+  raiz.classList.add(CLASE_PLANTILLA);
+  return raiz;
 }
 
 /**
