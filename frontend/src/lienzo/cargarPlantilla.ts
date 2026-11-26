@@ -50,6 +50,25 @@ export async function cargarPlantillaSvg(
   return reescribirRutasDeFuentes(texto, base);
 }
 
+/**
+ * Cargador con memoria por id: cada plantilla se descarga una sola vez, aunque la pidan varias pantallas.
+ * Una carga que falla no se recuerda, así que se puede reintentar. `cargar` se inyecta para probarlo sin red.
+ */
+export function crearCargadorDePlantillas(
+  cargar: (id: string) => Promise<string> = (id) => cargarPlantillaSvg(id),
+): (id: string) => Promise<string> {
+  const pedidas = new Map<string, Promise<string>>();
+  return (id) => {
+    let pedida = pedidas.get(id);
+    if (pedida === undefined) {
+      pedida = cargar(id);
+      pedidas.set(id, pedida);
+      pedida.catch(() => pedidas.delete(id));
+    }
+    return pedida;
+  };
+}
+
 /** Convierte el texto del SVG en un elemento; lanza un error claro si no es XML válido. */
 export function parsearPlantilla(texto: string): SVGSVGElement {
   const doc = new DOMParser().parseFromString(texto, "image/svg+xml");

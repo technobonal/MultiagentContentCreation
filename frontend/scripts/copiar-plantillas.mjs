@@ -1,9 +1,9 @@
 /**
- * copiar-plantillas.mjs — Copia la plantilla SVG y sus tipografías a frontend/public/plantillas/,
+ * copiar-plantillas.mjs — Copia las plantillas SVG del catálogo y sus tipografías a frontend/public/plantillas/,
  * para que Vite las sirva igual en desarrollo y en build. Se ejecuta antes de dev y de build.
  * Las carpetas de origen (templates/) quedan como única fuente de verdad.
  */
-import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,12 +12,19 @@ const aqui = dirname(fileURLToPath(import.meta.url));
 const raizRepo = resolve(aqui, "..", "..");
 const destino = resolve(aqui, "..", "public", "plantillas");
 
+// Todas las plantillas del catálogo: cada carpeta de templates/catalog con su template.svg.
+const plantillas = readdirSync(resolve(raizRepo, "templates", "catalog"), { withFileTypes: true })
+  .filter((d) => d.isDirectory())
+  .map((d) => [`templates/catalog/${d.name}/template.svg`, `${d.name}/template.svg`]);
+
+if (plantillas.length === 0) {
+  console.error("[copiar-plantillas] No hay plantillas en templates/catalog");
+  process.exit(1);
+}
+
 // Pares [origen relativo a la raíz del repo, destino relativo a public/plantillas].
 const archivos = [
-  [
-    "templates/catalog/ig_carrusel_pasos_oscuro_6slides/template.svg",
-    "ig_carrusel_pasos_oscuro_6slides/template.svg",
-  ],
+  ...plantillas,
   [
     "templates/typography/inter/Inter-Variable.ttf",
     "typography/inter/Inter-Variable.ttf",

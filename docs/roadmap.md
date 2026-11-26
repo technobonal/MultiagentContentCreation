@@ -113,6 +113,19 @@ Lo que sigue, en este orden:
 - [x] Subidos a GitHub los 47 commits del día (2026-11-25, `cdf7e62..2b879bb`, autor `technobonal <technobonal@gmail.com>`)
 - [x] Borrada la rama local `backup-antes-de-autor` (2026-11-25, con el OK de Frank; su contenido era idéntico al de master)
 
+### Estilos y plantillas (acordado el 2026-11-26, 9 tandas estimadas)
+
+Referencias de Frank: estilo geométrico (diagonales y rombos) y estilo cápsula (píldoras, círculos y arcos). Maqueta aprobada. Cada familia mantiene su lenguaje y varía composición y paleta. Especialistas de Tipografía y Fotografía primero en código (sin LLM) y mostrados dentro del Director de arte; la plantilla actual sigue funcionando.
+
+- [x] 1. Base (2026-11-26): el lienzo carga la plantilla que dice `plantilla_elegida` (`usePlantilla` + cargador con caché; mientras no llega, la de por defecto; si no se puede cargar, error visible en vez de dibujar con otra) y `copiar-plantillas.mjs` copia todo el catálogo. Sin cambios de contrato ni de backend. 289 tests de frontend; verificado en navegador con la grabación local
+- [ ] 2. Familia Cápsula: plantilla nueva con fondos y colores de texto propios por slide (hoy el fondo sale del kit de marca) y chequeo de contraste adaptado
+- [ ] 3. Fotos: tamaño y forma de cada hueco en la ficha (hoy `TAMANO_HUECO` es una tabla global); recorte y animación en píldora, círculo y arco
+- [ ] 4. Especialista de Tipografía
+- [ ] 5. Especialista de Fotografía
+- [ ] 6. Mostrar las dos especialidades en el nodo y avatar del Director de arte
+- [ ] 7 y 8. Variantes de composición y paleta (revisar antes si requiere cambio de contrato)
+- [ ] 9. Familia Geométrica
+
 ### Pendiente
 
 - [ ] Un carrusel de punta a punta desde una fuente real con tiempos aceptables: backend con `MODO_RUN=real` y `GROQ_API_KEY`, frontend en modo Servidor, fuente `.md` o `.txt`
