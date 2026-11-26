@@ -161,7 +161,17 @@
         "longitud_max": { "type": "integer", "minimum": 1, "description": "Máximo de caracteres (límite blando; la verdad es el render)." },
         "lineas_max": { "type": "integer", "minimum": 1, "description": "Máximo de líneas." },
         "tamano_fuente_min": { "type": "integer", "minimum": 12, "description": "Tamaño mínimo de fuente en píxeles." },
-        "texto_alternativo": { "type": "string", "minLength": 3, "description": "Texto alternativo de una imagen." }
+        "texto_alternativo": { "type": "string", "minLength": 3, "description": "Texto alternativo de una imagen." },
+        "hueco": {
+          "$comment": "Tamaño del hueco de una imagen en el lienzo de 1080×1350 (el rectángulo que lo contiene; la forma la dibuja el SVG). De aquí sale la proporción del recorte. Una imagen sin hueco no recibe foto de la fuente.",
+          "type": "object",
+          "required": ["ancho", "alto"],
+          "additionalProperties": false,
+          "properties": {
+            "ancho": { "type": "integer", "minimum": 50, "maximum": 1080, "description": "Ancho en píxeles." },
+            "alto": { "type": "integer", "minimum": 50, "maximum": 1350, "description": "Alto en píxeles." }
+          }
+        }
       },
       "allOf": [
         {

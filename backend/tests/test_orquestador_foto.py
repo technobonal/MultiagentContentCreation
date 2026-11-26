@@ -19,7 +19,8 @@ def foto(pagina):
 
 
 def hueco(nombre):
-    return {"nombre": "{{" + nombre + "}}", "tipo": "imagen", "origen_valor": "usuario", "obligatorio": False}
+    return {"nombre": "{{" + nombre + "}}", "tipo": "imagen", "origen_valor": "usuario", "obligatorio": False,
+            "hueco": {"ancho": 920, "alto": 300}}
 
 
 def resolucion_con_huecos(slides_con_hueco=((1, "imagen_portada"), (2, "imagen_producto"), (5, "imagen_cierre"))):

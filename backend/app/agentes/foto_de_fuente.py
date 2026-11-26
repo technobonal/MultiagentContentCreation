@@ -21,16 +21,6 @@ from app.fuentes.extraer_imagenes import ImagenExtraida, extraer_imagenes
 from app.fuentes.ocr_pdf import Motor, leer_paginas
 from app.fuentes.recortar_foto import mejor_recorte, recortar_imagen, tiene_contenido
 
-# Tamaño de cada hueco de imagen de la plantilla, en píxeles (templates/catalog/.../template.svg, grupos con
-# class="hueco-imagen"). Un test compara esta tabla con el SVG para que no se separen.
-TAMANO_HUECO: dict[str, tuple[int, int]] = {
-    "imagen_portada": (920, 280),  # slide 1, debajo del subtítulo
-    "imagen_producto": (920, 422),  # slide 2
-    "imagen_apoyo_3": (920, 250),  # slide 3, debajo del cuerpo
-    "imagen_apoyo_4": (920, 250),  # slide 4
-    "imagen_cierre": (920, 300),  # slide 5, debajo del CTA
-}
-
 
 @dataclass(frozen=True)
 class Hueco:
@@ -53,13 +43,17 @@ class FotoPreparada:
 
 
 def huecos_de_ficha(ficha: dict) -> list[Hueco]:
-    """Campos de imagen de la ficha con tamaño conocido, en orden de slide. Un campo de imagen sin tamaño se ignora."""
+    """Campos de imagen de la ficha que declaran su `hueco` (tamaño), en orden de slide. Sin hueco no reciben foto.
+
+    El tamaño vive en la ficha de cada plantilla y un test lo compara con su SVG para que no se separen.
+    """
     huecos = []
     for slide in ficha["slides"]:
         for campo in slide.get("campos", []):
             nombre = campo["nombre"].strip("{}")
-            if campo.get("tipo") == "imagen" and nombre in TAMANO_HUECO:
-                huecos.append(Hueco(slide["numero"], nombre, *TAMANO_HUECO[nombre]))
+            tamano = campo.get("hueco")
+            if campo.get("tipo") == "imagen" and tamano:
+                huecos.append(Hueco(slide["numero"], nombre, tamano["ancho"], tamano["alto"]))
     return huecos
 
 

@@ -1,14 +1,16 @@
 """Elegir fotos distintas de un PDF para los huecos de la plantilla: PDFs en memoria y un OCR falso."""
 import asyncio
 import io
+import json
 import re
 from pathlib import Path
 from types import SimpleNamespace
 
 import pymupdf
+import pytest
 from PIL import Image
 
-from app.agentes.foto_de_fuente import TAMANO_HUECO, Hueco, fotos_de_pdf, huecos_de_ficha, preparar_fotos
+from app.agentes.foto_de_fuente import Hueco, fotos_de_pdf, huecos_de_ficha, preparar_fotos
 
 RAIZ = Path(__file__).resolve().parents[2]
 H_PRODUCTO = Hueco(2, "imagen_producto", 920, 422)
@@ -100,18 +102,28 @@ def test_preparar_fotos_lee_el_pdf_de_la_carpeta(tmp_path):
     assert fotos["imagen_producto"].pagina == 1
 
 
-def test_huecos_de_ficha_toma_los_campos_de_imagen_con_tamano_conocido_en_orden_de_slide():
+def test_huecos_de_ficha_toma_los_campos_de_imagen_con_hueco_en_orden_de_slide():
     ficha = {"slides": [
-        {"numero": 1, "campos": [{"nombre": "{{titulo}}", "tipo": "texto"}, {"nombre": "{{imagen_portada}}", "tipo": "imagen"}]},
-        {"numero": 2, "campos": [{"nombre": "{{imagen_desconocida}}", "tipo": "imagen"}, {"nombre": "{{imagen_producto}}", "tipo": "imagen"}]},
+        {"numero": 1, "campos": [{"nombre": "{{titulo}}", "tipo": "texto"},
+                                 {"nombre": "{{imagen_portada}}", "tipo": "imagen", "hueco": {"ancho": 920, "alto": 280}}]},
+        {"numero": 2, "campos": [{"nombre": "{{imagen_sin_hueco}}", "tipo": "imagen"},
+                                 {"nombre": "{{imagen_producto}}", "tipo": "imagen", "hueco": {"ancho": 640, "alto": 500}}]},
     ]}
-    assert huecos_de_ficha(ficha) == [Hueco(1, "imagen_portada", 920, 280), Hueco(2, "imagen_producto", 920, 422)]
+    assert huecos_de_ficha(ficha) == [Hueco(1, "imagen_portada", 920, 280), Hueco(2, "imagen_producto", 640, 500)]
 
 
-def test_la_tabla_de_tamanos_coincide_con_la_plantilla_real():
-    """Si alguien cambia un hueco del SVG sin tocar la tabla, las fotos saldrían con otra proporción."""
-    svg = (RAIZ / "templates" / "catalog" / "ig_carrusel_pasos_oscuro_6slides" / "template.svg").read_text(encoding="utf-8")
-    encontrados = {}
-    for m in re.finditer(r'<g id="[^"]+" class="hueco-imagen" data-campo="\{\{(\w+)\}\}"[^>]*>.*?<image[^>]*width="(\d+)" height="(\d+)"', svg, re.S):
-        encontrados[m.group(1)] = (int(m.group(2)), int(m.group(3)))
-    assert encontrados == TAMANO_HUECO
+PLANTILLAS = sorted(p.name for p in (RAIZ / "templates" / "catalog").iterdir() if (p / "card.json").is_file())
+
+
+@pytest.mark.parametrize("plantilla", PLANTILLAS)
+def test_los_huecos_de_cada_ficha_coinciden_con_los_de_su_plantilla_svg(plantilla):
+    """Si alguien cambia un hueco del SVG sin tocar la ficha (o al revés), las fotos saldrían con otra proporción."""
+    carpeta = RAIZ / "templates" / "catalog" / plantilla
+    ficha = json.loads((carpeta / "card.json").read_text(encoding="utf-8"))
+    svg = (carpeta / "template.svg").read_text(encoding="utf-8")
+    patron = r'<g id="[^"]+" class="hueco-imagen" data-campo="\{\{(\w+)\}\}"[^>]*>.*?<image[^>]*width="(\d+)" height="(\d+)"'
+    en_svg = {m.group(1): (int(m.group(2)), int(m.group(3))) for m in re.finditer(patron, svg, re.S)}
+    en_ficha = {h.campo: (h.ancho, h.alto) for h in huecos_de_ficha(ficha)}
+    assert en_ficha == en_svg
+    # Todo campo de imagen del catálogo declara su hueco.
+    assert len(en_ficha) == sum(c["tipo"] == "imagen" for s in ficha["slides"] for c in s["campos"])
