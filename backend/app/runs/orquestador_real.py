@@ -231,6 +231,7 @@ async def _colocar_fotos(ejecucion: Ejecucion, fuente: FuenteCargada, agentes: A
     except Exception as exc:  # las fotos son opcionales: se registra y se sigue sin ellas
         log.warning("No se pudieron preparar las fotos de la fuente (%s): %s", type(exc).__name__, exc)
         return
+    colocadas = 0
     for hueco in huecos:  # en orden de slide, así el lienzo las ve colocarse de la primera a la última
         foto = fotos.get(hueco.campo)
         if foto is None:
@@ -247,6 +248,10 @@ async def _colocar_fotos(ejecucion: Ejecucion, fuente: FuenteCargada, agentes: A
             agente="director_arte", tipo="colocar_imagen", slide=hueco.slide,
             payload={"campo": hueco.campo, "referencia": referencia, "licencia": licencia, "texto_alternativo": foto.texto_alternativo},
         )
+        colocadas += 1
+    # También después de la última: el revisor puede responder en menos de lo que dura la escena y la cortaría.
+    if colocadas and config.FOTOS_PAUSA_SEG > 0:
+        await agentes.dormir(config.FOTOS_PAUSA_SEG)
 
 
 def _crear_corrector(

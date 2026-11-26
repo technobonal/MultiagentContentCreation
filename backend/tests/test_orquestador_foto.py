@@ -125,7 +125,7 @@ def test_una_licencia_fuera_del_contrato_bloquea_las_fotos_en_vez_de_romper_el_e
     assert de_tipo(ej, "colocar_imagen") == [] and llamadas == [] and ej.estado == EstadoRun.TERMINADA
 
 
-def test_hay_una_pausa_antes_de_cada_foto_para_que_el_lienzo_las_anime_de_a_una(licencia, monkeypatch):
+def test_hay_una_pausa_antes_de_cada_foto_y_otra_al_final_para_que_el_lienzo_las_anime_completas(licencia, monkeypatch):
     monkeypatch.setattr(config, "FOTOS_PAUSA_SEG", 1.5)
     pausas = []
 
@@ -143,7 +143,8 @@ def test_hay_una_pausa_antes_de_cada_foto_para_que_el_lienzo_las_anime_de_a_una(
         return ejecucion
 
     ej = asyncio.run(principal())
-    assert len(de_tipo(ej, "colocar_imagen")) == 3 and pausas == [1.5, 1.5, 1.5]
+    # Una antes de cada foto y otra al final, para que la última escena no la corte el revisor.
+    assert len(de_tipo(ej, "colocar_imagen")) == 3 and pausas == [1.5, 1.5, 1.5, 1.5]
 
 
 def test_con_pausa_cero_no_se_duerme_nada(licencia):

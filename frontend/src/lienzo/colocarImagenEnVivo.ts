@@ -66,6 +66,22 @@ export function imagenNueva(previas: ReadonlyMap<string, string>, actuales: Read
   return nueva;
 }
 
+/**
+ * Redondeo CSS que imita la forma del hueco, en porcentajes para que valga a cualquier tamaño (la foto cambia de tamaño
+ * mientras vuela). Manda `data-radio` (formas que no son un rectángulo: arcos y círculos); si no está, sale del `rx` del
+ * rectángulo; "" si no hay nada que imitar (queda el redondeo de la hoja de estilos).
+ */
+export function radioDeHueco(hueco: Element): string {
+  const declarado = hueco.getAttribute("data-radio");
+  if (declarado) return declarado;
+  const rx = Number(hueco.getAttribute("rx"));
+  const ancho = Number(hueco.getAttribute("width"));
+  const alto = Number(hueco.getAttribute("height"));
+  if (!(rx > 0 && ancho > 0 && alto > 0)) return "";
+  const porciento = (medida: number) => `${Math.min(50, Math.round((rx / medida) * 1000) / 10)}%`;
+  return `${porciento(ancho)} / ${porciento(alto)}`;
+}
+
 export interface OpcionesColocacion {
   /** Grupo `[data-campo]` del hueco de imagen (trae el rect punteado y el <image>). */
   readonly grupo: SVGElement;
@@ -200,6 +216,10 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
   const cartelAgente = crear("foto-cartel-agente", cartel, "span");
   cartelAgente.textContent = nombreAgente;
   const cartelTexto = crear("foto-cartel-texto", cartel, "span");
+
+  // La foto en las manos, el foco y la onda toman la forma del hueco (píldora, arco, círculo o esquinas redondeadas).
+  const radio = radioDeHueco(hueco);
+  if (radio) for (const el of [foco, onda, tarjeta]) el.style.borderRadius = radio;
 
   // Posición de la foto en las manos para un centro de avatar dado.
   const enManos = (cx: number, cy: number) => ({ left: cx + manosX, top: cy + manosY });

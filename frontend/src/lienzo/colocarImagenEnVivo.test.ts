@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { crearEstadoInicial } from "../timeline/reducer.ts";
 import type { Estado } from "../timeline/types.ts";
-import { colocarImagenEnVivo, imagenesColocadas, imagenNueva } from "./colocarImagenEnVivo.ts";
+import { colocarImagenEnVivo, imagenesColocadas, imagenNueva, radioDeHueco } from "./colocarImagenEnVivo.ts";
 
 const IMG = { licencia: "L", texto_alternativo: "t" };
 
@@ -140,6 +140,38 @@ describe("sin avatar en el marco", () => {
     const { timeline, restaurar } = colocarImagenEnVivo({ grupo, marco, ...OPCIONES });
     expect(marco.querySelector(".foto-portador")).not.toBeNull();
     expect(timeline.duration()).toBeGreaterThan(2.6);
+    restaurar();
+  });
+});
+
+describe("la forma del hueco", () => {
+  function contorno(atributos: Record<string, string>): Element {
+    const el = document.createElement("rect");
+    for (const [k, v] of Object.entries(atributos)) el.setAttribute(k, v);
+    return el;
+  }
+
+  it("usa el redondeo declarado (arcos y círculos)", () => {
+    expect(radioDeHueco(contorno({ "data-radio": "50% 50% 0 0 / 64% 64% 0 0", rx: "5" }))).toBe("50% 50% 0 0 / 64% 64% 0 0");
+  });
+
+  it("sin declararlo, lo saca del rx del rectángulo, en porcentajes y sin pasar del 50 %", () => {
+    expect(radioDeHueco(contorno({ rx: "16", width: "920", height: "422" }))).toBe("1.7% / 3.8%");
+    expect(radioDeHueco(contorno({ rx: "300", width: "400", height: "400" }))).toBe("50% / 50%");
+  });
+
+  it("sin nada que imitar no devuelve redondeo", () => {
+    expect(radioDeHueco(contorno({ width: "920", height: "422" }))).toBe("");
+    expect(radioDeHueco(contorno({}))).toBe("");
+  });
+
+  it("la foto en las manos, el foco y la onda toman esa forma", () => {
+    const { marco, grupo } = montar();
+    (marco.querySelector("rect") as Element).setAttribute("data-radio", "50%");
+    const { restaurar } = colocarImagenEnVivo({ grupo, marco, ...OPCIONES });
+    for (const clase of [".foto-tarjeta", ".foto-foco", ".foto-onda"]) {
+      expect((marco.querySelector(clase) as HTMLElement).style.borderRadius, clase).toBe("50%");
+    }
     restaurar();
   });
 });

@@ -58,7 +58,7 @@
     <g class="zona-foto" data-foto="imagen_portada"><rect x="80" y="220" width="920" height="430" rx="215" fill="url(#degradado)"/></g>
     <g id="imagen-portada" class="hueco-imagen" data-campo="{{imagen_portada}}" data-opcional="true">
       <title>Foto de portada</title>
-      <rect x="80" y="220" width="920" height="430" rx="215" class="hueco-forma" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
+      <rect x="80" y="220" width="920" height="430" rx="215" class="hueco-forma" data-radio="23.4% / 50%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
       <g clip-path="url(#recorte-foto-1)"><image x="80" y="220" width="920" height="430" preserveAspectRatio="xMidYMid slice" href="{{imagen_portada}}"/></g>
     </g>
     <foreignObject x="80" y="710" width="920" height="222" data-campo="{{titulo}}" data-lineas-max="3" data-fuente-min="56">
@@ -81,7 +81,7 @@
     <g class="zona-foto" data-foto="imagen_producto"><path d="M220 1200V1020A320 320 0 0 1 860 1020V1200Z" fill="url(#degradado)"/></g>
     <g id="imagen-producto" class="hueco-imagen" data-campo="{{imagen_producto}}" data-opcional="true">
       <title>Foto del producto</title>
-      <path d="M220 1200V1020A320 320 0 0 1 860 1020V1200Z" class="hueco-forma" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
+      <path d="M220 1200V1020A320 320 0 0 1 860 1020V1200Z" class="hueco-forma" data-radio="50% 50% 0 0 / 64% 64% 0 0" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
       <g clip-path="url(#recorte-foto-2)"><image x="220" y="700" width="640" height="500" preserveAspectRatio="xMidYMid slice" href="{{imagen_producto}}"/></g>
     </g>
     <g id="progreso-2"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="1"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/></g>
@@ -90,7 +90,7 @@
     <g class="zona-foto" data-foto="imagen_apoyo_3"><path d="M430 0H1000V300A285 285 0 0 1 430 300Z" fill="url(#degradado)"/></g>
     <g id="imagen-apoyo-3" class="hueco-imagen" data-campo="{{imagen_apoyo_3}}" data-opcional="true">
       <title>Foto de apoyo</title>
-      <path d="M430 0H1000V300A285 285 0 0 1 430 300Z" class="hueco-forma" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
+      <path d="M430 0H1000V300A285 285 0 0 1 430 300Z" class="hueco-forma" data-radio="0 0 50% 50% / 0 0 48.7% 48.7%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
       <g clip-path="url(#recorte-foto-3)"><image x="430" y="0" width="570" height="585" preserveAspectRatio="xMidYMid slice" href="{{imagen_apoyo_3}}"/></g>
     </g>
     <rect x="80" y="250" width="200" height="335" rx="100" fill="#3B49DF" fill-opacity=".12"/>
@@ -114,7 +114,7 @@
     <g class="zona-foto" data-foto="imagen_apoyo_4"><rect x="80" y="750" width="920" height="420" rx="210" fill="url(#degradado)"/></g>
     <g id="imagen-apoyo-4" class="hueco-imagen" data-campo="{{imagen_apoyo_4}}" data-opcional="true">
       <title>Foto de apoyo</title>
-      <rect x="80" y="750" width="920" height="420" rx="210" class="hueco-forma" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
+      <rect x="80" y="750" width="920" height="420" rx="210" class="hueco-forma" data-radio="22.8% / 50%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
       <g clip-path="url(#recorte-foto-4)"><image x="80" y="750" width="920" height="420" preserveAspectRatio="xMidYMid slice" href="{{imagen_apoyo_4}}"/></g>
     </g>
     <g id="progreso-4"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="1"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/></g>
@@ -133,7 +133,7 @@
     <g class="zona-foto" data-foto="imagen_cierre"><circle cx="540" cy="930" r="260" fill="url(#degradado)"/></g>
     <g id="imagen-cierre" class="hueco-imagen" data-campo="{{imagen_cierre}}" data-opcional="true">
       <title>Foto de cierre</title>
-      <circle cx="540" cy="930" r="260" class="hueco-forma" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
+      <circle cx="540" cy="930" r="260" class="hueco-forma" data-radio="50%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
       <g clip-path="url(#recorte-foto-5)"><image x="280" y="670" width="520" height="520" preserveAspectRatio="xMidYMid slice" href="{{imagen_cierre}}"/></g>
     </g>
     <g id="progreso-5"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="1"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/></g>
