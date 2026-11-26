@@ -86,8 +86,9 @@ def resolver(entrada: dict, fichas: dict[str, dict]) -> tuple[Resolucion | None,
         if errores:  # la plantilla fija contradice otro dato de la entrada
             return None, errores
     else:
-        # Con plantilla en auto se toma la primera compatible (orden estable por id).
-        candidatas = [f for _, f in sorted(fichas.items()) if _es_compatible(entrada, f)]
+        # Con plantilla en auto gana la de por defecto; si no sirve, la primera compatible (orden estable por id).
+        orden = sorted(fichas.items(), key=lambda par: (par[0] != config.PLANTILLA_POR_DEFECTO, par[0]))
+        candidatas = [f for _, f in orden if _es_compatible(entrada, f)]
         if not candidatas:  # ninguna encaja: error visible, no se elige "la más parecida"
             return None, ["ninguna plantilla del catálogo cumple la entrada (red, idioma, número de slides o imágenes)"]
         ficha, modo = candidatas[0], "auto"

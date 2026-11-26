@@ -326,3 +326,6 @@ FOTOS_LICENCIA = os.environ.get("FOTOS_LICENCIA", "").strip()
 # frontend/src/lienzo/colocarImagenEnVivo.ts). Con 1,5 s se veía cada foto a medias. 0 las emite todas seguidas.
 FOTOS_PAUSA_SEG = float(os.environ.get("FOTOS_PAUSA_SEG", "3.5"))
 FOTOS_MAX_PAGINAS = int(os.environ.get("FOTOS_MAX_PAGINAS", "6"))  # páginas del PDF que se miran en busca de fotos (el OCR tarda ~2 s por página)
+
+# Plantilla que se usa con la plantilla en modo auto (si no cumple la entrada, la primera compatible por id).
+PLANTILLA_POR_DEFECTO = os.environ.get("PLANTILLA_POR_DEFECTO", "ig_carrusel_pasos_oscuro_6slides")

@@ -69,7 +69,10 @@ def componer_slide(slide_ficha: dict, kit: Any, texto: TextoSlide | None) -> lis
     Lanza AgenteError `campo_desconocido` o `texto_invalido` si el texto no cumple el contrato.
     """
     numero = slide_ficha["numero"]
-    eventos = [EventoArte("colocar_fondo", numero, payload_fondo(kit))]
+    # Una plantilla puede declarar el fondo de cada slide (sus colores de texto están pensados para él).
+    propio = slide_ficha.get("fondo")
+    fondo = {"fondo": {"tipo": "color", "valor": propio}} if propio else payload_fondo(kit)
+    eventos = [EventoArte("colocar_fondo", numero, fondo)]
     # Sin redacción no hay nada más que dibujar en este slide.
     if texto is None:
         return eventos

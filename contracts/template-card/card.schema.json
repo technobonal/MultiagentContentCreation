@@ -124,6 +124,10 @@
       "properties": {
         "numero": { "$ref": "../common.schema.json#/$defs/slide_num" },
         "rol": { "$ref": "../common.schema.json#/$defs/rol_slide" },
+        "fondo": {
+          "$ref": "../common.schema.json#/$defs/color_hex",
+          "description": "Color de fondo propio del slide. Sin él, el fondo es el del kit de marca (o la paleta fija de la entrada). Una plantilla que lo declara fija también sus colores de texto para ese fondo."
+        },
         "campos": {
           "$comment": "Campos del slide; deben tener nombres únicos (lo comprueba validate.py).",
           "type": "array",

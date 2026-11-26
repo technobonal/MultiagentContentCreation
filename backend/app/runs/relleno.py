@@ -105,7 +105,7 @@ def construir_guion(run_id: str, entrada: dict, resolucion, color_fondo: str) ->
                 textos.append((nombre, valores_usuario[nombre]))
         guion.append({
             "agente": "director_arte", "tipo": "colocar_fondo", "slide": numero,
-            "payload": {"fondo": {"tipo": "color", "valor": color_fondo}},
+            "payload": {"fondo": {"tipo": "color", "valor": slide.get("fondo") or color_fondo}},
         })
         # El director de arte escribe cada texto en su campo del lienzo.
         for nombre, texto in textos:
