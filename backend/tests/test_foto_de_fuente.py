@@ -127,3 +127,39 @@ def test_los_huecos_de_cada_ficha_coinciden_con_los_de_su_plantilla_svg(plantill
     assert en_ficha == en_svg
     # Todo campo de imagen del catálogo declara su hueco.
     assert len(en_ficha) == sum(c["tipo"] == "imagen" for s in ficha["slides"] for c in s["campos"])
+
+
+# --- Fotografía: no cortar cabezas -------------------------------------------------------------------
+
+CARA = (0.45, 0.20, 0.55, 0.45)
+
+
+def test_la_foto_con_cara_abarca_la_cabeza_y_no_va_al_hueco_donde_no_cabe():
+    muy_ancho = Hueco(1, "imagen_portada", 920, 100)  # una tira: la cabeza no entra
+    cuadrado = Hueco(5, "imagen_cierre", 520, 520)
+    datos = pdf([(jpeg(1600, 1000), RECT)])
+    fotos = fotos_de_pdf(datos, [muy_ancho, cuadrado], sin_texto, detector=lambda _: [CARA])
+    assert list(fotos) == ["imagen_cierre"]  # la tira queda vacía en vez de decapitar a la persona
+    # Sin cara, la misma imagen se la lleva el hueco más grande, sea cual sea.
+    assert fotos_de_pdf(datos, [muy_ancho], sin_texto, detector=lambda _: []) != {}
+
+
+def test_el_hueco_donde_no_cabe_la_cara_recibe_otra_foto():
+    datos = pdf([(jpeg(1600, 1000), RECT), (jpeg(1500, 900, sal=9), RECT)])
+    con_cara = []
+
+    def detector(bytes_imagen):
+        con_cara.append(1)
+        return [CARA] if len(con_cara) == 1 else []  # solo la primera imagen tiene una cara
+
+    ancho = Hueco(1, "imagen_portada", 920, 100)
+    fotos = fotos_de_pdf(datos, [ancho], sin_texto, detector=detector)
+    assert fotos["imagen_portada"].pagina == 2
+    assert len(con_cara) == 2  # se busca una vez por imagen
+
+
+def test_si_el_detector_falla_las_fotos_siguen_saliendo():
+    def roto(_):
+        raise RuntimeError("sin modelo")
+
+    assert "imagen_producto" in fotos_de_pdf(pdf([(jpeg(), RECT)]), [H_PRODUCTO], sin_texto, detector=roto)

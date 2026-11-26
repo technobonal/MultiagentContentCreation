@@ -81,3 +81,33 @@ def test_por_defecto_no_tolera_texto_dentro_del_recorte():
     r = mejor_recorte(1920, 1080, cajas, PROPORCION)
     assert r is not None and r.solape == 0
     sin_texto_dentro(r, cajas)
+
+
+# --- Lo obligatorio: la cabeza de una persona tiene que entrar entera --------------------------------
+
+CABEZA = (0.45, 0.10, 0.60, 0.40)
+
+
+def abarca(r, caja, holgura=0.01):
+    x1, y1, x2, y2 = caja
+    return r.x <= x1 + holgura and r.x + r.ancho >= x2 - holgura and r.y <= y1 + holgura and r.y + r.alto >= y2 - holgura
+
+
+def test_el_recorte_abarca_la_cabeza_entera_y_la_deja_arriba_del_centro():
+    r = mejor_recorte(1920, 1160, [], 1.0, obligatoria=CABEZA)
+    assert r is not None and abarca(r, CABEZA)
+    assert (CABEZA[1] + CABEZA[3]) / 2 < r.y + r.alto / 2  # la cara queda en la mitad de arriba
+
+
+def test_si_la_cabeza_no_cabe_en_la_proporcion_no_hay_recorte():
+    # Un hueco muy ancho solo deja 0,17 de alto de la imagen: una cabeza de 0,6 de alto no entra.
+    assert mejor_recorte(1920, 1160, [], 10.0, obligatoria=(0.4, 0.1, 0.6, 0.7)) is None
+
+
+def test_con_texto_encima_solo_vale_un_recorte_que_lo_evite_y_abarque_la_cabeza():
+    texto = [(0.0, 0.0, 0.35, 1.0)]  # columna de texto a la izquierda
+    r = mejor_recorte(1920, 1160, texto, 2.0, obligatoria=CABEZA)
+    assert r is not None and abarca(r, CABEZA)
+    sin_texto_dentro(r, texto)
+    # Texto justo sobre la cabeza: no se puede cumplir las dos cosas.
+    assert mejor_recorte(1920, 1160, [(0.44, 0.05, 0.62, 0.2)], 2.0, obligatoria=CABEZA) is None

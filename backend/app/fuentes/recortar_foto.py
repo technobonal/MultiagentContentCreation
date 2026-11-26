@@ -21,6 +21,7 @@ ESCALA_MIN = 0.30  # ancho mínimo de la ventana, como fracción del ancho de la
 PASO_ESCALA = 0.05
 CONTRASTE_MIN = 20.0  # desviación típica del gris por debajo de la cual el recorte es un fondo liso (medido: 8,7 vs 41 a 69)
 MARGEN_TEXTO = 0.012  # el texto se ensancha esta fracción del lado mayor: las letras no tocan el borde del recorte
+ALTURA_SUJETO = 0.38  # dónde queda el centro de lo obligatorio dentro del recorte (0,38: en el tercio de arriba)
 
 
 @dataclass(frozen=True)
@@ -40,11 +41,12 @@ class Recorte:
 
 def mejor_recorte(
     ancho_img: int, alto_img: int, cajas: Sequence[Caja], proporcion: float,
-    solape_max: float = SOLAPE_MAX, escala_min: float = ESCALA_MIN,
+    solape_max: float = SOLAPE_MAX, escala_min: float = ESCALA_MIN, obligatoria: Caja | None = None,
 ) -> Recorte | None:
     """El recorte más grande de `proporcion` (ancho/alto) con a lo sumo `solape_max` de texto, o None si no hay.
 
-    Entre los de igual tamaño gana el de menos texto y, si empatan, el más alto de la imagen.
+    Con `obligatoria` (una cabeza) solo valen los recortes que la abarcan entera: si ninguno puede, devuelve None.
+    Entre los de igual tamaño gana el de menos texto; después, el que mejor ubica lo obligatorio; y si empatan, el más alto.
     """
     import numpy as np
 
@@ -68,6 +70,20 @@ def mejor_recorte(
     def texto_en(c0: int, f0: int, c1: int, f1: int) -> int:
         return int(integral[f1, c1] - integral[f0, c1] - integral[f1, c0] + integral[f0, c0])
 
+    def contiene(c0: int, f0: int, vc: int, vf: int) -> bool:
+        """¿La ventana abarca entera la caja obligatoria (la cabeza de una persona)?"""
+        if obligatoria is None:
+            return True
+        x1, y1, x2, y2 = obligatoria
+        return c0 / gw <= x1 + 1 / gw and (c0 + vc) / gw >= x2 - 1 / gw and f0 / gh <= y1 + 1 / gh and (f0 + vf) / gh >= y2 - 1 / gh
+
+    def lejania(c0: int, f0: int, vc: int, vf: int) -> float:
+        """Cuánto se aleja lo obligatorio de su lugar ideal: centrado y en el tercio de arriba. 0 si no hay obligatoria."""
+        if obligatoria is None:
+            return 0.0
+        x1, y1, x2, y2 = obligatoria
+        return abs((y1 + y2) / 2 - (f0 + ALTURA_SUJETO * vf) / gh) + 0.5 * abs((x1 + x2) / 2 - (c0 + vc / 2) / gw)
+
     escala = 1.0
     while escala >= escala_min - 1e-9:
         # Ventana de ese ancho (fracción del ancho de la imagen) y la proporción pedida, medida en píxeles reales.
@@ -76,14 +92,17 @@ def mejor_recorte(
         if v_alto_px <= alto_img:
             vc = max(1, round(v_ancho_px / ancho_img * gw))
             vf = max(1, round(v_alto_px / alto_img * gh))
-            mejor: tuple[float, int, int] | None = None  # (solape, fila, columna)
+            mejor: tuple[tuple[float, float], int, int] | None = None  # ((solape, lejanía), fila, columna)
             for f0 in range(0, gh - vf + 1):
                 for c0 in range(0, gw - vc + 1):
                     solape = texto_en(c0, f0, c0 + vc, f0 + vf) / (vc * vf)
-                    if solape <= solape_max and (mejor is None or solape < mejor[0]):
-                        mejor = (solape, f0, c0)
+                    if solape > solape_max or not contiene(c0, f0, vc, vf):
+                        continue
+                    nota = (solape, lejania(c0, f0, vc, vf))
+                    if mejor is None or nota < mejor[0]:
+                        mejor = (nota, f0, c0)
             if mejor is not None:
-                solape, f0, c0 = mejor
+                (solape, _), f0, c0 = mejor
                 return Recorte(c0 / gw, f0 / gh, vc / gw, vf / gh, solape)
         escala -= PASO_ESCALA
     return None
