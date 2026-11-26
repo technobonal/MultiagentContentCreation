@@ -175,3 +175,12 @@ describe("la forma del hueco", () => {
     restaurar();
   });
 });
+
+describe("el cartel y la especialidad", () => {
+  it("muestra el agente junto con su oficio", () => {
+    const { marco, grupo } = montar();
+    const { restaurar } = colocarImagenEnVivo({ grupo, marco, ...OPCIONES, especialidad: "Fotografía" });
+    expect(marco.querySelector(".foto-cartel-agente")?.textContent).toBe("Director de arte · Fotografía");
+    restaurar();
+  });
+});

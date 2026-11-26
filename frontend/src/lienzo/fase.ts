@@ -115,6 +115,38 @@ export function faseDeEstado(estado: Estado, idioma: IdiomaFase): string {
   return textoFaseDeTipo(ultimo.tipo, idioma);
 }
 
+// Especialidades del director de arte. No son agentes aparte: nombran qué oficio hay detrás de cada paso que hace en
+// código (componer los textos o encuadrar y colocar las fotos), así que salen del tipo de evento y no tocan el contrato.
+export type Especialidad = "tipografia" | "fotografia";
+
+const NOMBRES_ESPECIALIDAD: Readonly<Record<Especialidad, Record<IdiomaFase, string>>> = {
+  tipografia: { es: "Tipografía", "pt-BR": "Tipografia" },
+  fotografia: { es: "Fotografía", "pt-BR": "Fotografia" },
+};
+
+// Especialidad que trabaja en un tipo de evento, o null si ninguna.
+export function especialidadDe(tipo: string): Especialidad | null {
+  if (tipo === "escribir_texto") return "tipografia";
+  return tipo === "colocar_imagen" ? "fotografia" : null;
+}
+
+export function nombreEspecialidad(especialidad: Especialidad, idioma: IdiomaFase): string {
+  return NOMBRES_ESPECIALIDAD[especialidad][idioma];
+}
+
+// Especialidad a mostrar en la ficha de un agente: la de su último paso, mientras la ejecución sigue abierta.
+export function especialidadDeAgente(estado: Estado, agente: string): Especialidad | null {
+  const entrada = estado.agentes[agente];
+  if (agente !== "director_arte" || entrada === undefined || ejecucionTerminada(estado)) return null;
+  const propia = especialidadDe(entrada.tipo);
+  if (propia !== null) return propia;
+  // Pintar un fondo no borra el oficio en curso: el arte llega en ráfaga y termina con el fondo del slide de fuentes,
+  // así que sin esto «Tipografía» no llegaba a verse. Con textos ya escritos y sin fotos, su último oficio fue ese.
+  const hayTextos = Object.keys(estado.lienzo.textos).length > 0;
+  const hayFotos = Object.keys(estado.lienzo.imagenes).length > 0;
+  return entrada.tipo === "colocar_fondo" && hayTextos && !hayFotos ? "tipografia" : null;
+}
+
 // Nombre visible de un agente (si es desconocido, se devuelve la clave tal cual).
 export function nombreAgente(agente: string, idioma: IdiomaFase): string {
   return NOMBRES_AGENTE[agente]?.[idioma] ?? agente;

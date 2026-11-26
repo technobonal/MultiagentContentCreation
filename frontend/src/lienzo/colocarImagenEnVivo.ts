@@ -28,8 +28,8 @@ const TAM_AVATAR = 44;
 const ESCALA_AVATAR_MAX = 2.4;
 const ESCALA_AVATAR_MIN = 1.6;
 const FRACCION_AVATAR = 0.17;
-// Margen superior que se deja libre para el cartel (px).
-const MARGEN_CARTEL_PX = 56;
+// Margen superior que se deja libre para el cartel (px): el avatar ni su arco de vuelo entran ahí.
+const MARGEN_CARTEL_PX = 68;
 // Altura del arco del vuelo (px hacia arriba en el punto medio).
 const ARCO_PX = 70;
 // Ancho de la foto en las manos: fracción del ancho del hueco, acotada.
@@ -90,6 +90,8 @@ export interface OpcionesColocacion {
   /** Agente que coloca la foto (para encontrar su avatar). */
   readonly agente?: string;
   readonly nombreAgente: string;
+  /** Oficio que ejerce al colocarla; si viene, el cartel lo muestra junto al nombre. */
+  readonly especialidad?: string;
   /** Qué foto es (el texto alternativo trae la página de origen). */
   readonly descripcion: string;
   /** Número de slide donde se coloca. */
@@ -214,7 +216,7 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
   const flash = crear("foto-flash", escena);
   const cartel = crear("foto-cartel", escena);
   const cartelAgente = crear("foto-cartel-agente", cartel, "span");
-  cartelAgente.textContent = nombreAgente;
+  cartelAgente.textContent = o.especialidad ? `${nombreAgente} · ${o.especialidad}` : nombreAgente;
   const cartelTexto = crear("foto-cartel-texto", cartel, "span");
 
   // La foto en las manos, el foco y la onda toman la forma del hueco (píldora, arco, círculo o esquinas redondeadas).
@@ -247,7 +249,8 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
   tl.to(tarjeta, { scale: 1, duration: tomar, ease: "back.out(1.6)" }, 0.01 + tomar * 0.4);
   // Gesto de levantar la foto (los dos suben y bajan juntos).
   const levantar = LEVANTAR_S / factor;
-  tl.to([portador, tarjeta], { y: -14, duration: levantar / 2, ease: "sine.out" }, tomar);
+  const gesto = Math.max(0, Math.min(14, cy0 - lado / 2 - MARGEN_CARTEL_PX));
+  tl.to([portador, tarjeta], { y: -gesto, duration: levantar / 2, ease: "sine.out" }, tomar);
   tl.to([portador, tarjeta], { y: 0, duration: levantar / 2, ease: "sine.in" }, tomar + levantar / 2);
 
   // 2. LA LLEVA: mismo recorrido para avatar y foto (así viajan juntos) y un arco hacia arriba.
@@ -259,7 +262,9 @@ export function colocarImagenEnVivo(o: OpcionesColocacion): ColocacionEnVivo {
   tl.to(foco, { opacity: 1, duration: FOCO_S / factor }, t2);
   tl.to(portador, { left: cx1 - TAM_AVATAR / 2, top: cy1 - TAM_AVATAR / 2, duration: vuelo, ease: "power2.inOut" }, t2);
   tl.to(tarjeta, { ...enManos(cx1, cy1), rotation: -4, duration: vuelo, ease: "power2.inOut" }, t2);
-  tl.to([portador, tarjeta], { y: -ARCO_PX, duration: vuelo / 2, ease: "sine.out" }, t2);
+  // El arco no puede subir al avatar hasta el cartel (en huecos de la parte de arriba casi no hay arco).
+  const arco = Math.max(0, Math.min(ARCO_PX, Math.min(cy0, cy1) - lado / 2 - MARGEN_CARTEL_PX));
+  tl.to([portador, tarjeta], { y: -arco, duration: vuelo / 2, ease: "sine.out" }, t2);
   tl.to([portador, tarjeta], { y: 0, duration: vuelo / 2, ease: "sine.in" }, t2 + vuelo / 2);
 
   // 3. LA COLOCA: la foto se despega de las manos y llena el hueco con un rebote; el avatar empuja.

@@ -5,7 +5,7 @@
  * ("Terminado" / "Sin intervención") en vez de quedarse con su última acción.
  */
 import { Avatar } from "./avatares.tsx";
-import { AGENTES_MESA, nombreAgente, textoEstadoAgente, ultimoEvento } from "./fase.ts";
+import { AGENTES_MESA, especialidadDeAgente, nombreAgente, nombreEspecialidad, textoEstadoAgente, ultimoEvento } from "./fase.ts";
 import type { IdiomaFase } from "./fase.ts";
 import type { Estado } from "../timeline/types.ts";
 
@@ -18,6 +18,7 @@ export function MesaAgentes({ estado, idioma }: { estado: Estado; idioma: Idioma
       {/* Una ficha por agente, en orden de intervención. */}
       {AGENTES_MESA.map((agente) => {
         const entrada = estado.agentes[agente];
+        const especialidad = especialidadDeAgente(estado, agente);
         const clase =
           agente === activo ? "agente agente-activo" : entrada ? "agente agente-hecho" : "agente";
         return (
@@ -25,6 +26,12 @@ export function MesaAgentes({ estado, idioma }: { estado: Estado; idioma: Idioma
             <Avatar agente={agente} tamano={22} />
             <div className="agente-texto">
               <span className="agente-nombre">{nombreAgente(agente, idioma)}</span>
+              {/* El oficio que está ejerciendo (solo el director de arte los tiene). */}
+              {especialidad !== null && (
+                <span key={especialidad} className="agente-especialidad">
+                  {nombreEspecialidad(especialidad, idioma)}
+                </span>
+              )}
               {/* Su última acción mientras el run avanza; su estado final cuando terminó. */}
               <span className="agente-estado">{textoEstadoAgente(estado, agente, idioma)}</span>
             </div>

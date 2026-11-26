@@ -15,7 +15,7 @@ import { AvataresVivos } from "./AvataresVivos.tsx";
 import { esperarFuentes, parsearPlantilla } from "./cargarPlantilla.ts";
 import { colocarImagenEnVivo, imagenesColocadas, imagenNueva } from "./colocarImagenEnVivo.ts";
 import { escribirEnVivo, solidificar } from "./escrituraEnVivo.ts";
-import { detalleDeFase, faseDeEstado, nombreAgente, ultimoEvento } from "./fase.ts";
+import { nombreEspecialidad, detalleDeFase, faseDeEstado, nombreAgente, ultimoEvento } from "./fase.ts";
 import type { IdiomaFase } from "./fase.ts";
 import { pintarLienzo } from "./pintarLienzo.ts";
 import type { CampoActivo } from "./posicionAvatar.ts";
@@ -269,6 +269,7 @@ export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) 
           marco: marcoEl,
           agente: ultimoEv.agente ?? "director_arte",
           nombreAgente: nombreAgente(ultimoEv.agente ?? "director_arte", idioma),
+          especialidad: nombreEspecialidad("fotografia", idioma),
           descripcion: vista.estado.lienzo.imagenes[fotoNueva.slide]?.[fotoNueva.campo]?.texto_alternativo ?? "foto de la fuente",
           slide: fotoNueva.slide,
           velocidad: vista.velocidad,
