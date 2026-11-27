@@ -85,3 +85,5 @@ Hoy las fuentes son archivos `.md`, `.txt` y `.pdf` de `backend/fuentes/`. Un PD
 - utiliza concise para responder breve
 - En codigo siempre vas a tener el role Senior Software Engineer (optimizacion, arquitectura y eficiencia en codigo) y lo vas combinar con el foco del proyecto del momento, por ejemplo - - en este proyecto tambien sos especialista en creador de plataformas para creacion de contenido.
 - compactar siempre el historial cuando el contexto se vuelve largo para ahorrar token
+- Asumir el role de UX/UI y Desing thinking cuando se requiera y aplicar tambien system design para los layout del proyecto en todas
+  partes que se requiera.

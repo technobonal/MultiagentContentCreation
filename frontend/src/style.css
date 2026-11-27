@@ -831,40 +831,98 @@ input[type="range"] {
 
 /* Barra fija al borde inferior (mismo ancho que la app): el botón siempre se ve, aunque el panel quede más abajo. */
 .panel-aprobacion {
-  padding-bottom: 76px; /* deja lugar para que la barra no tape el último campo */
-}
-
-.panel-aprobacion-barra {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  max-width: 520px;
-  margin: 0 auto;
-  padding: 10px 16px;
-  border-top: 1px solid var(--acento);
-  background: var(--fondo);
+  padding-bottom: 84px; /* deja lugar para que la barra fija no tape el último campo */
 }
 
 .panel-aprobacion-errores {
   margin: 0 0 8px;
   padding-left: 18px;
   max-height: 96px;
-  overflow-y: auto; /* con muchos motivos la barra no tapa la pantalla */
+  overflow-y: auto; /* con muchos motivos la lista no empuja la pantalla */
   color: var(--error);
   font-size: 0.8125rem;
 }
 
-.panel-aprobacion-botones {
+/* Barra de decisión (UX Paso 2): fija abajo, se decide el carrusel entero sin perder de vista el semáforo. */
+.barra-decision {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-width: 520px;
+  margin: 0 auto;
   display: flex;
   gap: 12px;
   align-items: center;
-  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid var(--acento);
+  background: var(--fondo);
 }
 
-.panel-aprobacion-estado {
+/* Semáforo compacto: un punto por slide; verde = con visto bueno, rojo = bloquea. */
+.barra-semaforo {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.barra-punto {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  font-size: 0.6875rem;
+  line-height: 1;
+  color: var(--texto-sobre-acento);
+}
+
+.barra-punto-verde {
+  background: #3fb97f;
+}
+
+.barra-punto-rojo {
+  background: var(--error);
+}
+
+/* El punto del slide que se está revisando arriba. */
+.barra-punto-activo {
+  outline: 2px solid var(--texto);
+  outline-offset: 1px;
+}
+
+.barra-punto:hover {
+  border-color: var(--texto);
+}
+
+.barra-recuento {
   font-size: 0.8125rem;
   opacity: 0.75;
+}
+
+.barra-botones {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-left: auto; /* empuja los botones a la derecha; el semáforo y el recuento quedan a la izquierda */
+}
+
+/* Jerarquía: destructivo en rojo (línea), primario relleno; el resto queda con el outline por defecto. */
+.barra-botones .boton-rechazar {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.barra-botones .boton-aprobar {
+  background: var(--acento);
+  color: var(--texto-sobre-acento);
+  border-color: var(--acento);
+}
+
+.barra-botones .boton-aprobar:disabled {
+  opacity: 0.5;
 }
 
 /* Semáforo de la revisión: el color acompaña al texto, que ya dice «verde» o «rojo». */
@@ -903,13 +961,6 @@ input[type="range"] {
 
 .semaforo-aviso {
   opacity: 0.75;
-}
-
-/* Rechazar: se distingue de aprobar sin competir con él. */
-.panel-aprobacion-botones .boton-rechazar {
-  margin-left: auto;
-  border-color: var(--error);
-  color: var(--error);
 }
 
 .panel-aprobacion-campo select {

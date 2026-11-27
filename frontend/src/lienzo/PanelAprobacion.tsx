@@ -23,8 +23,20 @@ import {
 import type { CuerpoDecision, CuerpoRechazo, Informe } from "./aprobacion.ts";
 import { InformeSemaforo } from "./InformeSemaforo.tsx";
 import { FormularioRechazo } from "./FormularioRechazo.tsx";
+import { BarraDecision } from "./BarraDecision.tsx";
 
-export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: string }) {
+export function PanelAprobacion({
+  estado,
+  runId,
+  slideActivo,
+  onIrSlide,
+}: {
+  estado: Estado;
+  runId: string;
+  // UX Paso 2: para que el semáforo de la barra salte a un slide y lo resalte. Opcional (p. ej. en tests).
+  slideActivo?: number | null;
+  onIrSlide?: (slide: number) => void;
+}) {
   const [comentario, setComentario] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [motivos, setMotivos] = useState<readonly string[]>([]);
@@ -135,7 +147,8 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
       )}
       {informe && <InformeSemaforo informe={informe} />}
 
-      {rechazo === null && (
+      {/* El resumen del asesor y su confirmación van en el cuerpo; el botón que lo pide vive en la barra de abajo. */}
+      {rechazo === null && (asesor || consejo === "confirmando") && (
         <div className="panel-asesor">
           {asesor && (
             <p className={`panel-asesor-resumen ${asesor.alertas.length > 0 ? "panel-asesor-con-alertas" : ""}`}>
@@ -144,7 +157,7 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
                 : `El asesor marcó ${asesor.alertas.length} frase(s): mirá cada slide en rojo para ver su consejo.`}
             </p>
           )}
-          {consejo === "confirmando" ? (
+          {consejo === "confirmando" && (
             <div className="panel-asesor-confirmar" role="alertdialog" aria-label="Confirmar consulta al asesor">
               <p>Esto envía los textos y los fragmentos de la fuente a Cloudflare, y tarda cerca de un minuto. ¿Seguir?</p>
               <div className="panel-asesor-botones">
@@ -156,10 +169,6 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
                 </button>
               </div>
             </div>
-          ) : (
-            <button type="button" className="boton-asesor" disabled={trabajando} onClick={() => setConsejo("confirmando")}>
-              {consejo === "consultando" ? "El asesor está revisando…" : asesor ? "Pedir consejo otra vez" : "Pedir consejo"}
-            </button>
           )}
         </div>
       )}
@@ -196,68 +205,76 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
         </label>
       )}
 
-      {/* Barra fija al borde inferior: el botón y los errores del servidor se ven sin tener que bajar hasta los campos. */}
-      <div className="panel-aprobacion-barra">
-        {motivos.length > 0 && (
-          <ul role="alert" className="panel-aprobacion-errores">
-            {motivos.map((m) => (
-              <li key={m}>{m}</li>
-            ))}
-          </ul>
+      {/* Los errores del servidor se ven justo encima de la barra, sin tener que bajar hasta los campos. */}
+      {motivos.length > 0 && (
+        <ul role="alert" className="panel-aprobacion-errores">
+          {motivos.map((m) => (
+            <li key={m}>{m}</li>
+          ))}
+        </ul>
+      )}
+
+      {/* Barra fija al borde inferior: semáforo (salta al slide) + recuento + botones con su jerarquía. */}
+      <BarraDecision
+        slides={informe?.slides.map((s) => ({ slide: s.slide, color: s.color })) ?? []}
+        respaldadas={sello.afirmaciones_respaldadas}
+        totales={sello.afirmaciones_totales}
+        slideActivo={slideActivo}
+        onIrSlide={(s) => onIrSlide?.(s)}
+      >
+        {rechazo === null ? (
+          <>
+            <button
+              type="button"
+              className="boton-asesor"
+              disabled={trabajando || consejo === "confirmando"}
+              onClick={() => setConsejo("confirmando")}
+            >
+              {consejo === "consultando" ? "El asesor está revisando…" : asesor ? "Pedir consejo otra vez" : "Pedir consejo"}
+            </button>
+            <button
+              type="button"
+              className="boton-rechazar"
+              disabled={trabajando}
+              onClick={() => {
+                setMotivos([]);
+                setRechazo(RECHAZO_VACIO);
+              }}
+            >
+              Rechazar
+            </button>
+            <button
+              type="button"
+              className="boton-aprobar"
+              disabled={trabajando || !informe || (enRojo && excepcion.trim() === "")}
+              onClick={() => void decidir(cuerpoDecision(estado, {}, comentario, enRojo ? excepcion : ""))}
+            >
+              {enviando ? "Enviando…" : enRojo ? "Aprobar sin visto bueno" : "Aprobar"}
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={enviando}
+              onClick={() => {
+                setMotivos([]);
+                setRechazo(null);
+              }}
+            >
+              Volver
+            </button>
+            <button
+              type="button"
+              className="boton-rechazar"
+              disabled={enviando || rechazo.motivo.trim() === ""}
+              onClick={() => void decidir(cuerpoRechazo(rechazo))}
+            >
+              {enviando ? "Enviando…" : "Confirmar rechazo"}
+            </button>
+          </>
         )}
-        <div className="panel-aprobacion-botones">
-          <span className="panel-aprobacion-estado">
-            {sello.afirmaciones_respaldadas}/{sello.afirmaciones_totales} respaldadas
-          </span>
-          {rechazo === null ? (
-            <>
-              <button
-                type="button"
-                className="boton-rechazar"
-                disabled={trabajando}
-                onClick={() => {
-                  setMotivos([]);
-                  setRechazo(RECHAZO_VACIO);
-                }}
-              >
-                Rechazar
-              </button>
-              <button
-                type="button"
-                disabled={trabajando || !informe || (enRojo && excepcion.trim() === "")}
-                onClick={() => void decidir(cuerpoDecision(estado, {}, comentario, enRojo ? excepcion : ""))}
-              >
-                {enviando
-                  ? "Enviando…"
-                  : enRojo
-                    ? "Aprobar sin visto bueno"
-                    : "Aprobar"}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                disabled={enviando}
-                onClick={() => {
-                  setMotivos([]);
-                  setRechazo(null);
-                }}
-              >
-                Volver
-              </button>
-              <button
-                type="button"
-                className="boton-rechazar"
-                disabled={enviando || rechazo.motivo.trim() === ""}
-                onClick={() => void decidir(cuerpoRechazo(rechazo))}
-              >
-                {enviando ? "Enviando…" : "Confirmar rechazo"}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+      </BarraDecision>
     </aside>
   );
 }

@@ -58,6 +58,8 @@ function Pantalla({
   idiomaGuia,
   runFallido = false,
   runId,
+  slideManual: slideControlado,
+  onVerSlide: onVerControlado,
 }: {
   reproductor: Reproductor;
   idiomaGuia: IdiomaFase;
@@ -65,6 +67,10 @@ function Pantalla({
   runFallido?: boolean;
   // Solo en modo Servidor: habilita re-verificar un slide desde la revisión (A5).
   runId?: string;
+  // UX Paso 2: en modo Servidor el slide en revisión lo controla la pantalla de arriba (para que la
+  // barra de decisión pueda saltar a un slide). Sin estas props, la tira maneja su propio estado.
+  slideManual?: number | null;
+  onVerSlide?: (slide: number | null) => void;
 }) {
   const vista = useReproductor(reproductor);
   // La plantilla la decide el run (evento plantilla_elegida); mientras no llega, la de por defecto.
@@ -80,7 +86,11 @@ function Pantalla({
   const idioma: IdiomaFase = eleccion === "auto" ? idiomaGuia : eleccion;
 
   // Slide que la persona está revisando; se queda hasta que vuelve al directo o usa un control.
-  const [slideManual, setManual] = useState<number | null>(null);
+  // Controlado desde arriba si llega onVerSlide (modo Servidor); si no, estado propio (modo Grabación).
+  const [slideLocal, setLocal] = useState<number | null>(null);
+  const controlado = onVerControlado !== undefined;
+  const slideManual = controlado ? (slideControlado ?? null) : slideLocal;
+  const setManual = controlado ? onVerControlado : setLocal;
   // Estado que se muestra: el del reductor con el slide manual aplicado (misma referencia si no hay).
   const estadoVista = useMemo(
     () => aplicarSlideManual(vista.estado, slideManual),
@@ -273,6 +283,8 @@ function PantallaServidor({ fuente, runId }: { fuente: FuenteEnVivo; runId: stri
   const estado = useReproductor(fuente).estado;
   // Con el buffer vacío todavía no hay guía de la cual sacar el idioma.
   const idiomaGuia: IdiomaFase = vivo.eventos.length === 0 ? "es" : idiomaDeGuia(vivo.eventos);
+  // UX Paso 2: el slide en revisión vive acá para que la barra de decisión pueda saltar a un slide rojo.
+  const [slideManual, setManual] = useState<number | null>(null);
 
   return (
     <>
@@ -288,9 +300,11 @@ function PantallaServidor({ fuente, runId }: { fuente: FuenteEnVivo; runId: stri
         idiomaGuia={idiomaGuia}
         runFallido={vivo.conexion === "error"}
         runId={runId}
+        slideManual={slideManual}
+        onVerSlide={setManual}
       />
       {/* Aprobación humana: solo aparece mientras el run espera la decisión (y deja un aviso si se editó algo). */}
-      <PanelAprobacion estado={estado} runId={runId} />
+      <PanelAprobacion estado={estado} runId={runId} slideActivo={slideManual} onIrSlide={setManual} />
     </>
   );
 }
