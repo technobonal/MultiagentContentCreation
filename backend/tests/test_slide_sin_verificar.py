@@ -18,7 +18,7 @@ FUENTE = SimpleNamespace(texto=FRASE, fragmentos=(SimpleNamespace(indice=0, text
 def test_el_run_pide_una_persona_y_el_texto_no_se_reescribe():
     textos = {n: TextoSlide(n, {"titulo": "El Sprint dura un mes"}, (), "m1", False) for n in (1, 2)}
     estado = EstadoCarrusel(textos=textos, brief=Brief("idea", "claro", {1: (0,), 2: (0,)}, "m1", False))
-    bien = {"afirmacion": "El Sprint dura un mes.", "tipo": "factual", "veredicto": "respaldada",
+    bien = {"frase": 1, "tipo": "factual", "veredicto": "respaldada",
             "cita": FRASE, "motivo": "ok"}
 
     async def pedir(sistema, usuario):

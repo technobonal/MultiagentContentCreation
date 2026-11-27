@@ -16,9 +16,10 @@ Basado en el verificador del spike v3b, con estas decisiones:
 - Gravedad: `contradice` y `no_respaldada` son bloqueantes; `parcialmente_respaldada` es mayor.
   Una cifra que el código no encuentra en los fragmentos es mayor (respaldo del LLM, con más
   riesgo de falso positivo por cifras derivadas, como «3 pasos»).
-- Ningún slide con texto pasa sin veredictos: si vuelve sin afirmaciones se pide una vez más, solo; si sigue
-  vacío, abre un hallazgo que nadie corrige solo, así que el run lo tiene que mirar una persona. Una afirmación
-  ajena al texto del slide no puede sumar al sello (si abre un hallazgo se conserva: nunca se esconde un problema).
+- Lo que se juzga lo define el código: `frases.py` separa el texto de cada slide en frases numeradas y el modelo
+  solo devuelve el número y su veredicto. Así no puede reformular, suavizar ni agregar afirmaciones.
+- Ninguna frase pasa sin veredicto: si falta alguna se pide el slide una vez más, solo; la que siga faltando abre
+  un hallazgo que nadie corrige solo, así que el run lo tiene que mirar una persona.
 - Fallback solo dentro de la cadena propia del revisor (`config.GROQ_FALLBACK_REVISOR`, tanda 10B): ambos
   modelos son gpt-oss, de otra familia que el redactor (qwen), así que la independencia se mantiene y,
   cuando un modelo no tiene cupo de tokens, el otro responde en vez de esperar. El revisor nunca cae al
@@ -34,15 +35,15 @@ from __future__ import annotations
 
 import logging
 import re
-import unicodedata
 from collections.abc import Awaitable, Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
 from app import config
 from app.agentes.cliente_llm import ClienteLLM
 from app.agentes.comun import AgenteError, cargar_prompt, pedir_json
 from app.agentes.estratega import Brief
+from app.agentes.frases import Frase, frases_del_slide
 from app.agentes.revisor_codigo import (
     Hallazgo, crear_hallazgo, leer_campo, nombre_campo, ordenar_hallazgos, recortar_texto)
 from app.agentes.verificar_hechos import quitar_bordes, ubicar_hecho
@@ -70,8 +71,7 @@ SEPARADOR_SLIDES = "\n\n---\n\n"
 # Parámetros extra de la API para el revisor: razonamiento bajo deja espacio al JSON (valor del spike).
 EXTRA_REVISOR = {"reasoning_effort": "low"}
 
-# Cota de afirmaciones por slide y de longitud de la cita.
-MAX_AFIRMACIONES_SLIDE = 12
+# Longitud máxima de la cita.
 CITA_MAX_CHARS = 300
 
 # Largo máximo (en caracteres) de la frase de contexto que acompaña a una cifra sin respaldo. Es corto a
@@ -96,16 +96,6 @@ _MARCADOR_LISTA = re.compile(r"[ \t]*(?:[-*•][ \t]+)?(?P<n>\d{1,2})[.)]\s")
 
 # Quita los comentarios HTML del prompt (no deben viajar al modelo).
 _COMENTARIO_HTML = re.compile(r"<!--.*?-->", re.DOTALL)
-
-# Fracción mínima de las palabras con contenido de una afirmación que tienen que estar en el texto del slide.
-COINCIDENCIA_MINIMA = 0.5
-# Se comparan los primeros caracteres, para tolerar «controla» frente a «controlar».
-LARGO_RAIZ = 5
-# Palabras de 4 letras o más que no dicen de qué habla la frase (sin tildes). Las más cortas ya se ignoran.
-PALABRAS_VACIAS = frozenset(
-    "algo ante aqui cada como cuando debe deben desde donde ellos entre eres esta estan este esto hace hacia "
-    "hasta mismo mucho nada otra otro para pero poco porque puede pueden puedes sean segun sera sino sobre solo "
-    "tambien tanto tiene tienen toda todas todo todos unas unos usted".split())
 
 # Función que envía (sistema, usuario) al revisor y devuelve el JSON ya interpretado.
 Pedir = Callable[[str, str], Awaitable[Mapping[str, Any]]]
@@ -289,24 +279,6 @@ log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------- citas y afirmaciones
 
-def _raices(texto: str) -> set[str]:
-    """Raíces de las palabras con contenido (y las cifras) de un texto, sin tildes ni mayúsculas."""
-    plano = unicodedata.normalize("NFKD", texto.lower()).encode("ascii", "ignore").decode("ascii")
-    return {
-        p[:LARGO_RAIZ] for p in re.findall(r"[a-z0-9]+", plano)
-        if p.isdigit() or (len(p) >= 4 and p not in PALABRAS_VACIAS)
-    }
-
-
-def es_del_texto(afirmacion: str, campos: Mapping[str, str]) -> bool:
-    """True si la afirmación habla del texto del slide. Sin palabras con las que decidir, se da por buena."""
-    propias = _raices(afirmacion)
-    if not propias:
-        return True
-    del_slide = _raices(" ".join(v for v in campos.values() if isinstance(v, str)))
-    return len(propias & del_slide) / len(propias) >= COINCIDENCIA_MINIMA
-
-
 def _por_que_no_es_literal(cita: object) -> str:
     """Causa legible de una cita rechazada, solo para el log (el contrato no la guarda)."""
     if not isinstance(cita, str) or not cita.strip():
@@ -339,16 +311,10 @@ def _localizar_cita(cita: object, fragmentos: Sequence[Fragmento]) -> dict | Non
     return {"fragmento": ubicado.texto, "inicio": ubicado.inicio, "fin": ubicado.fin}
 
 
-def _normalizar_afirmacion(crudo: object, slide: int, numero: int,
-                           fragmentos: Sequence[Fragmento]) -> Afirmacion | None:
-    """Convierte una afirmación cruda del modelo en `Afirmacion`, imponiendo las reglas del contrato."""
-    if not isinstance(crudo, Mapping):
-        return None
-    texto = crudo.get("afirmacion")
-    # Sin texto no hay nada que verificar.
-    if not isinstance(texto, str) or not texto.strip():
-        return None
-    texto = recortar_texto(texto)
+def _normalizar_afirmacion(crudo: Mapping, slide: int, numero: int,
+                           fragmentos: Sequence[Fragmento], frase: str) -> Afirmacion:
+    """Une el juicio del modelo con la frase del slide (la pone el código) e impone las reglas del contrato."""
+    texto = recortar_texto(frase)
     motivo = recortar_texto(crudo.get("motivo") or "Sin motivo indicado.")
     tipo = crudo.get("tipo")
     veredicto = crudo.get("veredicto")
@@ -424,7 +390,7 @@ def _numero_slide(valor: Any) -> int | None:
 
 
 def _crudas_por_slide(respuesta: Any, slides: Sequence[int]) -> dict[int, list]:
-    """Afirmaciones crudas de cada slide pedido. Un slide que la respuesta no trae queda fuera del mapa."""
+    """Juicios crudos de cada slide pedido. Un slide que la respuesta no trae queda fuera del mapa."""
     if not isinstance(respuesta, Mapping):
         return {}
     por_slide: dict[int, list] = {}
@@ -442,12 +408,9 @@ def _crudas_por_slide(respuesta: Any, slides: Sequence[int]) -> dict[int, list]:
 
 
 def _mensaje_usuario(slide: int, campos: Mapping[str, str], fragmentos: Sequence[str]) -> str:
-    """Mensaje variable: número de slide, texto de cada campo y fragmentos asignados."""
-    lineas = [f"SLIDE: {slide}", "", "TEXTO DEL SLIDE:"]
-    # Cada campo con texto va etiquetado con su nombre (sin llaves).
-    for nombre, texto in campos.items():
-        if isinstance(texto, str) and texto.strip():
-            lineas.append(f"[{nombre_campo(nombre)}] {' '.join(texto.split())}")
+    """Mensaje variable: número de slide, sus frases numeradas (con su campo) y los fragmentos asignados."""
+    lineas = [f"SLIDE: {slide}", "", "FRASES A VERIFICAR:"]
+    lineas += [f"{f.numero}. [{f.campo}] {f.texto}" for f in frases_del_slide(campos)]
     lineas += ["", "FRAGMENTOS DE LA FUENTE:"]
     # Los fragmentos se numeran para que el modelo los distinga, sin que cuenten para la cita.
     for i, fragmento in enumerate(fragmentos, start=1):
@@ -477,45 +440,46 @@ def pedir_al_revisor(cliente: ClienteLLM, max_tokens: int = MAX_TOKENS_REVISOR) 
     return pedir
 
 
-def _normalizar_lista(crudas: list, slide: int, campos: Mapping[str, str], fragmentos: Sequence[Fragmento],
-                      primer_numero: int) -> list[Afirmacion]:
-    """Normaliza las afirmaciones crudas de un slide; los ids siguen la numeración de toda la ejecución."""
-    afirmaciones = []
-    # Se normalizan solo las primeras N.
-    for crudo in crudas[:MAX_AFIRMACIONES_SLIDE]:
-        numero = primer_numero + len(afirmaciones)
-        if numero > MAX_AFIRMACIONES_RUN:
-            raise AgenteError("demasiadas_afirmaciones", f"No caben más de {MAX_AFIRMACIONES_RUN} afirmaciones.")
-        af = _normalizar_afirmacion(crudo, slide, numero, fragmentos)
-        if af is None:
-            continue
-        # El modelo a veces afirma cosas de los fragmentos que el slide no dice: no pueden contar a favor.
-        if hallazgo_de_afirmacion(af) is None and not es_del_texto(af.afirmacion, campos):
-            log.warning("Afirmación descartada (slide %d): no está en su texto: %r", slide, af.afirmacion[:200])
-            continue
-        afirmaciones.append(af)
-    log.info("Revisor, slide %d: llegaron %d afirmaciones y cuentan %d", slide, len(crudas), len(afirmaciones))
-    return afirmaciones
+# De la más a la menos severa: si el modelo juzga dos veces la misma frase, manda la primera de esta lista.
+_SEVERIDAD = ("contradice", "no_respaldada", "parcialmente_respaldada", "no_verificada", "respaldada", "no_aplica")
 
 
-async def verificar_slide(pedir: Pedir, sistema: str, slide: int, campos: Mapping[str, str],
-                          fragmentos: Sequence[Fragmento], primer_numero: int) -> list[Afirmacion]:
-    """Verifica un slide: una llamada al modelo y normalización de sus afirmaciones."""
+def _juzgadas(crudas: list, slide: int, frases: Sequence[Frase],
+              fragmentos: Sequence[Fragmento]) -> dict[int, Afirmacion]:
+    """Número de frase -> su juicio. Lo que no apunte a una frase del slide se ignora."""
+    textos = {f.numero: f.texto for f in frases}
+    juicios: dict[int, Afirmacion] = {}
+    for crudo in crudas:
+        n = _numero_slide(crudo.get("frase")) if isinstance(crudo, Mapping) else None
+        if n not in textos:
+            log.warning("Juicio ignorado (slide %d): no señala una de sus frases: %r", slide, str(crudo)[:200])
+            continue
+        # El id definitivo se asigna al final, cuando se sabe cuántas hay.
+        nuevo = _normalizar_afirmacion(crudo, slide, 1, fragmentos, textos[n])
+        previo = juicios.get(n)
+        if previo is None or _SEVERIDAD.index(nuevo.veredicto) < _SEVERIDAD.index(previo.veredicto):
+            juicios[n] = nuevo
+    return juicios
+
+
+async def _pedir_slide(pedir: Pedir, sistema: str, slide: int, campos: Mapping[str, str],
+                       fragmentos: Sequence[Fragmento]) -> list:
+    """Pide un slide solo y devuelve sus juicios crudos."""
     respuesta = await pedir(sistema, _mensaje_usuario(slide, campos, [f.texto for f in fragmentos]))
     crudas = _crudas_por_slide(respuesta, [slide]).get(slide)
     # Sin la lista esperada, la respuesta no sirve y se corta con un error claro.
     if not isinstance(crudas, list):
         raise AgenteError("revisor_respuesta_invalida", f"El revisor no devolvió «afirmaciones» para el slide {slide}.")
-    return _normalizar_lista(crudas, slide, campos, fragmentos, primer_numero)
+    return crudas
 
 
 async def _verificar_grupo(pedir: Pedir, sistema: str, grupo: Sequence[tuple[int, Mapping[str, str], list]],
-                           primer_numero: int) -> list[list[Afirmacion]]:
-    """Verifica varios slides en UNA llamada; devuelve las afirmaciones de cada slide, en el orden del grupo.
+                           primer_numero: int) -> list[tuple[list[Afirmacion], list[Frase]]]:
+    """Verifica varios slides en UNA llamada; por slide, en el orden del grupo: (afirmaciones, frases sin juicio).
 
     Cada slide lleva sus propios fragmentos y su cita se ubica solo en ellos (la evidencia sigue acotada).
-    Un slide que el modelo omite, o que vuelve sin afirmaciones, se verifica una vez más él solo. Si tampoco
-    así trae ninguna, su lista queda vacía y `revisar_fidelidad` lo marca como sin verificar.
+    Si a un slide le falta el juicio de alguna frase (o el modelo lo omite entero), se pide una vez más él
+    solo; lo que ya estaba juzgado no se pisa, así un segundo intento no puede ablandar un veredicto.
     """
     por_slide: dict[int, list] = {}
     if len(grupo) > 1:
@@ -526,26 +490,35 @@ async def _verificar_grupo(pedir: Pedir, sistema: str, grupo: Sequence[tuple[int
     numero = primer_numero
     # En el orden del grupo (no en el que respondió el modelo), para que los ids sean deterministas.
     for slide, campos, fragmentos in grupo:
+        frases = frases_del_slide(campos)
         if len(grupo) == 1:
-            nuevas = await verificar_slide(pedir, sistema, slide, campos, fragmentos, numero)
+            crudas = await _pedir_slide(pedir, sistema, slide, campos, fragmentos)
         else:
-            nuevas = _normalizar_lista(por_slide.get(slide, []), slide, campos, fragmentos, numero)
-        # Un slide omitido en el grupo todavía no se pidió solo; uno vacío merece un segundo intento.
-        if not nuevas:
-            log.warning("El slide %d volvió sin afirmaciones: se verifica de nuevo por separado", slide)
-            nuevas = await verificar_slide(pedir, sistema, slide, campos, fragmentos, numero)
-        resultado.append(nuevas)
-        numero += len(nuevas)
+            crudas = por_slide.get(slide, [])
+        juicios = _juzgadas(crudas, slide, frases, fragmentos)
+        # Un slide omitido en el grupo todavía no se pidió solo; uno incompleto merece un segundo intento.
+        if len(juicios) < len(frases):
+            log.warning("Slide %d: %d de %d frases con veredicto; se pide de nuevo por separado",
+                        slide, len(juicios), len(frases))
+            otra = _juzgadas(await _pedir_slide(pedir, sistema, slide, campos, fragmentos), slide, frases, fragmentos)
+            juicios = {**otra, **juicios}
+        log.info("Revisor, slide %d: %d de %d frases con veredicto", slide, len(juicios), len(frases))
+        if numero + len(juicios) - 1 > MAX_AFIRMACIONES_RUN:
+            raise AgenteError("demasiadas_afirmaciones", f"No caben más de {MAX_AFIRMACIONES_RUN} afirmaciones.")
+        ordenadas = [juicios[n] for n in sorted(juicios)]
+        afirmaciones = [replace(a, afirmacion_id=f"a{numero + i}") for i, a in enumerate(ordenadas)]
+        resultado.append((afirmaciones, [f for f in frases if f.numero not in juicios]))
+        numero += len(afirmaciones)
     return resultado
 
 
-def hallazgo_sin_verificar(slide: int) -> Hallazgo:
-    """Un slide con texto del que no se obtuvo ningún veredicto. Responsable «estratega»: hoy nadie corrige eso
-    solo, así que el ciclo escala y lo tiene que mirar una persona (no se reescribe un texto que nadie juzgó)."""
+def hallazgo_sin_verificar(slide: int, frase: Frase) -> Hallazgo:
+    """Una frase de la que no se obtuvo veredicto. Responsable «estratega»: hoy nadie corrige eso solo, así que
+    el ciclo escala y lo tiene que mirar una persona (no se reescribe un texto que nadie juzgó)."""
     return crear_hallazgo(
-        "fidelidad", "mayor", slide, f"El slide {slide} quedó sin verificar.",
-        "El revisor no devolvió ninguna afirmación sobre su texto, tampoco al pedirlo por separado.",
-        "Compara a mano el texto de este slide con la fuente antes de aprobar.", "estratega")
+        "fidelidad", "mayor", slide, f"Sin verificar («{frase.campo}»): {frase.texto}",
+        "El revisor no dio un veredicto sobre esta frase, tampoco al pedir el slide por separado.",
+        "Compara a mano esta frase con la fuente antes de aprobar.", "estratega")
 
 
 async def revisar_fidelidad(cliente: ClienteLLM, brief: Brief, fuente: FuenteCargada,
@@ -565,7 +538,7 @@ async def revisar_fidelidad(cliente: ClienteLLM, brief: Brief, fuente: FuenteCar
     afirmaciones: list[Afirmacion] = []
     hallazgos: list[Hallazgo] = []
     sin_fragmentos = 0
-    sin_veredictos = 0
+    incompletos = 0
     # Primero se juntan los slides verificables, en orden; después se revisan en grupos.
     verificables: list[tuple[int, Mapping[str, str], list]] = []
     for t in textos:
@@ -586,10 +559,10 @@ async def revisar_fidelidad(cliente: ClienteLLM, brief: Brief, fuente: FuenteCar
         # Una llamada agrupada devuelve más afirmaciones: el tope de salida crece con el grupo (hasta el doble).
         pedir = pedir_inyectado or pedir_al_revisor(cliente, MAX_TOKENS_REVISOR * min(len(grupo), 2))
         por_slide = await _verificar_grupo(pedir, sistema, grupo, len(afirmaciones) + 1)
-        for (slide, campos, fragmentos), nuevas in zip(grupo, por_slide):
-            if not nuevas:
-                sin_veredictos += 1
-                hallazgos.append(hallazgo_sin_verificar(slide))
+        for (slide, campos, fragmentos), (nuevas, sin_juicio) in zip(grupo, por_slide):
+            if sin_juicio:
+                incompletos += 1
+                hallazgos += [hallazgo_sin_verificar(slide, frase) for frase in sin_juicio]
             afirmaciones += nuevas
             hallazgos_slide = [h for h in map(hallazgo_de_afirmacion, nuevas) if h is not None]
             # Control por código de las cifras, sin repetir lo que el LLM ya marcó.
@@ -597,7 +570,7 @@ async def revisar_fidelidad(cliente: ClienteLLM, brief: Brief, fuente: FuenteCar
             hallazgos += hallazgos_slide
     factuales = [a for a in afirmaciones if a.clasificacion == "factual"]
     sello = {
-        "slides_verificados": verificados - sin_veredictos,
+        "slides_verificados": verificados - incompletos,
         "slides_sin_fragmentos": sin_fragmentos,
         "afirmaciones_factuales": len(factuales),
         "respaldadas": sum(a.veredicto == "respaldada" for a in factuales),

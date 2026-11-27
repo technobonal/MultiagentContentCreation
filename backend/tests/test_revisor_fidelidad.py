@@ -14,7 +14,6 @@ from app.agentes.estratega import Brief
 from app.agentes.redactor import TextoSlide
 from app.agentes.revisor_fidelidad import (
     CITA_MAX_CHARS,
-    MAX_AFIRMACIONES_SLIDE,
     MAX_TOKENS_REVISOR,
     Afirmacion,
     hallazgo_de_afirmacion,
@@ -51,14 +50,18 @@ def _brief(asignados=None) -> Brief:
 
 
 def _texto(numero=1, **campos) -> TextoSlide:
-    """TextoSlide del redactor; sin campos dados trae un título y un cuerpo sin cifras."""
-    campos = campos or {"titulo": "Sprints de un mes", "cuerpo": "Duran un mes como máximo."}
+    """TextoSlide del redactor; sin campos dados trae una sola frase sin cifras."""
+    campos = campos or {"titulo": "Duran un mes como máximo."}
     return TextoSlide(numero, campos, (), "m1", False)
 
 
-def _a(afirmacion="Duran un mes como máximo.", tipo="factual", veredicto="respaldada", cita=CITA_P0, motivo="ok"):
-    """Afirmación cruda como la devolvería el modelo."""
-    return {"afirmacion": afirmacion, "tipo": tipo, "veredicto": veredicto, "cita": cita, "motivo": motivo}
+def _a(frase=1, tipo="factual", veredicto="respaldada", cita=CITA_P0, motivo="ok"):
+    """Juicio crudo como lo devolvería el modelo: señala el número de la frase."""
+    return {"frase": frase, "tipo": tipo, "veredicto": veredicto, "cita": cita, "motivo": motivo}
+
+
+# Un slide de dos frases, para los tests que necesitan dos juicios.
+DOS_FRASES = {"titulo": "Duran un mes como máximo.", "cuerpo": "El equipo es pequeño."}
 
 
 class PedirFalso:
@@ -158,7 +161,8 @@ def test_factual_sin_veredicto_valido_es_no_verificada(veredicto):
 
 
 def test_no_respaldada_conserva_la_cita_si_es_literal_y_la_descarta_si_no():
-    a1, a2 = _una(_a(veredicto="no_respaldada", cita=CITA_P0), _a(veredicto="no_respaldada", cita="inventada")).afirmaciones
+    a1, a2 = _una(_a(veredicto="no_respaldada", cita=CITA_P0), _a(2, veredicto="no_respaldada", cita="inventada"),
+                  textos=[_texto(**DOS_FRASES)]).afirmaciones
     assert a1.veredicto == "no_respaldada" and a1.cita is not None
     assert a2.veredicto == "no_respaldada" and a2.cita is None
 
@@ -167,13 +171,13 @@ def test_no_respaldada_conserva_la_cita_si_es_literal_y_la_descarta_si_no():
 
 def test_opinion_o_cta_siempre_es_no_aplica_y_sin_cita():
     textos = [_texto(titulo="Guárdalo para después.")]
-    (a,) = _una(_a(afirmacion="Guárdalo para después.", tipo="opinion_cta", veredicto="respaldada"), textos=textos).afirmaciones
+    (a,) = _una(_a(tipo="opinion_cta", veredicto="respaldada"), textos=textos).afirmaciones
     assert (a.clasificacion, a.veredicto, a.cita) == ("opinion_cta", "no_aplica", None)
 
 
 def test_una_cifra_vuelve_factual_a_una_opinion():
     textos = [_texto(titulo="Empieza en 5 minutos.")]
-    (a,) = _una(_a(afirmacion="Empieza en 5 minutos.", tipo="opinion_cta", veredicto=None, cita=None), textos=textos).afirmaciones
+    (a,) = _una(_a(tipo="opinion_cta", veredicto=None, cita=None), textos=textos).afirmaciones
     assert a.clasificacion == "factual" and a.veredicto == "no_verificada"
 
 
@@ -190,7 +194,7 @@ def test_tipo_desconocido_es_factual(tipo):
 # ---------------------------- hallazgos por veredicto ----------------------------
 
 def test_contradice_es_bloqueante_para_el_redactor():
-    r = _una(_a(afirmacion="Dura dos meses.", veredicto="contradice", motivo="La fuente dice un mes."))
+    r = _una(_a(veredicto="contradice", motivo="La fuente dice un mes."), textos=[_texto(titulo="Dura dos meses.")])
     (h,) = r.hallazgos
     assert (h.dimension, h.gravedad, h.slide, h.responsable) == ("fidelidad", "bloqueante", 1, "redactor")
     assert h.evidencia == "Dura dos meses." and h.explicacion == "La fuente dice un mes."
@@ -218,28 +222,28 @@ def test_gravedad_por_veredicto(veredicto, esperado):
 
 
 def test_hallazgos_ordenados_bloqueante_antes_que_mayor():
-    r = _una(_a(veredicto="parcialmente_respaldada"), _a(afirmacion="Otra.", veredicto="contradice"))
+    r = _una(_a(veredicto="parcialmente_respaldada"), _a(2, veredicto="contradice"), textos=[_texto(**DOS_FRASES)])
     assert [h.gravedad for h in r.hallazgos] == ["bloqueante", "mayor"]
 
 
 # ---------------------------- cifras (control por código) ----------------------------
 
 def test_cifra_ausente_de_los_fragmentos_es_hallazgo_mayor_aunque_el_modelo_no_la_marque():
-    textos = [_texto(titulo="Sprints", cuerpo="Duran 7 meses.")]
-    r = _una(_a(afirmacion="Duran 7 meses."), textos=textos)
+    textos = [_texto(cuerpo="Duran 7 meses.")]
+    r = _una(_a(), textos=textos)
     assert r.afirmaciones[0].veredicto == "respaldada"  # el modelo la dio por buena
     (h,) = r.hallazgos
     assert (h.dimension, h.gravedad, h.responsable) == ("fidelidad", "mayor", "redactor") and "la cifra 7" in h.evidencia
 
 
 def test_cifra_presente_en_los_fragmentos_no_abre_hallazgo():
-    textos = [_texto(titulo="Sprints", cuerpo="Equipos de 10 personas o menos.")]
-    assert _una(_a(afirmacion="Equipos de 10 personas.", cita="El equipo tiene 10 personas o menos."), textos=textos).hallazgos == []
+    textos = [_texto(cuerpo="Equipos de 10 personas o menos.")]
+    assert _una(_a(cita="El equipo tiene 10 personas o menos."), textos=textos).hallazgos == []
 
 
 def test_cifra_ya_marcada_por_el_modelo_no_se_duplica():
-    textos = [_texto(titulo="Sprints", cuerpo="Duran 7 meses.")]
-    r = _una(_a(afirmacion="Duran 7 meses.", veredicto="contradice"), textos=textos)
+    textos = [_texto(cuerpo="Duran 7 meses.")]
+    r = _una(_a(veredicto="contradice"), textos=textos)
     assert len(r.hallazgos) == 1 and r.hallazgos[0].gravedad == "bloqueante"
 
 
@@ -323,24 +327,25 @@ def test_hallazgo_del_modelo_de_otro_slide_no_cuenta_como_senalado():
 
 # ---------------------------- flujo por slide ----------------------------
 
-def test_cota_de_afirmaciones_por_slide():
-    muchas = [_a(afirmacion=f"Dato {chr(97 + i)}.") for i in range(MAX_AFIRMACIONES_SLIDE + 3)]
-    r = _una(*muchas, textos=[_texto(titulo="Dato")])
-    assert [a.afirmacion_id for a in r.afirmaciones] == [f"a{i}" for i in range(1, MAX_AFIRMACIONES_SLIDE + 1)]
+def test_todas_las_frases_se_juzgan_aunque_sean_muchas():
+    textos = [_texto(cuerpo=" ".join(f"Dato número {chr(97 + i)} listo." for i in range(20)))]
+    r = _una(*[_a(n) for n in range(1, 21)], textos=textos)
+    assert [a.afirmacion_id for a in r.afirmaciones] == [f"a{i}" for i in range(1, 21)]
 
 
 def test_ids_continuos_entre_slides_y_cada_una_con_su_slide():
     pedir = PedirFalso(
-        {"afirmaciones": [_a(), _a(afirmacion="Otra.")]},
-        {"afirmaciones": [_a(cita=CITA_P1), _a(afirmacion="Más.", cita=CITA_P1)]},
+        {"afirmaciones": [_a(), _a(2)]},
+        {"afirmaciones": [_a(cita=CITA_P1), _a(2, cita=CITA_P1)]},
     )
-    r = _revisar(pedir, textos=[_texto(1), _texto(2)], brief=_brief({1: (0,), 2: (1,)}))
+    textos = [_texto(1, **DOS_FRASES), _texto(2, **DOS_FRASES)]
+    r = _revisar(pedir, textos=textos, brief=_brief({1: (0,), 2: (1,)}))
     assert [(a.afirmacion_id, a.slide) for a in r.afirmaciones] == [("a1", 1), ("a2", 1), ("a3", 2), ("a4", 2)]
     assert r.sello["slides_verificados"] == 2 and len(pedir.llamadas) == 2
 
 
 def test_items_invalidos_de_la_lista_se_ignoran():
-    r = _una("texto suelto", {"afirmacion": ""}, {"tipo": "factual"}, 5, _a())
+    r = _una("texto suelto", {"frase": 9}, {"tipo": "factual"}, 5, _a())
     assert [a.afirmacion_id for a in r.afirmaciones] == ["a1"]  # la numeración no deja huecos
 
 
@@ -365,7 +370,7 @@ def test_slide_sin_texto_en_los_campos_se_omite():
 
 def test_acepta_textos_con_atributo_slide():
     t = SimpleNamespace(slide=1, campos={"titulo": "Sprints"})
-    assert _una(_a("Sprints."), textos=[t]).afirmaciones[0].slide == 1
+    assert _una(_a(), textos=[t]).afirmaciones[0].slide == 1
 
 
 def test_respuesta_sin_la_lista_de_afirmaciones_es_error():
@@ -379,7 +384,7 @@ def test_el_pedido_lleva_prompt_fijo_y_solo_los_fragmentos_asignados():
     _revisar(pedir)
     sistema, usuario = pedir.llamadas[0]
     assert sistema == "SISTEMA FIJO"  # sin el comentario HTML, que no debe llegar al modelo
-    assert "SLIDE: 1" in usuario and "[titulo] Sprints de un mes" in usuario
+    assert "SLIDE: 1" in usuario and "1. [titulo] Duran un mes como máximo." in usuario
     assert "[F1] " + P0 in usuario and "Product Owner" not in usuario and "[F2]" not in usuario
 
 
@@ -480,12 +485,12 @@ def test_prompt_real_se_carga_desde_la_carpeta_de_prompts_y_sin_comentarios():
 def _agrupado(pedir, slides_por_llamada):
     """Slides 1 y 2 con fragmentos distintos (P0 y P1), revisados en grupos del tamaño pedido."""
     brief = _brief({1: (0,), 2: (1,)})
-    textos = [_texto(1), _texto(2, titulo="Roles", cuerpo="El Scrum Master ayuda al equipo.")]
+    textos = [_texto(1), _texto(2, cuerpo="El Scrum Master ayuda al equipo.")]
     return asyncio.run(revisar_fidelidad(None, brief, FUENTE, textos, pedir, slides_por_llamada=slides_por_llamada))
 
 
 def test_agrupado_revisa_dos_slides_en_una_llamada_con_sus_propios_fragmentos():
-    a2 = _a("El Scrum Master ayuda al equipo.", cita=CITA_P1)
+    a2 = _a(cita=CITA_P1)
     pedir = PedirFalso({"slides": [{"slide": 2, "afirmaciones": [a2]}, {"slide": 1, "afirmaciones": [_a()]}]})
     r = _agrupado(pedir, 2)
     assert len(pedir.llamadas) == 1
@@ -499,7 +504,7 @@ def test_agrupado_revisa_dos_slides_en_una_llamada_con_sus_propios_fragmentos():
 
 def test_agrupado_una_cita_de_otro_slide_no_respalda():
     # El slide 1 cita un trozo que solo está en los fragmentos del slide 2: no es literal para él.
-    a2 = _a("El Scrum Master ayuda al equipo.", cita=CITA_P1)
+    a2 = _a(cita=CITA_P1)
     pedir = PedirFalso({"slides": [{"slide": 1, "afirmaciones": [_a(cita=CITA_P1)]}, {"slide": 2, "afirmaciones": [a2]}]})
     r = _agrupado(pedir, 2)
     assert r.afirmaciones[0].veredicto == "no_verificada" and r.afirmaciones[0].cita is None
@@ -508,7 +513,7 @@ def test_agrupado_una_cita_de_otro_slide_no_respalda():
 def test_agrupado_un_slide_omitido_se_revisa_solo_en_otra_llamada():
     pedir = PedirFalso(
         {"slides": [{"slide": 1, "afirmaciones": [_a()]}]},  # falta el slide 2
-        {"afirmaciones": [_a("El Scrum Master ayuda al equipo.", cita=CITA_P1)]},
+        {"afirmaciones": [_a(cita=CITA_P1)]},
     )
     r = _agrupado(pedir, 2)
     assert len(pedir.llamadas) == 2
@@ -517,7 +522,7 @@ def test_agrupado_un_slide_omitido_se_revisa_solo_en_otra_llamada():
 
 
 def test_con_pedir_inyectado_y_sin_valor_se_mantiene_una_llamada_por_slide():
-    a2 = _a("El Scrum Master ayuda al equipo.", cita=CITA_P1)
+    a2 = _a(cita=CITA_P1)
     pedir = PedirFalso({"afirmaciones": [_a()]}, {"afirmaciones": [a2]})
     _agrupado(pedir, None)
     assert len(pedir.llamadas) == 2
@@ -526,10 +531,10 @@ def test_con_pedir_inyectado_y_sin_valor_se_mantiene_una_llamada_por_slide():
 def test_cliente_real_agrupa_por_defecto_y_duplica_el_tope_de_salida():
     respuesta = json.dumps({"slides": [
         {"slide": 1, "afirmaciones": [_a()]},
-        {"slide": 2, "afirmaciones": [_a("El Scrum Master ayuda al equipo.", cita=CITA_P1)]},
+        {"slide": 2, "afirmaciones": [_a(cita=CITA_P1)]},
     ]})
     c = ClienteFalso([respuesta])
-    textos = [_texto(1), _texto(2, titulo="Roles", cuerpo="El Scrum Master ayuda al equipo.")]
+    textos = [_texto(1), _texto(2, cuerpo="El Scrum Master ayuda al equipo.")]
     r = asyncio.run(revisar_fidelidad(c, _brief({1: (0,), 2: (1,)}), FUENTE, textos))
     assert len(c.llamadas) == 1 and c.llamadas[0]["max_tokens"] == MAX_TOKENS_REVISOR * 2
     assert len(r.afirmaciones) == 2
@@ -544,7 +549,7 @@ def test_validador_acepta_las_dos_formas_y_rechaza_otra():
 
 
 def test_agrupado_acepta_el_numero_de_slide_como_texto():
-    a2 = _a("El Scrum Master ayuda al equipo.", cita=CITA_P1)
+    a2 = _a(cita=CITA_P1)
     pedir = PedirFalso({"slides": [{"slide": "1", "afirmaciones": [_a()]}, {"slide": "SLIDE 2", "afirmaciones": [a2]}]})
     r = _agrupado(pedir, 2)
     assert len(pedir.llamadas) == 1
@@ -554,7 +559,7 @@ def test_agrupado_acepta_el_numero_de_slide_como_texto():
 def test_agrupado_un_elemento_ilegible_no_tumba_el_run():
     pedir = PedirFalso(
         {"slides": [{"slide": 1, "afirmaciones": [_a()]}, "basura"]},
-        {"afirmaciones": [_a("El Scrum Master ayuda al equipo.", cita=CITA_P1)]},  # el slide 2 se revisa solo
+        {"afirmaciones": [_a(cita=CITA_P1)]},  # el slide 2 se revisa solo
     )
     r = _agrupado(pedir, 2)
     assert len(pedir.llamadas) == 2 and r.sello["slides_verificados"] == 2
@@ -562,10 +567,10 @@ def test_agrupado_un_elemento_ilegible_no_tumba_el_run():
 
 def test_cita_rechazada_queda_en_el_log_con_su_causa(caplog):
     """La cita que el modelo dio y no se pudo ubicar se registra, para saber por qué quedó no_verificada."""
-    crudo = {"afirmacion": "El Sprint dura un mes.", "tipo": "factual", "veredicto": "respaldada",
+    crudo = {"frase": 1, "tipo": "factual", "veredicto": "respaldada",
              "cita": "El Sprint dura dos meses.", "motivo": "ok"}
     with caplog.at_level("WARNING", logger="app.agentes.revisor_fidelidad"):
-        af = rf._normalizar_afirmacion(crudo, 3, 1, FRAGMENTOS)
+        af = rf._normalizar_afirmacion(crudo, 3, 1, FRAGMENTOS, "El Sprint dura un mes.")
     assert af.veredicto == "no_verificada" and af.cita is None
     assert "no aparece en los fragmentos" in caplog.text
     assert "El Sprint dura dos meses." in caplog.text
@@ -580,10 +585,18 @@ def test_causa_de_cita_rechazada(cita, causa):
     assert causa in rf._por_que_no_es_literal(cita)
 
 
-# ---------------------------- ningún slide con texto pasa sin veredictos ----------------------------
+# ---------------------------- las frases las pone el código y ninguna pasa sin veredicto ----------------------------
 
-A2 = _a("El Scrum Master ayuda al equipo.", cita=CITA_P1)
+A2 = _a(cita=CITA_P1)
 VACIOS = {"slides": [{"slide": 1, "afirmaciones": []}, {"slide": 2, "afirmaciones": []}]}
+SLIDE_5 = {"titulo": "Controla tu tiempo y espacio con 1CTRL en Dubai"}
+
+
+def test_el_modelo_no_puede_cambiar_la_frase_que_se_evalua():
+    """Visto en un run real: el modelo redactaba una versión más suave del título y aprobaba esa versión."""
+    suave = _a() | {"afirmacion": "1CTRL permite controlar cómo vives en Dubai."}
+    r = _una(suave, textos=[_texto(**SLIDE_5)])
+    assert [a.afirmacion for a in r.afirmaciones] == [SLIDE_5["titulo"]]
 
 
 def test_un_grupo_que_vuelve_vacio_se_verifica_slide_por_slide():
@@ -594,45 +607,33 @@ def test_un_grupo_que_vuelve_vacio_se_verifica_slide_por_slide():
     assert [(a.afirmacion_id, a.slide) for a in r.afirmaciones] == [("a1", 1), ("a2", 2)]
 
 
-def test_si_sigue_vacio_abre_un_hallazgo_que_nadie_corrige_solo():
-    pedir = PedirFalso(VACIOS, {"afirmaciones": [_a()]}, {"afirmaciones": []})
-    r = _agrupado(pedir, 2)
+def test_si_falta_una_frase_se_pide_de_nuevo_y_solo_rellena_el_hueco():
+    """El segundo intento no puede ablandar lo ya juzgado."""
+    pedir = PedirFalso({"afirmaciones": [_a(veredicto="contradice")]}, {"afirmaciones": [_a(), _a(2)]})
+    r = _revisar(pedir, textos=[_texto(**DOS_FRASES)])
+    assert len(pedir.llamadas) == 2
+    assert [a.veredicto for a in r.afirmaciones] == ["contradice", "respaldada"]
+
+
+def test_la_frase_que_sigue_sin_veredicto_abre_un_hallazgo_que_la_muestra():
+    pedir = PedirFalso({"afirmaciones": [_a()]}, {"afirmaciones": [_a()]})
+    r = _revisar(pedir, textos=[_texto(**DOS_FRASES)])
     (h,) = r.hallazgos
-    assert (h.slide, h.dimension, h.gravedad, h.responsable) == (2, "fidelidad", "mayor", "estratega")
-    assert "sin verificar" in h.evidencia
-    assert r.sello["slides_verificados"] == 1
+    assert (h.slide, h.dimension, h.gravedad, h.responsable) == (1, "fidelidad", "mayor", "estratega")
+    assert h.evidencia == "Sin verificar («cuerpo»): El equipo es pequeño."
+    assert r.sello["slides_verificados"] == 0 and len(r.afirmaciones) == 1
 
 
-def test_de_a_un_slide_tambien_hay_un_segundo_intento_y_solo_uno():
-    pedir = PedirFalso({"afirmaciones": []}, {"afirmaciones": []})
-    r = _revisar(pedir)
-    assert len(pedir.llamadas) == 2 and [h.slide for h in r.hallazgos] == [1]
+def test_dos_juicios_de_la_misma_frase_gana_el_mas_severo():
+    r = _una(_a(), _a(veredicto="no_respaldada", cita=None), _a())
+    assert [a.veredicto for a in r.afirmaciones] == ["no_respaldada"]
 
 
-def test_una_afirmacion_ajena_al_slide_no_cuenta_a_favor():
-    ajena = _a("El Product Owner ordena el Product Backlog.", cita=CITA_P1)
-    r = _una(_a(), ajena, brief=_brief({1: (0, 1)}))
-    assert [a.afirmacion for a in r.afirmaciones] == ["Duran un mes como máximo."]
+@pytest.mark.parametrize("numero", [0, 2, None, "ninguna", True])
+def test_un_numero_que_no_es_de_una_frase_se_ignora(numero):
+    r = _una(_a(), _a(numero, veredicto="contradice"))
+    assert [a.veredicto for a in r.afirmaciones] == ["respaldada"]
 
 
-def test_solo_afirmaciones_ajenas_es_como_no_haber_verificado():
-    ajena = _a("El Product Owner ordena el Product Backlog.", cita=CITA_P1)
-    pedir = PedirFalso({"afirmaciones": [ajena]}, {"afirmaciones": [ajena]})
-    r = _revisar(pedir, brief=_brief({1: (1,)}))
-    assert r.afirmaciones == [] and [h.slide for h in r.hallazgos] == [1]
-
-
-def test_una_afirmacion_ajena_que_abre_hallazgo_no_se_esconde():
-    ajena = _a("El Product Owner ordena el Product Backlog.", veredicto="contradice", cita=CITA_P1)
-    r = _una(_a(), ajena, brief=_brief({1: (0, 1)}))
-    assert len(r.afirmaciones) == 2 and [h.gravedad for h in r.hallazgos] == ["bloqueante"]
-
-
-@pytest.mark.parametrize("afirmacion, esperado", [
-    ("Se puede controlar cómo vives.", True),
-    ("No se puede controlar todo.", True),
-    ("Una casa debe proporcionar más espacio para la vida que deseas vivir.", False),
-])
-def test_es_del_texto_con_el_slide_del_run_real(afirmacion, esperado):
-    slide = {"titulo": "Controla cómo vives, no todo", "cta": "Diseña tu espacio para vivir a tu ritmo."}
-    assert rf.es_del_texto(afirmacion, slide) is esperado
+def test_el_numero_de_frase_puede_venir_como_texto():
+    assert _una(_a("1")).afirmaciones[0].veredicto == "respaldada"
