@@ -12,6 +12,7 @@ export const AGENTES_AVATAR: readonly string[] = [
   "redactor",
   "director_arte",
   "revisor",
+  "asesor",
   "humano",
   "sistema",
 ];
@@ -22,6 +23,7 @@ export const COLOR_AGENTE: Readonly<Record<string, string>> = {
   redactor: "#38BDF8",
   director_arte: "#F472B6",
   revisor: "#FBBF24",
+  asesor: "#2DD4BF",
   humano: "#4ADE80",
   sistema: "#94A3B8",
 };
@@ -70,6 +72,16 @@ function Herramienta({ agente }: { agente: string }) {
         <g className="herramienta">
           <circle cx="40" cy="38" r="7" fill="currentColor" />
           <path d="M36.5 38 L39 41 L44 35" stroke="#0F172A" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+      );
+    case "asesor":
+      // Balanza: criterio y segunda opinión (fiel con dos platos).
+      return (
+        <g className="herramienta">
+          <line x1="40" y1="31" x2="40" y2="45" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <line x1="34" y1="33" x2="46" y2="33" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M34 33 L32 38 L36 38 Z" fill="currentColor" />
+          <path d="M46 33 L44 38 L48 38 Z" fill="currentColor" />
         </g>
       );
     case "sistema":

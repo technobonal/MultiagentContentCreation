@@ -8,10 +8,12 @@ import {
   cuerpoDecision,
   cuerpoRechazo,
   enviarAprobacion,
+  motivoDemasiadoGeneral,
   RECHAZO_VACIO,
   esperaAprobacion,
   motivosSinHallazgo,
   necesitaExcepcion,
+  pedirConsejo,
   pedirInforme,
   textoActual,
 } from "./aprobacion.ts";
@@ -143,6 +145,18 @@ describe("cuerpoRechazo", () => {
   });
 });
 
+describe("motivoDemasiadoGeneral", () => {
+  it("marca motivos vagos o muy cortos", () => {
+    expect(motivoDemasiadoGeneral("no me gusta")).toBe(true);
+    expect(motivoDemasiadoGeneral("está mal")).toBe(true);
+    expect(motivoDemasiadoGeneral("feo")).toBe(true);
+  });
+  it("acepta un motivo concreto y no pregunta con el campo vacío", () => {
+    expect(motivoDemasiadoGeneral("El slide 3 inventa una cifra que no está en la fuente")).toBe(false);
+    expect(motivoDemasiadoGeneral("   ")).toBe(false);
+  });
+});
+
 describe("semáforo y excepción", () => {
   const VERDE = { visto_bueno: true, generales: [], slides: [{ slide: 1, color: "verde", motivos: [], avisos: [] }] } as const;
 
@@ -169,6 +183,19 @@ describe("semáforo y excepción", () => {
     ["sin conexión", async () => Promise.reject(new Error("red"))],
   ])("con %s no inventa un informe", async (_, llamar) => {
     await expect(pedirInforme("run_1", llamar as typeof fetch)).resolves.toBeNull();
+  });
+
+  it("pedirConsejo hace POST y devuelve el informe actualizado", async () => {
+    const llamar = vi.fn(async () => new Response(JSON.stringify(VERDE), { status: 200 }));
+    await expect(pedirConsejo("run_1", llamar)).resolves.toEqual({ ok: true, informe: VERDE });
+    expect(llamar).toHaveBeenCalledWith("/api/runs/run_1/asesor", { method: "POST" });
+  });
+
+  it("pedirConsejo devuelve los motivos del servidor (409, 503) y nunca lanza", async () => {
+    expect(await pedirConsejo("r", vi.fn(async () => new Response(JSON.stringify({ motivos: ["Ya usaste las 3 consultas."] }), { status: 409 }))))
+      .toEqual({ ok: false, motivos: ["Ya usaste las 3 consultas."] });
+    expect(await pedirConsejo("r", vi.fn(async () => Promise.reject(new Error("red"))) as unknown as typeof fetch))
+      .toEqual({ ok: false, motivos: ["No se pudo conectar con el asesor."] });
   });
 });
 

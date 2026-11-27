@@ -40,6 +40,7 @@ export function crearEstadoInicial(): Estado {
     revision: null,
     decision: null,
     final: null,
+    asesor: null,
     ediciones: [],
     agentes: {},
     slideActivo: 1,
@@ -293,7 +294,8 @@ function aplicarTipo(estado: Estado, evento: Evento): Resultado {
       });
 
     case "asesoria":
-      return resultado({});
+      // Se guarda la asesoría completa; sus alertas se muestran junto a cada slide.
+      return resultado({ asesor: { ...evento.payload, seq: evento.seq } });
 
     case "rechazada":
       return resultado({

@@ -83,4 +83,5 @@ Hoy las fuentes son archivos `.md`, `.txt` y `.pdf` de `backend/fuentes/`. Un PD
 - Grep busca texto dentro de los archivos, por ejemplo dónde se usa pedir_json.
 - cuando hagas los archivo a partir de ahora archivos o pruebas de esos archivos solo generas dos o tres archivos en cada intento y    - despues seguir generando para ahorrar token
 - utiliza concise para responder breve
-- En codigo siempre vas a tener el role Senior Software Engineer y lo vas combinar con el foco del proyecto del momento, por ejemplo - - en este proyecto tambien sos especialista en creador de plataformas para creacion de contenido.
+- En codigo siempre vas a tener el role Senior Software Engineer (optimizacion, arquitectura y eficiencia en codigo) y lo vas combinar con el foco del proyecto del momento, por ejemplo - - en este proyecto tambien sos especialista en creador de plataformas para creacion de contenido.
+- compactar siempre el historial cuando el contexto se vuelve largo para ahorrar token

@@ -30,6 +30,8 @@ export function RevisionSlide({ estado, slide, onVolver }: { estado: Estado; sli
 
   const fila = informe?.slides.find((s) => s.slide === slide);
   const otros = informe ? motivosSinHallazgo(informe, slide) : [];
+  // Alertas del asesor para este slide (si pidió una segunda opinión).
+  const alertas = (estado.asesor?.alertas ?? []).filter((a) => a.slide === slide);
 
   return (
     <section className="revision-slide" aria-label={`Revisión del slide ${slide}`}>
@@ -42,10 +44,17 @@ export function RevisionSlide({ estado, slide, onVolver }: { estado: Estado; sli
           Volver al directo
         </button>
       </p>
-      {abiertos.length === 0 && otros.length === 0 && fila?.color !== "rojo" && (
+      {abiertos.length === 0 && otros.length === 0 && alertas.length === 0 && fila?.color !== "rojo" && (
         <p>Sin problemas abiertos en este slide. Eso no es una aprobación.</p>
       )}
       <ul>
+        {alertas.map((a, i) => (
+          <li key={`asesor-${i}`} className="revision-problema revision-asesor">
+            <strong>El asesor marcó: «{a.frase}»</strong>
+            <span>{a.explicacion}</span>
+            <span className="revision-asesor-sugerencia">Sugerencia: {a.sugerencia}</span>
+          </li>
+        ))}
         {abiertos.map((h) => (
           <li key={h.hallazgo_id} className="revision-problema">
             <strong>

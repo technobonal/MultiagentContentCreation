@@ -268,11 +268,11 @@ export function AvataresVivos({
       {/* Un avatar por agente; el del último evento va resaltado y con burbuja. */}
       {AGENTES_AVATAR.map((agente, i) => {
         const propia = actividad !== null && actividad.agente === agente ? actividad : null;
-        // El sistema solo se ve cuando actúa.
+        // El sistema y el asesor (a pedido) solo se ven cuando actúan.
         const clase = [
           "avatar",
           propia !== null ? "avatar-activo" : "",
-          agente === "sistema" && propia === null ? "avatar-oculto" : "",
+          (agente === "sistema" || agente === "asesor") && propia === null ? "avatar-oculto" : "",
         ]
           .filter(Boolean)
           .join(" ");

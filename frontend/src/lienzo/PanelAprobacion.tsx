@@ -18,6 +18,7 @@ import {
   enviarAprobacion,
   esperaAprobacion,
   necesitaExcepcion,
+  pedirConsejo,
   pedirInforme,
   RECHAZO_VACIO,
   textoActual,
@@ -38,6 +39,8 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
   const [informe, setInforme] = useState<Informe | null | undefined>(undefined);
   const [excepcion, setExcepcion] = useState("");
   const [intento, setIntento] = useState(0);
+  // Asesor: null = sin pedir; "confirmando" = mostrando el aviso; "consultando" = esperando a Cloudflare.
+  const [consejo, setConsejo] = useState<null | "confirmando" | "consultando">(null);
   const esperando = esperaAprobacion(estado);
 
   useEffect(() => {
@@ -95,6 +98,20 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
     if (!r.ok) setMotivos(r.motivos);
   }
 
+  async function consultarAsesor() {
+    setConsejo("consultando");
+    setMotivos([]);
+    const r = await pedirConsejo(runId);
+    setConsejo(null);
+    // El servidor devuelve el semáforo ya actualizado; las alertas llegan además por el SSE.
+    if (r.ok) setInforme(r.informe);
+    else setMotivos(r.motivos);
+  }
+
+  // Resumen de la última asesoría: cuántas alertas y, si no hubo, el recordatorio de que eso no aprueba nada.
+  const asesor = estado.asesor;
+  const trabajando = enviando || consejo === "consultando";
+
   return (
     <aside className="panel-aprobacion" aria-label="Aprobación">
       <h2>{rechazo === null ? "Aprobación" : "Rechazar el carrusel"}</h2>
@@ -121,6 +138,35 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
         </p>
       )}
       {informe && <InformeSemaforo informe={informe} />}
+
+      {rechazo === null && (
+        <div className="panel-asesor">
+          {asesor && (
+            <p className={`panel-asesor-resumen ${asesor.alertas.length > 0 ? "panel-asesor-con-alertas" : ""}`}>
+              {asesor.alertas.length === 0
+                ? `El asesor revisó ${asesor.frases_revisadas} frase(s) y no marcó ninguna. Eso no es una aprobación.`
+                : `El asesor marcó ${asesor.alertas.length} frase(s): mirá cada slide en rojo para ver su consejo.`}
+            </p>
+          )}
+          {consejo === "confirmando" ? (
+            <div className="panel-asesor-confirmar" role="alertdialog" aria-label="Confirmar consulta al asesor">
+              <p>Esto envía los textos y los fragmentos de la fuente a Cloudflare, y tarda cerca de un minuto. ¿Seguir?</p>
+              <div className="panel-asesor-botones">
+                <button type="button" disabled={trabajando} onClick={() => setConsejo(null)}>
+                  Cancelar
+                </button>
+                <button type="button" disabled={trabajando} onClick={() => void consultarAsesor()}>
+                  Enviar al asesor
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="boton-asesor" disabled={trabajando} onClick={() => setConsejo("confirmando")}>
+              {consejo === "consultando" ? "El asesor está revisando…" : asesor ? "Pedir consejo otra vez" : "Pedir consejo"}
+            </button>
+          )}
+        </div>
+      )}
 
       {rechazo === null && enRojo && (
         <label className="panel-aprobacion-campo semaforo-excepcion">
@@ -188,7 +234,7 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
               <button
                 type="button"
                 className="boton-rechazar"
-                disabled={enviando}
+                disabled={trabajando}
                 onClick={() => {
                   setMotivos([]);
                   setRechazo(RECHAZO_VACIO);
@@ -198,7 +244,7 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
               </button>
               <button
                 type="button"
-                disabled={enviando || !informe || (enRojo && excepcion.trim() === "")}
+                disabled={trabajando || !informe || (enRojo && excepcion.trim() === "")}
                 onClick={() => void decidir(cuerpoDecision(estado, borradores, comentario, enRojo ? excepcion : ""))}
               >
                 {enviando

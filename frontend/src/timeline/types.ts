@@ -356,6 +356,8 @@ export interface Estado {
     readonly rechazo?: PayloadRechazada & { readonly slide?: number };
   } | null;
   readonly final: PayloadRunFinalizada | null;
+  // La última asesoría recibida (el asesor opina a pedido; una consulta nueva reemplaza a la anterior).
+  readonly asesor: (PayloadAsesoria & { readonly seq: number }) | null;
   readonly ediciones: readonly Edicion[];
   readonly agentes: Readonly<Record<string, { readonly tipo: string; readonly seq: number }>>;
   readonly slideActivo: number;

@@ -309,10 +309,13 @@ const CASOS: CasoTipo[] = [
     expect(e.anomalias.map((a) => a.codigo)).toContain("sello_distinto");
   } },
   { tipo: "aprobada", eventos: [b(18)], verificar: (e) => expect(e.decision?.seq).toBe(1) },
-  { tipo: "asesoria", eventos: [b(6), d("asesor", "asesoria", { modelo: "m", frases_revisadas: 1, frases_totales: 1, alertas: [] })],
+  { tipo: "asesoria", eventos: [b(6), d("asesor", "asesoria", { modelo: "m", frases_revisadas: 2, frases_totales: 2, alertas: [{ slide: 1, frase: "x", explicacion: "y", sugerencia: "reescribir" }] })],
     verificar: (e) => {
       expect(e.lienzo.textos[1]?.titulo).toBe("Scrum en pocas palabras"); // un consejo no toca el lienzo
       expect(e.decision).toBeNull();
+      // La asesoría queda guardada con sus alertas para mostrarlas por slide.
+      expect(e.asesor?.frases_revisadas).toBe(2);
+      expect(e.asesor?.alertas[0]?.slide).toBe(1);
     } },
   { tipo: "rechazada", eventos: [d("humano", "rechazada", { decision: "rechazada", motivo: "No es lo que dice la fuente", responsable: "revisor" }, { slide: 3 })],
     verificar: (e) => {

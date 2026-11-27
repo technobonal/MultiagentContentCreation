@@ -796,6 +796,15 @@ input[type="range"] {
   opacity: 0.75;
 }
 
+/* Pregunta de ayuda cuando el motivo de rechazo es muy general (no bloquea). */
+.panel-aprobacion-pregunta {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-left: 4px solid var(--acento);
+  background: rgba(125, 211, 252, 0.08);
+  font-size: 0.8125rem;
+}
+
 .panel-aprobacion-campo {
   display: block;
   margin-bottom: 10px;
@@ -1091,4 +1100,48 @@ input[type="range"] {
 .revision-corregido {
   border-left-color: #3fb97f;
   opacity: 0.75;
+}
+
+/* Alerta del asesor (segunda opinión) dentro de la caja de revisión. */
+.revision-asesor {
+  border-left-color: #2dd4bf;
+}
+
+.revision-asesor-sugerencia {
+  font-size: 0.8125rem;
+  opacity: 0.8;
+  text-transform: capitalize;
+}
+
+/* Bloque del asesor dentro del panel de aprobación. */
+.panel-asesor {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #2dd4bf;
+  border-radius: 8px;
+}
+
+.panel-asesor-resumen {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+}
+
+.panel-asesor-con-alertas {
+  color: var(--error);
+  font-weight: 600;
+}
+
+.panel-asesor-confirmar p {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+}
+
+.panel-asesor-botones {
+  display: flex;
+  gap: 8px;
+}
+
+.boton-asesor {
+  border-color: #2dd4bf;
+  color: #2dd4bf;
 }

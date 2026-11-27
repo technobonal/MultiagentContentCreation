@@ -2,7 +2,7 @@
  * FormularioRechazo.tsx — Los datos de un rechazo. Solo el motivo es obligatorio; quién falló, en qué slide y qué
  * debía hacer son opcionales, y son lo que más sirve para que el agente aprenda del rechazo más adelante.
  */
-import { RESPONSABLES } from "./aprobacion.ts";
+import { motivoDemasiadoGeneral, RESPONSABLES } from "./aprobacion.ts";
 import type { BorradorRechazo, Responsable } from "./aprobacion.ts";
 
 const NOMBRES: Readonly<Record<Responsable, string>> = {
@@ -23,6 +23,8 @@ export function FormularioRechazo({
   deshabilitado: boolean;
   alCambiar: (valor: BorradorRechazo) => void;
 }) {
+  // Si el motivo es muy general y todavía no dijo qué esperaba, se le pide una pista (no bloquea).
+  const pedirDetalle = motivoDemasiadoGeneral(valor.motivo) && valor.esperado.trim() === "";
   return (
     <>
       <p className="panel-aprobacion-aviso">
@@ -39,6 +41,12 @@ export function FormularioRechazo({
           onChange={(e) => alCambiar({ ...valor, motivo: e.currentTarget.value })}
         />
       </label>
+      {pedirDetalle && (
+        <p className="panel-aprobacion-pregunta" role="note">
+          Ese motivo es muy general: el agente no puede aprender de él. ¿Qué frase o dato falló, y qué esperabas en su
+          lugar? Completá «qué debería haber hecho» más abajo.
+        </p>
+      )}
       <label className="panel-aprobacion-campo">
         ¿Qué agente falló? (opcional)
         <select

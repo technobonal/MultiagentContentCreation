@@ -59,6 +59,34 @@ export async function pedirInforme(runId: string, llamar: typeof fetch = fetch):
   }
 }
 
+/** Resultado de pedir consejo: el semáforo ya actualizado, o los motivos del error para mostrarlos. */
+export type ResultadoConsejo =
+  | { readonly ok: true; readonly informe: Informe }
+  | { readonly ok: false; readonly motivos: readonly string[] };
+
+/**
+ * Pide una segunda opinión al asesor (Cloudflare). Tarda ~1 minuto: envía los textos y sus fragmentos de la fuente.
+ * Nunca lanza: devuelve el informe actualizado o los motivos del error. Las alertas llegan además por el SSE.
+ */
+export async function pedirConsejo(runId: string, llamar: typeof fetch = fetch): Promise<ResultadoConsejo> {
+  let respuesta: Response;
+  try {
+    respuesta = await llamar(`/api/runs/${encodeURIComponent(runId)}/asesor`, { method: "POST" });
+  } catch {
+    return { ok: false, motivos: ["No se pudo conectar con el asesor."] };
+  }
+  let json: unknown = null;
+  try {
+    json = await respuesta.json();
+  } catch {
+    // Sin cuerpo JSON: se usa el código de estado.
+  }
+  if (respuesta.ok && typeof (json as Partial<Informe> | null)?.visto_bueno === "boolean") {
+    return { ok: true, informe: json as Informe };
+  }
+  return { ok: false, motivos: motivosDeError(json, respuesta.status) };
+}
+
 /** Cuerpo del POST: ediciones (puede ser vacío), comentario opcional y, en rojo, la excepción. */
 export interface CuerpoDecision {
   readonly ediciones: readonly EdicionEnviada[];
@@ -88,6 +116,20 @@ export interface CuerpoRechazo {
     readonly slide?: number;
     readonly esperado?: string;
   };
+}
+
+// Frases genéricas que, por sí solas, no dicen qué corregir.
+const MOTIVOS_GENERICOS = /^(no me gusta|esta? mal|feo|malo|horrible|no sirve|no va|rehacer|de nuevo|mal)\.?$/i;
+
+/**
+ * Un motivo es demasiado general si no da nada accionable: muy pocas palabras o una frase genérica.
+ * No bloquea el rechazo; solo dispara una pregunta de ayuda para que el motivo sirva para aprender.
+ */
+export function motivoDemasiadoGeneral(motivo: string): boolean {
+  const limpio = motivo.trim();
+  if (limpio === "") return false; // Vacío: el botón ya está deshabilitado, no hace falta preguntar.
+  const palabras = limpio.split(/\s+/).filter(Boolean);
+  return palabras.length < 4 || MOTIVOS_GENERICOS.test(limpio);
 }
 
 export function cuerpoRechazo(b: BorradorRechazo): CuerpoRechazo {
