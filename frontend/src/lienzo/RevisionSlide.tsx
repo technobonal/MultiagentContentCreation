@@ -64,90 +64,106 @@ export function RevisionSlide({
     else setMotivos(r.motivos);
   }
 
+  const sinProblemas = abiertos.length === 0 && otros.length === 0 && alertas.length === 0 && fila?.color !== "rojo";
+
   return (
     <section className="revision-slide" aria-label={`Revisión del slide ${slide}`}>
-      <p className="revision-slide-cabecera">
-        <strong>
-          Estás revisando el slide {slide}
-          {fila ? ` · semáforo: ${fila.color}` : ""}.
-        </strong>
-        <button type="button" onClick={onVolver}>
+      {/* Cabecera de la tarjeta: qué slide y su color; volver al directo es la acción sutil. */}
+      <header className="revision-slide-cabecera">
+        <strong>Revisión · Slide {slide}</strong>
+        {fila && <span className={`revision-chip revision-chip-${fila.color}`}>{fila.color}</span>}
+        <button type="button" className="revision-volver" onClick={onVolver}>
           Volver al directo
         </button>
-      </p>
-      {abiertos.length === 0 && otros.length === 0 && alertas.length === 0 && fila?.color !== "rojo" && (
-        <p>Sin problemas abiertos en este slide. Eso no es una aprobación.</p>
-      )}
-      <ul>
-        {alertas.map((a, i) => (
-          <li key={`asesor-${i}`} className="revision-problema revision-asesor">
-            <strong>El asesor marcó: «{a.frase}»</strong>
-            <span>{a.explicacion}</span>
-            <span className="revision-asesor-sugerencia">Sugerencia: {a.sugerencia}</span>
-          </li>
-        ))}
-        {abiertos.map((h) => (
-          <li key={h.hallazgo_id} className="revision-problema">
-            <strong>
-              Problema abierto ({h.gravedad}): {h.evidencia}
-            </strong>
-            <span>{h.explicacion}</span>
-          </li>
-        ))}
-        {otros.map((m) => (
-          <li key={m} className="revision-problema">
-            <span>{m}</span>
-          </li>
-        ))}
-        {corregidos.map((h) => (
-          <li key={h.hallazgo_id} className="revision-problema revision-corregido">
-            <strong>Ya corregido: {h.evidencia}</strong>
-            <span>{h.explicacion}</span>
-          </li>
-        ))}
-      </ul>
+      </header>
+
+      {/* ① Problemas: por qué está en rojo (alertas del asesor + hallazgos del revisor). */}
+      <div className="revision-zona">
+        <h3 className="revision-zona-titulo">Problemas</h3>
+        {sinProblemas ? (
+          <p className="revision-zona-vacia">Sin problemas abiertos en este slide. Eso no es una aprobación.</p>
+        ) : (
+          <ul className="revision-problemas">
+            {alertas.map((a, i) => (
+              <li key={`asesor-${i}`} className="revision-problema revision-asesor">
+                <strong>El asesor marcó: «{a.frase}»</strong>
+                <span>{a.explicacion}</span>
+                <span className="revision-asesor-sugerencia">Sugerencia: {a.sugerencia}</span>
+              </li>
+            ))}
+            {abiertos.map((h) => (
+              <li key={h.hallazgo_id} className="revision-problema">
+                <strong>
+                  Problema abierto ({h.gravedad}): {h.evidencia}
+                </strong>
+                <span>{h.explicacion}</span>
+              </li>
+            ))}
+            {otros.map((m) => (
+              <li key={m} className="revision-problema">
+                <span>{m}</span>
+              </li>
+            ))}
+            {corregidos.map((h) => (
+              <li key={h.hallazgo_id} className="revision-problema revision-corregido">
+                <strong>Ya corregido: {h.evidencia}</strong>
+                <span>{h.explicacion}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {puedeReverificar && (
-        <div className="revision-reverificar">
-          {campos.map((c) => (
-            <label key={claveCampo(c.slide, c.campo)} className="panel-aprobacion-campo">
-              {c.campo}
-              <textarea
-                rows={c.texto.length > 80 ? 3 : 1}
-                maxLength={400}
-                value={textoActual(borradores, c)}
-                disabled={reverificando}
-                onChange={(e) => {
-                  const valor = e.currentTarget.value;
-                  setBorradores((previos) => ({ ...previos, [claveCampo(c.slide, c.campo)]: valor }));
-                }}
-              />
-            </label>
-          ))}
-          {motivos.length > 0 && (
-            <ul role="alert" className="panel-aprobacion-errores">
-              {motivos.map((m) => (
-                <li key={m}>{m}</li>
-              ))}
-            </ul>
-          )}
-          <div className="revision-reverificar-botones">
-            <button
-              type="button"
-              disabled={reverificando || cambios === 0}
-              onClick={() => void reverificar(cuerpoEdicion(estado, borradores, slide))}
-            >
-              {reverificando ? "Verificando…" : "Verificar mi edición"}
-            </button>
-            <button
-              type="button"
-              disabled={reverificando}
-              onClick={() => void reverificar({ slide, modo: "agente" })}
-            >
-              Corregir con el agente
-            </button>
+        <>
+          {/* ② Campos: qué se puede tocar. */}
+          <div className="revision-zona">
+            <h3 className="revision-zona-titulo">Campos</h3>
+            {campos.map((c) => (
+              <label key={claveCampo(c.slide, c.campo)} className="panel-aprobacion-campo">
+                {c.campo}
+                <textarea
+                  rows={c.texto.length > 80 ? 3 : 1}
+                  maxLength={400}
+                  value={textoActual(borradores, c)}
+                  disabled={reverificando}
+                  onChange={(e) => {
+                    const valor = e.currentTarget.value;
+                    setBorradores((previos) => ({ ...previos, [claveCampo(c.slide, c.campo)]: valor }));
+                  }}
+                />
+              </label>
+            ))}
           </div>
-        </div>
+
+          {/* ③ Acciones: cómo resolver. Verificar mi edición es la acción primaria. */}
+          <div className="revision-zona revision-acciones">
+            {motivos.length > 0 && (
+              <ul role="alert" className="panel-aprobacion-errores">
+                {motivos.map((m) => (
+                  <li key={m}>{m}</li>
+                ))}
+              </ul>
+            )}
+            <div className="revision-reverificar-botones">
+              <button
+                type="button"
+                className="boton-aprobar"
+                disabled={reverificando || cambios === 0}
+                onClick={() => void reverificar(cuerpoEdicion(estado, borradores, slide))}
+              >
+                {reverificando ? "Verificando…" : "Verificar mi edición"}
+              </button>
+              <button
+                type="button"
+                disabled={reverificando}
+                onClick={() => void reverificar({ slide, modo: "agente" })}
+              >
+                Corregir con el agente
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </section>
   );

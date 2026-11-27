@@ -915,13 +915,14 @@ input[type="range"] {
   color: var(--error);
 }
 
-.barra-botones .boton-aprobar {
+/* Primario relleno: lo comparten la barra (Aprobar) y la revisión (Verificar mi edición). */
+.boton-aprobar {
   background: var(--acento);
   color: var(--texto-sobre-acento);
   border-color: var(--acento);
 }
 
-.barra-botones .boton-aprobar:disabled {
+.boton-aprobar:disabled {
   opacity: 0.5;
 }
 
@@ -1126,10 +1127,54 @@ input[type="range"] {
 
 .revision-slide-cabecera {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  justify-content: space-between;
   margin: 0 0 4px;
+}
+
+/* Chip con el color del semáforo del slide, al lado del título de la tarjeta. */
+.revision-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: capitalize;
+  color: var(--texto-sobre-acento);
+}
+
+.revision-chip-verde {
+  background: #3fb97f;
+}
+
+.revision-chip-rojo {
+  background: var(--error);
+}
+
+/* Volver al directo: acción sutil, empujada a la derecha. */
+.revision-volver {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  opacity: 0.8;
+}
+
+/* UX Paso 3: la revisión como tarjeta en zonas (problemas → campos → acciones). */
+.revision-zona {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--borde);
+}
+
+.revision-zona-titulo {
+  margin: 0 0 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.revision-zona-vacia {
+  margin: 0;
+  opacity: 0.75;
 }
 
 .revision-slide ul {
@@ -1158,13 +1203,7 @@ input[type="range"] {
   border-left-color: #2dd4bf;
 }
 
-/* Re-verificar un slide (A5): campos editables y los dos botones. */
-.revision-reverificar {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--acento);
-}
-
+/* Re-verificar un slide (A5): los dos botones de la zona de acciones. */
 .revision-reverificar-botones {
   display: flex;
   gap: 8px;
