@@ -98,6 +98,11 @@ LangGraph entra en la **Fase 2, después de que existan el revisor y el ciclo de
 
 Dónde quedamos: hechas A1 (falta su run real), A2 (rechazar), A3 (semáforo con excepción), A4.1 (asesor en Cloudflare) y las miniaturas para revisar. El asesor se probó solo con textos inventados y todavía NO tiene botón en la pantalla. De estilos van 8 de 9 tandas.
 
+UX/UI (acordado el 2026-11-27, principio «trabajá arriba, decidí abajo»: lo de un slide vive en su revisión; lo del carrusel, en una barra de decisión):
+- [x] Paso 1: una sola edición. Se quitaron los campos de texto del panel de aprobación; editar queda solo en la revisión del slide (que re-verifica). El panel deja una pista que lleva ahí. 329 tests
+- [ ] Paso 2: barra de decisión fija abajo (semáforo compacto con salto al slide rojo + Asesor + Aprobar/Rechazar) con jerarquía de botones
+- [ ] Paso 3: la revisión del slide como tarjeta de trabajo ordenada (problemas → campos → acciones)
+
 Orden recomendado (pendiente de que Frank lo confirme):
 1. ~~A4.2: el asesor en la pantalla~~ ✅ hecho el 2026-11-27.
 2. A5: corregir un slide y volver a verificarlo (incluidas las ediciones a mano), con tope de rondas. ← EMPEZAR POR AQUÍ

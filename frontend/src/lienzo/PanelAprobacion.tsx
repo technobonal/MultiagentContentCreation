@@ -11,8 +11,6 @@ import { useEffect, useState } from "react";
 import type { Estado } from "../timeline/types.ts";
 import {
   camposEditables,
-  camposModificados,
-  claveCampo,
   cuerpoDecision,
   cuerpoRechazo,
   enviarAprobacion,
@@ -21,14 +19,12 @@ import {
   pedirConsejo,
   pedirInforme,
   RECHAZO_VACIO,
-  textoActual,
 } from "./aprobacion.ts";
-import type { Borradores, CuerpoDecision, CuerpoRechazo, Informe } from "./aprobacion.ts";
+import type { CuerpoDecision, CuerpoRechazo, Informe } from "./aprobacion.ts";
 import { InformeSemaforo } from "./InformeSemaforo.tsx";
 import { FormularioRechazo } from "./FormularioRechazo.tsx";
 
 export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: string }) {
-  const [borradores, setBorradores] = useState<Borradores>({});
   const [comentario, setComentario] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [motivos, setMotivos] = useState<readonly string[]>([]);
@@ -83,11 +79,11 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
   }
   if (!esperaAprobacion(estado) || estado.revision === null) return null;
 
+  // Solo para la lista de slides del formulario de rechazo (editar un texto ya no se hace aquí, sino en la revisión).
   const campos = camposEditables(estado);
-  const cambios = camposModificados(estado, borradores).length;
   const sello = estado.revision.sello;
-  // Sin informe no se sabe si hay visto bueno: no se ofrece aprobar.
-  const enRojo = informe ? necesitaExcepcion(informe, cambios) : false;
+  // Sin informe no se sabe si hay visto bueno: no se ofrece aprobar. Sin ediciones aquí, solo el rojo pide excepción.
+  const enRojo = informe ? necesitaExcepcion(informe, 0) : false;
 
   async function decidir(cuerpo: CuerpoDecision | CuerpoRechazo) {
     setEnviando(true);
@@ -183,25 +179,9 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
 
       {rechazo === null && (
         <p className="panel-aprobacion-aviso">
-          Lo que edites aquí no se vuelve a verificar contra la fuente: el sello cubre solo lo que escribió el modelo.
+          Para cambiar un texto, tocá su slide arriba y usá «Verificar mi edición»: así se vuelve a verificar contra la fuente.
         </p>
       )}
-
-      {rechazo === null && campos.map((c) => (
-        <label key={claveCampo(c.slide, c.campo)} className="panel-aprobacion-campo">
-          Slide {c.slide} · {c.campo}
-          <textarea
-            rows={c.texto.length > 80 ? 3 : 1}
-            maxLength={400}
-            value={textoActual(borradores, c)}
-            disabled={enviando}
-            onChange={(e) => {
-              const valor = e.currentTarget.value;
-              setBorradores((previos) => ({ ...previos, [claveCampo(c.slide, c.campo)]: valor }));
-            }}
-          />
-        </label>
-      ))}
 
       {rechazo === null && (
         <label className="panel-aprobacion-campo">
@@ -245,7 +225,7 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
               <button
                 type="button"
                 disabled={trabajando || !informe || (enRojo && excepcion.trim() === "")}
-                onClick={() => void decidir(cuerpoDecision(estado, borradores, comentario, enRojo ? excepcion : ""))}
+                onClick={() => void decidir(cuerpoDecision(estado, {}, comentario, enRojo ? excepcion : ""))}
               >
                 {enviando
                   ? "Enviando…"
