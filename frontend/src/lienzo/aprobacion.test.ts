@@ -10,6 +10,7 @@ import {
   enviarAprobacion,
   RECHAZO_VACIO,
   esperaAprobacion,
+  motivosSinHallazgo,
   necesitaExcepcion,
   pedirInforme,
   textoActual,
@@ -168,5 +169,16 @@ describe("semáforo y excepción", () => {
     ["sin conexión", async () => Promise.reject(new Error("red"))],
   ])("con %s no inventa un informe", async (_, llamar) => {
     await expect(pedirInforme("run_1", llamar as typeof fetch)).resolves.toBeNull();
+  });
+});
+
+describe("motivosSinHallazgo", () => {
+  const informe = {
+    visto_bueno: false, generales: [],
+    slides: [{ slide: 3, color: "rojo" as const, avisos: [], motivos: ["Hallazgo h1 (mayor): x", "Su texto actual no tiene ningún veredicto del revisor.", "Alerta del asesor: «y»"] }],
+  };
+  it("deja lo que el revisor no abrió como hallazgo, y nada si el slide no está", () => {
+    expect(motivosSinHallazgo(informe, 3)).toEqual(["Su texto actual no tiene ningún veredicto del revisor.", "Alerta del asesor: «y»"]);
+    expect(motivosSinHallazgo(informe, 4)).toEqual([]);
   });
 });

@@ -15,12 +15,6 @@ export type Calculador = (estado: Estado, campo: string) => unknown;
 // Nombres de campo (sin llaves) de cada slide, indexados por número de slide.
 export type CamposPorSlide = Readonly<Record<number, readonly string[]>>;
 
-// Slide elegido a mano y el último seq del reductor en el momento de elegirlo.
-export interface SeleccionManual {
-  readonly slide: number;
-  readonly seq: number;
-}
-
 /**
  * Recorre los <g class="slide"> de la plantilla y devuelve los nombres de campo de cada uno.
  * Ejemplo: { 6: ["fuente_atribucion", "fuente_licencia", "sello_revision"] }.
@@ -58,18 +52,15 @@ export function slideTieneCalculado(
   });
 }
 
-/**
- * Devuelve el slide elegido a mano mientras siga vigente, o null.
- * Es vigente solo si no ha llegado ningún evento nuevo desde que se eligió
- * (el seq del reductor sigue siendo el mismo).
- */
-export function slideManualVigente(
-  manual: SeleccionManual | null,
-  ultimoSeq: number,
-): number | null {
-  // Sin elección, o con un evento nuevo de por medio, manda el slide activo del reductor.
-  if (manual === null || manual.seq !== ultimoSeq) return null;
-  return manual.slide;
+/** Los problemas que el revisor abrió en un slide, separados en los que siguen abiertos y los ya corregidos. */
+export function problemasDelSlide(estado: Estado, slide: number) {
+  const delSlide = Object.values(estado.hallazgos)
+    .filter((h) => h.slide === slide)
+    .sort((a, b) => a.abiertoEnSeq - b.abiertoEnSeq);
+  return {
+    abiertos: delSlide.filter((h) => h.estado === "abierto"),
+    corregidos: delSlide.filter((h) => h.estado === "corregido"),
+  };
 }
 
 /**

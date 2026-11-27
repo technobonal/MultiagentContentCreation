@@ -40,6 +40,11 @@ export function necesitaExcepcion(informe: Informe, cambios: number): boolean {
   return !informe.visto_bueno || cambios > 0;
 }
 
+/** Motivos del semáforo de un slide que no son un hallazgo (esos ya se muestran con su explicación). */
+export function motivosSinHallazgo(informe: Informe, slide: number): readonly string[] {
+  return informe.slides.find((s) => s.slide === slide)?.motivos.filter((m) => !m.startsWith("Hallazgo ")) ?? [];
+}
+
 /** Pide el semáforo del run; null si no se pudo obtener (entonces no se ofrece aprobar). */
 export async function pedirInforme(runId: string, llamar: typeof fetch = fetch): Promise<Informe | null> {
   try {

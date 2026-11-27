@@ -39,6 +39,8 @@ interface PropsLienzo {
   readonly idioma: IdiomaFase;
   // NUEVO (9B-3): el run falló o se cortó sin run_finalizada (opcional; false por defecto).
   readonly runFallido?: boolean;
+  // La persona está mirando un slide: sin avatares ni tarjetas encima.
+  readonly revisando?: boolean;
 }
 
 // Un campo de texto tal como se ve ahora: de qué slide, qué texto y si es borrador.
@@ -76,7 +78,7 @@ function lienzoVacio(estado: Estado): boolean {
   );
 }
 
-export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) {
+export function Lienzo({ vista, svg, idioma, runFallido = false, revisando = false }: PropsLienzo) {
   const contenedor = useRef<HTMLDivElement | null>(null);
   const marco = useRef<HTMLDivElement | null>(null);
   const etiquetaCursor = useRef<HTMLDivElement | null>(null);
@@ -185,7 +187,7 @@ export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) 
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     const salto = vista.estado.ultimoSeq - seqPrevio.current;
     const animar =
-      (vista.reproduciendo || veniaReproduciendo.current) && salto === 1 && !reducirMovimiento;
+      (vista.reproduciendo || veniaReproduciendo.current) && salto === 1 && !reducirMovimiento && !revisando;
     seqPrevio.current = vista.estado.ultimoSeq;
     veniaReproduciendo.current = vista.reproduciendo;
 
@@ -331,7 +333,7 @@ export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) 
     } else {
       claveResaltada.current = null;
     }
-  }, [vista.estado, vista.reproduciendo, vista.velocidad, montado, fuentesListas, idioma]);
+  }, [vista.estado, vista.reproduciendo, vista.velocidad, montado, fuentesListas, idioma, revisando]);
 
   // Al desmontar el componente se corta cualquier animación pendiente.
   useEffect(() => {
@@ -354,7 +356,7 @@ export function Lienzo({ vista, svg, idioma, runFallido = false }: PropsLienzo) 
   }
 
   return (
-    <div ref={marco} className="lienzo-marco">
+    <div ref={marco} className={`lienzo-marco${revisando ? " lienzo-revisando" : ""}`}>
       <div ref={contenedor} className="lienzo" role="img" aria-label="Vista previa del carrusel" />
 
       {/* Letrero de fase: grande y centrado con el lienzo vacío, pequeño arriba después. */}

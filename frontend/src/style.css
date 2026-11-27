@@ -1046,3 +1046,49 @@ input[type="range"] {
 @media (prefers-reduced-motion: reduce) {
   .agente-especialidad { animation: none; }
 }
+
+/* Revisando un slide: nada se dibuja encima de él (letrero, tarjetas, avatares y escena de fotos). */
+.lienzo-revisando > :not(.lienzo) {
+  visibility: hidden !important;
+}
+
+.lienzo-revisando > :not(.lienzo) * {
+  visibility: hidden !important;
+}
+
+.revision-slide {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--acento);
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.revision-slide-cabecera {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 4px;
+}
+
+.revision-slide ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.revision-problema {
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-left: 4px solid var(--error);
+}
+
+.revision-problema span {
+  display: block;
+}
+
+.revision-corregido {
+  border-left-color: #3fb97f;
+  opacity: 0.75;
+}

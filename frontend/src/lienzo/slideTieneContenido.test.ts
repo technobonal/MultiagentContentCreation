@@ -1,12 +1,12 @@
 // ---------------------------------------------------------------------------
-// indiceDeSalto.test.ts — Pruebas de la lógica pura de las miniaturas.
+// slideTieneContenido.test.ts — Cuándo una miniatura tiene algo que mostrar.
 // Usan una secuencia sintética corta: slide 1 con fondo y título, slide 3 con una
 // verificación (que NO da contenido), un borrador y el texto dibujado.
 // ---------------------------------------------------------------------------
 import { describe, expect, it } from "vitest";
 import { crearEstadoInicial, reducirTodos } from "../timeline/reducer.ts";
 import type { Evento } from "../timeline/types.ts";
-import { indiceDeSalto, slideTieneContenido } from "./indiceDeSalto.ts";
+import { slideTieneContenido } from "./slideTieneContenido.ts";
 
 // Crea un evento completo (sobre común + payload) de forma compacta.
 function ev(seq: number, agente: string, tipo: string, slide: number | undefined, payload: unknown): Evento {
@@ -40,28 +40,6 @@ const SECUENCIA: Evento[] = [
   ev(5, "director_arte", "escribir_texto", 3, { campo: "cuerpo", texto: "final" }),
 ];
 
-describe("indiceDeSalto", () => {
-  it("devuelve el índice del primer evento que da contenido al slide", () => {
-    // El fondo del slide 1 es el primer evento: se aplica 1 evento.
-    expect(indiceDeSalto(SECUENCIA, 1)).toBe(1);
-  });
-
-  it("ignora los eventos que no dibujan (la verificación del revisor)", () => {
-    // El evento 3 es del slide 3 pero no da contenido; el primero que sí es el 4.
-    expect(indiceDeSalto(SECUENCIA, 3)).toBe(4);
-  });
-
-  it("devuelve null si ningún evento da contenido al slide", () => {
-    expect(indiceDeSalto(SECUENCIA, 2)).toBeNull();
-    expect(indiceDeSalto([], 1)).toBeNull();
-  });
-
-  it("no depende del orden en que llegan los eventos", () => {
-    const desordenada = [...SECUENCIA].reverse();
-    expect(indiceDeSalto(desordenada, 3)).toBe(4);
-  });
-});
-
 describe("slideTieneContenido", () => {
   it("el estado inicial no tiene contenido en ningún slide", () => {
     expect(slideTieneContenido(crearEstadoInicial(), 1)).toBe(false);
@@ -82,13 +60,11 @@ describe("slideTieneContenido", () => {
 
 describe("coherencia con el reductor", () => {
   // Invariante: con k eventos el slide tiene contenido; con k - 1 todavía no.
-  it.each([1, 3])("el slide %i tiene contenido justo desde su índice de salto", (slide) => {
-    const k = indiceDeSalto(SECUENCIA, slide);
-    expect(k).not.toBeNull();
-    const salto = k ?? 0;
+  // El fondo del slide 1 es el evento 1; en el slide 3 la verificación (3) no dibuja y el borrador es el evento 4.
+  it.each([[1, 1], [3, 4]])("el slide %i tiene contenido justo desde el evento %i", (slide, k) => {
     // Con k eventos aplicados ya hay contenido.
-    expect(slideTieneContenido(reducirTodos(crearEstadoInicial(), SECUENCIA.slice(0, salto)), slide)).toBe(true);
+    expect(slideTieneContenido(reducirTodos(crearEstadoInicial(), SECUENCIA.slice(0, k)), slide)).toBe(true);
     // Con un evento menos todavía no.
-    expect(slideTieneContenido(reducirTodos(crearEstadoInicial(), SECUENCIA.slice(0, salto - 1)), slide)).toBe(false);
+    expect(slideTieneContenido(reducirTodos(crearEstadoInicial(), SECUENCIA.slice(0, k - 1)), slide)).toBe(false);
   });
 });

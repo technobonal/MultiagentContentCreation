@@ -18,8 +18,8 @@ import { MesaAgentes } from "./lienzo/MesaAgentes.tsx";
 import { AvisoEspera } from "./lienzo/AvisoEspera.tsx";
 import { PanelAprobacion } from "./lienzo/PanelAprobacion.tsx";
 // NUEVO: reglas del slide elegido a mano.
-import { aplicarSlideManual, slideManualVigente } from "./lienzo/slideManual.ts";
-import type { SeleccionManual } from "./lienzo/slideManual.ts";
+import { aplicarSlideManual } from "./lienzo/slideManual.ts";
+import { RevisionSlide } from "./lienzo/RevisionSlide.tsx";
 import { TiraMiniaturas } from "./lienzo/TiraMiniaturas.tsx";
 // NUEVO: estado de la conexión SSE.
 import { useEnVivo } from "./lienzo/useEnVivo.ts";
@@ -31,7 +31,6 @@ import type { EstadoConexion, FuenteEnVivo } from "./timeline/fuenteEnVivo.ts";
 // Las velocidades salen del reproductor (única fuente de verdad); no hay lista local.
 import { VELOCIDADES, crearReproductor } from "./timeline/reproductor.ts";
 import type { Reproductor, VistaReproductor } from "./timeline/reproductor.ts";
-import type { Evento } from "./timeline/types.ts";
 
 // De dónde vienen los eventos.
 type ModoFuente = "grabacion" | "servidor";
@@ -57,13 +56,10 @@ function mensaje(e: unknown): string {
 function Pantalla({
   reproductor,
   idiomaGuia,
-  eventos,
   runFallido = false,
 }: {
   reproductor: Reproductor;
   idiomaGuia: IdiomaFase;
-  // Eventos de la secuencia (la tira calcula a dónde saltar con ellos).
-  eventos: readonly Evento[];
   // NUEVO (9B-3): el canal falló (solo modo Servidor; false por defecto).
   runFallido?: boolean;
 }) {
@@ -80,10 +76,8 @@ function Pantalla({
   const [eleccion, setEleccion] = useState<EleccionIdioma>("auto");
   const idioma: IdiomaFase = eleccion === "auto" ? idiomaGuia : eleccion;
 
-  // NUEVO: slide elegido a mano (con el último seq del reductor en ese momento).
-  const [manual, setManual] = useState<SeleccionManual | null>(null);
-  // Sigue vigente solo mientras no llegue un evento nuevo ni se salte a otro punto.
-  const slideManual = slideManualVigente(manual, vista.estado.ultimoSeq);
+  // Slide que la persona está revisando; se queda hasta que vuelve al directo o usa un control.
+  const [slideManual, setManual] = useState<number | null>(null);
   // Estado que se muestra: el del reductor con el slide manual aplicado (misma referencia si no hay).
   const estadoVista = useMemo(
     () => aplicarSlideManual(vista.estado, slideManual),
@@ -121,23 +115,21 @@ function Pantalla({
 
       {errorSvg && <p role="alert">No se pudo cargar la plantilla: {errorSvg}</p>}
       {!svg && !errorSvg && <p>Cargando plantilla…</p>}
-      {svg && !errorSvg && <Lienzo vista={vistaLienzo} svg={svg} idioma={idioma} runFallido={fallidoVisible} />}
+      {svg && !errorSvg && (
+        <Lienzo vista={vistaLienzo} svg={svg} idioma={idioma} runFallido={fallidoVisible} revisando={slideManual !== null} />
+      )}
 
-      {/* Miniaturas; al hacer clic se salta al punto donde ese slide ya tiene contenido,
-          o, si ningún evento lo toca (fuentes y sello), se ve a mano. */}
+      {/* Miniaturas: al hacer clic se ve ese slide como está, mientras el run sigue por detrás. */}
       {svg && !errorSvg && (
         <TiraMiniaturas
           svg={svg}
           estado={estadoVista}
-          eventos={eventos}
           idioma={idioma}
-          onIrA={(indice) => {
-            soltarManual();
-            reproductor.irA(indice);
-          }}
-          onVerSlide={(slide) => setManual({ slide, seq: vista.estado.ultimoSeq })}
+          onVerSlide={setManual}
         />
       )}
+
+      {slideManual !== null && <RevisionSlide estado={vista.estado} slide={slideManual} onVolver={soltarManual} />}
 
       <div className="controles">
         <div className="fila">
@@ -212,8 +204,6 @@ function ModoGrabacion() {
   const [nombre, setNombre] = useState(nombres[0] ?? "");
 
   const [reproductor, setReproductor] = useState<Reproductor | null>(null);
-  // Eventos de la grabación elegida (se pasan a la tira de miniaturas).
-  const [eventos, setEventos] = useState<readonly Evento[]>([]);
   const [errorGrabacion, setErrorGrabacion] = useState<string | null>(null);
   // Idioma de la guía de la grabación elegida (por defecto español).
   const [idiomaGuia, setIdiomaGuia] = useState<IdiomaFase>("es");
@@ -229,13 +219,11 @@ function ModoGrabacion() {
       creado = crearReproductor(lista);
       // El idioma de la guía sale de los eventos, así el evento 0 ya lo muestra bien.
       setIdiomaGuia(idiomaDeGuia(lista));
-      setEventos(lista);
       setReproductor(creado);
       setErrorGrabacion(null);
     } catch (e) {
       // Una grabación inválida o una secuencia con problemas se muestra, no se oculta.
       setReproductor(null);
-      setEventos([]);
       setIdiomaGuia("es");
       setErrorGrabacion(mensaje(e));
     }
@@ -267,7 +255,6 @@ function ModoGrabacion() {
           key={nombre}
           reproductor={reproductor}
           idiomaGuia={idiomaGuia}
-          eventos={eventos}
         />
       )}
     </>
@@ -294,7 +281,6 @@ function PantallaServidor({ fuente, runId }: { fuente: FuenteEnVivo; runId: stri
       <Pantalla
         reproductor={fuente}
         idiomaGuia={idiomaGuia}
-        eventos={vivo.eventos}
         runFallido={vivo.conexion === "error"}
       />
       {/* Aprobación humana: solo aparece mientras el run espera la decisión (y deja un aviso si se editó algo). */}

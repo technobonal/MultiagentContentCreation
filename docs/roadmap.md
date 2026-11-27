@@ -94,7 +94,22 @@ LangGraph entra en la **Fase 2, después de que existan el revisor y el ciclo de
 - [ ] Prefiltro del revisor en código y recorte de `redactor.md`/`revisor.md`: solo si hace falta más de un run por minuto o el run con 3 rondas de corrección vuelve a pasar los ~21K tokens
 - [ ] Medir el run completo con el log de tiempos y comparar con el objetivo (30-60 s, estimado)
 
-### Para retomar (anotado el 2026-11-26) — EMPEZAR POR AQUÍ
+### Para retomar (anotado el 2026-11-27) — EMPEZAR POR AQUÍ
+
+Dónde quedamos: hechas A1 (falta su run real), A2 (rechazar), A3 (semáforo con excepción), A4.1 (asesor en Cloudflare) y las miniaturas para revisar. El asesor se probó solo con textos inventados y todavía NO tiene botón en la pantalla. De estilos van 8 de 9 tandas.
+
+Orden recomendado (pendiente de que Frank lo confirme):
+1. A4.2: el asesor en la pantalla (botón «Pedir consejo» avisando que envía textos a Cloudflare, espera de ~1 minuto, alertas en el semáforo, «sin alertas no es una aprobación», avatar y preguntas si el motivo de rechazo es muy general).
+2. A5: corregir un slide y volver a verificarlo (incluidas las ediciones a mano), con tope de rondas.
+3. Prueba final con Groq (Frank la dejó para el final): ver que cada frase tenga veredicto, leer las citas, contar parciales, rondas y tokens, y si salen demasiados slides en rojo mejorar cómo cita el revisor sin relajar el semáforo. Probar el asesor sobre ese run. Pide «ya» antes: gasta tokens de Groq.
+4. A6: aprendizaje a partir de rechazos y excepciones (`backend/datos/rechazos.jsonl`).
+5. Tanda 9 de estilos: familia Geométrica (maqueta aprobada).
+
+Menores: redacción (portada con frase rara, títulos repetidos); el conteo por slide del revisor no se ve en un arranque normal (la app no configura el registro INFO); burbuja de Tipografía; run real que cubra la pausa tras la última foto; pendientes de fotos y animaciones de la sección del 2026-11-25.
+
+Cómo levantar todo: backend desde `backend/` con `MODO_RUN=real FOTOS_LICENCIA="Uso autorizado por el titular" ../.venv/Scripts/python.exe -m uvicorn app.main:app --port 8000`; lienzo con `npm run dev` desde `frontend/` (:5173). El backend que quedó encendido el 2026-11-27 es uno TEMPORAL de pruebas (veredictos simulados, sin LLM, y sin A4.1): hay que apagarlo antes de un run real. Claves en el `.env` de la raíz (Groq y, para el asesor, `CLOUDFLARE_ACCOUNT_ID` y `CLOUDFLARE_API_KEY_TOKEN`).
+
+### Para retomar (anotado el 2026-11-26)
 
 Dónde quedamos: van 8 de las 9 tandas de «Estilos y plantillas» (más abajo, con el detalle). La Cápsula azul funciona en vivo con fotos en píldora, arco y círculo, fondo celeste `#BBDEFF`, tipografía, especialidades visibles y recortes que no cortan cabezas. Último run de prueba aprobado por Frank: `run_68b4a97e` (los runs viven en memoria: se pierden al reiniciar el backend).
 
@@ -125,7 +140,10 @@ Principio: la luz verde la decide el CÓDIGO (todos los textos verificados, sin 
 - [ ] A1. Cerrar el hueco de las frases cambiadas. PROGRAMADO (2026-11-26), falta el run real (Frank lo dejó para el final): `app/agentes/frases.py` separa cada campo en frases y el revisor solo devuelve el número y su juicio (el texto del evento lo pone el código, así no puede reformularlo). Frase sin veredicto: se pide el slide una vez más (sin pisar lo ya juzgado) y, si falta, hallazgo «mayor» que la muestra. Reemplaza el filtro por palabras. Sin cambios de contrato; 1081 tests de backend. Límites: el modelo puede juzgar mal; una abreviatura rara puede unir dos frases (no se pierde texto). Medir en el run real cuántos parciales, rondas y tokens aparecen
 - [x] A2. Botón Rechazar (2026-11-26): evento `rechazada` (catálogo 17) con motivo obligatorio y, opcionales, agente que falló, slide y qué debía hacer; el run termina «rechazada» sin `aprobada`. Cada rechazo se guarda como una línea en `backend/datos/rechazos.jsonl` (`RECHAZOS_ARCHIVO`; fuera de Git) con textos, veredictos y hallazgos del momento; si el disco falla, el rechazo vale igual y se avisa. 1100 tests de backend y 318 de frontend; probado en navegador sin LLM (textos de relleno y el cierre real)
 - [x] A3. Semáforo y excepción B (2026-11-26): `runs/semaforo.py` pone en rojo un slide con hallazgo mayor o bloqueante abierto, frase «no verificada», texto sin veredicto sobre su versión actual o edición a mano (y todo el run sin fuente verificada); los menores son avisos. El servidor bloquea con 422 la aprobación en rojo sin `excepcion`; con ella el run termina `aprobada_sin_visto_bueno` y se guarda en el registro (`tipo: excepcion`). El panel muestra el informe (`GET /api/runs/{id}/informe`). Los tests ya no pueden escribir en el registro real (una prueba lo hizo una vez; se borró esa línea). 1125 tests de backend y 324 de frontend; probado en navegador en rojo y en verde con veredictos simulados
-- [ ] A4 y A5. Agente asesor y ciclo corregir y volver a verificar, con tope de rondas. Si el motivo de un rechazo es muy general (visto en la prueba de Frank: «no me gustó el estilo»), el asesor pregunta qué exactamente (colores, formas, letra) para que sirva de lección
+- [x] A4.1. Asesor en el backend (2026-11-26): `agentes/asesor.py` + `cliente_asesor.py` en Cloudflare Workers AI (Gemma 4 26B, respaldo Llama 3.3 70B), evento `asesoria` (18), alertas que ponen en rojo y se acumulan hasta reescribir, `POST /api/runs/{id}/asesor`, máximo 3 consultas por run. 1157 tests de backend. Probado con el asesor real sobre un carrusel inventado (fuente en inglés, 12 frases, 6 con error, UNA corrida): Gemma 6/6 sin falsas alarmas en 48 s; Llama 5/6 con 1 de más en 16 s (se le escapó el título reformulado). Falta probarlo sobre un run real. (Antes: OpenRouter, Gemma con 429 y Nemotron bloqueado por privacidad)
+- [x] Miniaturas para revisar (2026-11-27, pedido de Frank): antes un clic rebobinaba la reproducción hasta que el slide empezaba a tener contenido (se veía vacío y apagaba las demás). Ahora muestra el slide como está mientras el run sigue por detrás, sin avatares ni tarjetas encima, con los problemas del revisor y, tras pedir la aprobación, el color y los motivos del semáforo; «Volver al directo» o cualquier control lo suelta. Se borró `indiceDeSalto`. 321 tests de frontend; probado en navegador a mitad de una grabación y con un run esperando
+- [ ] A4.2. Botón «Pedir consejo» y consejos en el panel (decir que envía textos y fragmentos a Cloudflare; Gemma tarda ~50 s, mostrar la espera y que «sin alertas» no es una aprobación); preguntas cuando el motivo de rechazo es muy general; avatar del asesor
+- [ ] A5. Ciclo corregir y volver a verificar (incluidas las ediciones a mano), con tope de rondas
 - [ ] A6. Aprendizaje: lecciones que Frank aprueba, pocas por agente (empezar con 5), en la parte variable del prompt (no romper el caché); lo comprobable pasa a regla de código; medir si el error se repite
 
 ### Para retomar (anotado el 2026-11-25)

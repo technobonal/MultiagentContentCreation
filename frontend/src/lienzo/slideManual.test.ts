@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   aplicarSlideManual,
   camposPorSlide,
-  slideManualVigente,
+  problemasDelSlide,
   slideTieneCalculado,
 } from "./slideManual.ts";
 import { crearEstadoInicial } from "../timeline/reducer.ts";
@@ -82,18 +82,22 @@ describe("slideTieneCalculado", () => {
   });
 });
 
-describe("slideManualVigente", () => {
-  it("es null sin elección", () => {
-    expect(slideManualVigente(null, 24)).toBeNull();
+describe("problemasDelSlide", () => {
+  const h = (id: string, slide: number | null, estado: "abierto" | "corregido", seq: number) =>
+    ({ hallazgo_id: id, slide, estado, abiertoEnSeq: seq }) as unknown as Estado["hallazgos"][string];
+  const estado = {
+    ...crearEstadoInicial(),
+    hallazgos: { h3: h("h3", 2, "abierto", 30), h1: h("h1", 2, "corregido", 10), h2: h("h2", 2, "abierto", 20), h4: h("h4", 3, "abierto", 40), h5: h("h5", null, "abierto", 50) },
+  };
+
+  it("separa abiertos de corregidos, solo del slide pedido y en orden de aparición", () => {
+    const { abiertos, corregidos } = problemasDelSlide(estado, 2);
+    expect(abiertos.map((x) => x.hallazgo_id)).toEqual(["h2", "h3"]);
+    expect(corregidos.map((x) => x.hallazgo_id)).toEqual(["h1"]);
   });
 
-  it("devuelve el slide mientras el seq no cambie", () => {
-    expect(slideManualVigente({ slide: 6, seq: 24 }, 24)).toBe(6);
-  });
-
-  it("se suelta cuando llega un evento nuevo o se salta a otro punto", () => {
-    expect(slideManualVigente({ slide: 6, seq: 24 }, 25)).toBeNull();
-    expect(slideManualVigente({ slide: 6, seq: 24 }, 10)).toBeNull();
+  it("un slide sin hallazgos devuelve las dos listas vacías", () => {
+    expect(problemasDelSlide(estado, 6)).toEqual({ abiertos: [], corregidos: [] });
   });
 });
 
