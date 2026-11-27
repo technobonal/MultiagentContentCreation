@@ -41,6 +41,7 @@ from typing import Any
 from app import config
 from app.agentes.adaptadores_ciclo import CorrectorCarrusel, EstadoCarrusel, RevisorCarrusel
 from app.agentes.ciclo_correccion import ejecutar_ciclo as _ejecutar_ciclo
+from app.runs.reverificacion import Reverificacion, reconstruir_abiertos
 from app.agentes.cliente_llm import ClienteLLM, LLMError
 from app.agentes.comun import AgenteError
 from app.agentes.director_arte import componer_carrusel as _componer_carrusel
@@ -308,12 +309,19 @@ def _medir_llamable(medidor: _Medidor, base: str, llamable: Callable[..., Any]) 
     return medida
 
 
+async def _sin_correccion(responsable: str | None, slide: int | None, hallazgos: list, estado: Any) -> Any:
+    """Corrector nulo: devuelve el MISMO estado. En modo «edición» el ciclo solo revisa (tope de 1 ronda)."""
+    return estado
+
+
 @dataclass(frozen=True)
 class _Cierre:
-    """Lo que `_correr` deja listo para `_finalizar`: el estado y el sello ya calculados por código."""
+    """Lo que `_correr` deja listo para `_finalizar`: el estado, el sello y cómo re-verificar un slide a pedido."""
 
     estado_final: str
     sello: dict
+    # Re-verifica un slide cuando la persona lo pide (A5); None en modo relleno o si no se abrió la espera.
+    reverificar: Callable[[Reverificacion], Any] | None = None
 
 
 async def _correr(
@@ -388,6 +396,29 @@ async def _correr(
         ejecucion.eventos, escalado=(resultado.estado_final == "requiere_humano")
     )
 
+    # Textos vigentes tras el ciclo (con las correcciones ya hechas): la base de cualquier re-verificación.
+    textos_vigentes = dict(resultado.estado.textos)
+
+    async def reverificar(pedido: Reverificacion) -> None:
+        """Vuelve a verificar un slide a pedido (A5), sin cerrar el run. Emite los eventos del revisor/corrector."""
+        # Modo «edición»: se aplican los cambios de la persona y se emiten antes de revisar.
+        for ed in pedido.ediciones:
+            await ejecucion.emitir(
+                agente="humano", tipo="editada", slide=ed.slide,
+                payload={"campo": ed.campo, "texto_antes": ed.texto_antes, "texto_despues": ed.texto_despues},
+            )
+            actual = textos_vigentes[ed.slide]
+            textos_vigentes[ed.slide] = replace(actual, campos={**actual.campos, ed.campo: ed.texto_despues})
+        # «edición»: solo revisar (tope 1, sin corrección). «agente»: ciclo corregir→re-revisar con su tope.
+        corregir, tope = (_sin_correccion, 1) if pedido.modo == "edicion" else (corregir_medido, config.REVERIF_MAX_RONDAS)
+        res = await agentes.ciclo(
+            EstadoCarrusel(dict(textos_vigentes), brief),
+            revisar=revisar_medido, corregir=corregir, emitir=ejecucion.emitir,
+            max_rondas=tope, abiertos_iniciales=reconstruir_abiertos(ejecucion.eventos),
+            alcance_inicial={pedido.slide},
+        )
+        textos_vigentes.update(res.estado.textos)  # las correcciones del agente quedan para el próximo pedido
+
     # Se pide la aprobación con el mismo estado y sello del cierre.
     if esperar_aprobacion:
         ejecucion.abrir_decision()
@@ -399,7 +430,7 @@ async def _correr(
             "sello": sello,
         },
     )
-    return _Cierre(estado_final, sello)
+    return _Cierre(estado_final, sello, reverificar if esperar_aprobacion else None)
 
 
 def _guardar_decision(ejecucion: Ejecucion, motivo: Rechazo, cierre: _Cierre, tipo: str, semaforo: dict) -> None:
@@ -447,6 +478,33 @@ async def _aprobar(ejecucion: Ejecucion, decision: Any, cierre: _Cierre) -> str:
     return cierre.estado_final if semaforo["visto_bueno"] else "requiere_humano"
 
 
+async def _esperar_decision_con_reverificaciones(ejecucion: Ejecucion, cierre: _Cierre, timeout_seg: float) -> str:
+    """Espera la decisión de la persona; entremedio puede re-verificar slides (A5) hasta el tope, sin cerrar el run.
+
+    Devuelve el estado final. Cada re-verificación corre el revisor (y el corrector, en modo «agente») y emite sus
+    eventos; después el run vuelve a esperar. Agotado el tope, el endpoint ya no acepta más pedidos.
+    """
+    while True:
+        pedido = await ejecucion.esperar_pedido(timeout_seg if timeout_seg > 0 else None)
+        if pedido is None:
+            log.warning("El run %s no recibió decisión en %s s: queda en requiere_humano", ejecucion.run_id, timeout_seg)
+            return "requiere_humano"
+        clase, dato = pedido
+        if clase == "reverificar":
+            ejecucion.reverificando = True
+            try:
+                if cierre.reverificar is not None:
+                    await cierre.reverificar(dato)
+                ejecucion.rondas_reverif += 1
+            finally:
+                ejecucion.reverificando = False
+            continue  # el run sigue esperando la decisión, ahora con el semáforo actualizado
+        if dato.rechazo is not None:
+            await _rechazar(ejecucion, dato.rechazo, cierre)
+            return "rechazada"
+        return await _aprobar(ejecucion, dato, cierre)
+
+
 async def _finalizar(ejecucion: Ejecucion, cierre: _Cierre, esperar_aprobacion: bool, timeout_seg: float) -> None:
     """Cierra el run: con aprobación humana espera la decisión, emite sus eventos y después `run_finalizada`.
 
@@ -457,15 +515,7 @@ async def _finalizar(ejecucion: Ejecucion, cierre: _Cierre, esperar_aprobacion: 
     """
     estado_final = cierre.estado_final
     if esperar_aprobacion:
-        decision = await ejecucion.esperar_decision(timeout_seg if timeout_seg > 0 else None)
-        if decision is None:
-            log.warning("El run %s no recibió decisión en %s s: queda en requiere_humano", ejecucion.run_id, timeout_seg)
-            estado_final = "requiere_humano"
-        elif decision.rechazo is not None:
-            await _rechazar(ejecucion, decision.rechazo, cierre)
-            estado_final = "rechazada"
-        else:
-            estado_final = await _aprobar(ejecucion, decision, cierre)
+        estado_final = await _esperar_decision_con_reverificaciones(ejecucion, cierre, timeout_seg)
     await ejecucion.emitir(
         agente="sistema", tipo="run_finalizada",
         payload={

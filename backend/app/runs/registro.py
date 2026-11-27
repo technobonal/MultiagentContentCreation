@@ -63,10 +63,15 @@ class Ejecucion:
         # Aprobación humana: el orquestador abre la espera, el endpoint registra la decisión y despierta al orquestador.
         self._esperando_decision = False
         self._decision = None  # la `Decision` registrada (aprobacion.py); solo se acepta una
+        # Re-verificación (A5): mientras espera la decisión, la persona puede pedir que un slide se vuelva a verificar.
+        # El pedido y la decisión final comparten un solo turno (`_pedido`); el orquestador lo consume y vuelve a esperar.
+        self._pedido = None  # ("decidir", Decision) | ("reverificar", pedido); None = nada pendiente
+        self._pedido_lista = asyncio.Event()
+        self.reverificando = False  # True mientras el orquestador re-verifica un slide (el endpoint responde 409)
+        self.rondas_reverif = 0  # cuántas re-verificaciones ya se corrieron (tope en config)
         # Asesor: los fragmentos de la fuente de cada slide (los pone el orquestador) y si hay una consulta en curso.
         self.material_asesor: dict[int, tuple[str, ...]] = {}
         self.asesorando = False
-        self._decision_lista = asyncio.Event()
         # Imágenes del run (recortes de la fuente) que el navegador pide por URL: referencia -> (bytes, tipo MIME).
         self._imagenes: dict[str, tuple[bytes, str]] = {}
 
@@ -99,26 +104,42 @@ class Ejecucion:
         """Abre la espera. Se llama ANTES de emitir `aprobacion_solicitada`, así nadie decide antes de tiempo."""
         self._esperando_decision = True
 
-    def registrar_decision(self, decision) -> bool:
-        """Guarda la decisión y despierta al orquestador. False si no se esperaba o ya había una (solo vale la primera)."""
-        if not self._esperando_decision or self._decision is not None:
+    def _poner_pedido(self, item) -> bool:
+        """Deja un turno para el orquestador. False si no se espera, ya se decidió, hay otro turno sin consumir
+        o se está re-verificando. Una decisión final cierra la puerta a más turnos."""
+        if not self._esperando_decision or self._decision is not None or self._pedido is not None or self.reverificando:
             return False
-        self._decision = decision
-        self._decision_lista.set()
+        if item[0] == "decidir":
+            self._decision = item[1]  # a partir de aquí no se aceptan más turnos
+        self._pedido = item
+        self._pedido_lista.set()
         return True
 
-    async def esperar_decision(self, timeout: float | None):
-        """Espera la decisión hasta `timeout` segundos (None = sin límite). Devuelve None si venció sin decisión.
+    def registrar_decision(self, decision) -> bool:
+        """Guarda la decisión final y despierta al orquestador. False si no se esperaba o ya había una (solo vale la primera)."""
+        return self._poner_pedido(("decidir", decision))
 
-        Al salir, por decisión o por tiempo, la espera queda cerrada: una decisión tardía recibe 409.
+    def registrar_reverificacion(self, pedido) -> bool:
+        """Pide re-verificar un slide sin cerrar el run. False si no se espera, ya se decidió o hay otro turno/consulta en curso."""
+        return self._poner_pedido(("reverificar", pedido))
+
+    async def esperar_pedido(self, timeout: float | None):
+        """Espera el próximo turno (decisión final o re-verificación) hasta `timeout` s (None = sin límite).
+
+        Devuelve ("decidir", Decision) | ("reverificar", pedido), o None si venció sin nada. Una decisión final
+        cierra la espera; una re-verificación la deja abierta para que el orquestador vuelva a esperar.
         """
         try:
-            await asyncio.wait_for(self._decision_lista.wait(), timeout)
-            return self._decision
+            await asyncio.wait_for(self._pedido_lista.wait(), timeout)
         except asyncio.TimeoutError:
-            return None
-        finally:
             self._esperando_decision = False
+            return None
+        item = self._pedido
+        self._pedido = None
+        self._pedido_lista.clear()
+        if item[0] == "decidir":
+            self._esperando_decision = False  # final: una decisión tardía recibe 409
+        return item
 
     async def emitir(self, agente: str, tipo: str, payload: dict, slide: int | None = None, causa: int | None = None) -> dict:
         """Arma el evento, lo valida contra el contrato y lo agrega al buffer.

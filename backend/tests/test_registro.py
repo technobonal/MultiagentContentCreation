@@ -489,28 +489,28 @@ def test_la_decision_despierta_la_espera_y_la_cierra():
         e = _ejecucion()
         e.abrir_decision()
         assert e.esperando_decision
-        espera = asyncio.create_task(e.esperar_decision(5))
+        espera = asyncio.create_task(e.esperar_pedido(5))
         await asyncio.sleep(0)  # deja que la espera arranque
         assert e.registrar_decision("la decisión") is True
         return await espera, e.esperando_decision
 
-    assert asyncio.run(escenario()) == ("la decisión", False)
+    assert asyncio.run(escenario()) == (("decidir", "la decisión"), False)
 
 
 def test_solo_vale_la_primera_decision():
     async def escenario():
         e = _ejecucion()
         e.abrir_decision()
-        return e.registrar_decision("primera"), e.registrar_decision("segunda"), await e.esperar_decision(1)
+        return e.registrar_decision("primera"), e.registrar_decision("segunda"), await e.esperar_pedido(1)
 
-    assert asyncio.run(escenario()) == (True, False, "primera")
+    assert asyncio.run(escenario()) == (True, False, ("decidir", "primera"))
 
 
 def test_si_vence_el_tiempo_devuelve_none_y_cierra_la_espera():
     async def escenario():
         e = _ejecucion()
         e.abrir_decision()
-        resultado = await e.esperar_decision(0.01)
+        resultado = await e.esperar_pedido(0.01)
         return resultado, e.esperando_decision, e.registrar_decision("tarde")
 
     assert asyncio.run(escenario()) == (None, False, False)
@@ -522,6 +522,6 @@ def test_decision_registrada_antes_de_esperar_no_se_pierde():
         e = _ejecucion()
         e.abrir_decision()
         e.registrar_decision("temprana")
-        return await e.esperar_decision(1)
+        return await e.esperar_pedido(1)
 
-    assert asyncio.run(escenario()) == "temprana"
+    assert asyncio.run(escenario()) == ("decidir", "temprana")

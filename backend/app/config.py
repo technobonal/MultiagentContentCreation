@@ -301,6 +301,10 @@ APROBACION_HUMANA = _booleano(os.environ.get("APROBACION_HUMANA", ""), True)
 # Si vence, el run termina con estado `requiere_humano` y libera su cupo. 0 o menos = espera sin límite.
 APROBACION_TIMEOUT_SEG = float(os.environ.get("APROBACION_TIMEOUT_SEG", "900"))
 
+# Re-verificación a pedido (A5): cuántas veces se puede volver a verificar un slide en un mismo run antes de que
+# solo queden aprobar-con-excepción o rechazar. En modo «agente» cada pedido corre un ciclo interno de este tope.
+REVERIF_MAX_RONDAS = int(os.environ.get("REVERIF_MAX_RONDAS", "3"))
+
 # OCR de PDF escaneados: ver PDF_OCR_MAX_PAGINAS arriba. Arranca encendido; PDF_OCR=0 vuelve a rechazarlos con `pdf_sin_texto`.
 PDF_OCR = _booleano(os.environ.get("PDF_OCR", ""), True)
 

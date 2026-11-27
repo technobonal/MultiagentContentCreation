@@ -18,6 +18,7 @@ from app.resolution import cargar_fichas, resolver
 from app.agentes.asesor import asesorar, frases_a_revisar
 from app.agentes.cliente_asesor import AsesorNoDisponible, ClienteAsesor
 from app.runs.aprobacion import DecisionInvalida, textos_vigentes, validar_decision
+from app.runs.reverificacion import validar_reverificacion
 from app.runs.semaforo import informe
 from app.runs.contexto_real import ORIGEN_REAL, ContextoReal
 from app.runs.orquestador import ejecutar_run
@@ -137,6 +138,39 @@ async def aprobar_run(run_id: str, request: Request, registro: RegistroRuns = De
     if not ejecucion.registrar_decision(decision):
         return _rechazo(409, ["El run ya recibió una decisión."])
     return {"run_id": run_id, "ediciones": len(decision.ediciones)}
+
+
+@router.post("/runs/{run_id}/reverificar", status_code=202)
+async def reverificar_run(run_id: str, request: Request, registro: RegistroRuns = Depends(obtener_registro_runs)):
+    """Pide volver a verificar un slide sin cerrar el run (A5), mientras espera la decisión.
+
+    Cuerpo: {"slide": 2, "modo": "edicion"|"agente", "ediciones": [...]}. En «edicion» el revisor juzga el texto que
+    editaste; en «agente» el corrector lo reescribe y el revisor lo re-verifica. Responde 202: las nuevas
+    verificaciones y correcciones llegan por el SSE y el semáforo (`GET /informe`) se actualiza. 404 si no existe;
+    409 si no espera decisión, ya se decidió, hay una re-verificación en curso o se agotó el tope; 422 si el pedido
+    no cumple las reglas.
+    """
+    ejecucion = registro.obtener(run_id)
+    if ejecucion is None:
+        raise HTTPException(status_code=404, detail=f"No existe la ejecución {run_id}")
+    if not ejecucion.esperando_decision or ejecucion.decision_recibida:
+        return _rechazo(409, ["El run no está esperando una decisión (no la pidió, ya se decidió o venció el tiempo)."])
+    if ejecucion.reverificando:
+        return _rechazo(409, ["Ya hay una re-verificación en curso: esperá a que termine."])
+    if ejecucion.rondas_reverif >= config.REVERIF_MAX_RONDAS:
+        return _rechazo(409, [f"Ya usaste las {config.REVERIF_MAX_RONDAS} re-verificaciones de este run."])
+    try:
+        cuerpo = await request.json()
+    except ValueError:
+        return _rechazo(422, ["el cuerpo no es un JSON válido"])
+    try:
+        pedido = validar_reverificacion(cuerpo, ejecucion.eventos, ejecucion.resolucion.ficha)
+    except DecisionInvalida as exc:
+        return _rechazo(422, exc.motivos)
+    # Entre la comprobación y aquí no hay await: si una decisión final llegó primero, este pedido pierde.
+    if not ejecucion.registrar_reverificacion(pedido):
+        return _rechazo(409, ["El run ya no acepta re-verificaciones (se decidió o hay otra en curso)."])
+    return {"run_id": run_id, "slide": pedido.slide, "modo": pedido.modo}
 
 
 def obtener_cliente_asesor() -> ClienteAsesor:

@@ -90,6 +90,8 @@ async def ejecutar_ciclo(
     max_rondas: int = MAX_RONDAS,
     gravedades: tuple[str, ...] = GRAVEDADES_CORREGIBLES,
     cortar_sin_progreso: bool = False,
+    abiertos_iniciales: list[HallazgoAbierto] | None = None,
+    alcance_inicial: set[int] | None = None,
 ) -> ResultadoCiclo:
     """Ejecuta revisar → corregir → re-revisar hasta aprobar o agotar el tope.
 
@@ -98,6 +100,9 @@ async def ejecutar_ciclo(
       con todos los hallazgos de ese grupo; devuelve el estado nuevo.
     - `emitir(agente=, tipo=, payload=, slide=, causa=)`: es `Ejecucion.emitir`; devuelve el evento.
     - `cortar_sin_progreso`: si es True, escala en cuanto una re-revisión no cierra ningún hallazgo.
+    - `abiertos_iniciales`: hallazgos ya abiertos en rondas previas (re-verificación A5); se reconcilian
+      con esta revisión como si vinieran de una ronda anterior.
+    - `alcance_inicial`: acota la PRIMERA revisión a esos slides (None = todo, como siempre).
     """
     # Un tope menor que 1 no tiene sentido: ni siquiera habría revisión inicial.
     if max_rondas < 1:
@@ -106,7 +111,11 @@ async def ejecutar_ciclo(
     abiertos: dict[tuple, HallazgoAbierto] = {}  # hallazgos vigentes por clave
     corregidos: list[str] = []
     contador = 0  # numeración h1, h2, ... estable durante todo el ciclo
-    alcance: set[int] | None = None  # la primera revisión cubre todo
+    # Siembra de hallazgos ya abiertos: el contador sigue desde el id más alto para no repetir.
+    for h in abiertos_iniciales or []:
+        abiertos[_clave({"slide": h.slide, "payload": h.payload})] = h
+        contador = max(contador, int(h.hallazgo_id[1:]))
+    alcance: set[int] | None = alcance_inicial  # la primera revisión cubre `alcance_inicial` (None = todo)
     ronda = 0
 
     while True:  # una vuelta por ronda de revisión

@@ -123,35 +123,17 @@ def _limites(ficha: Mapping[str, Any]) -> dict[tuple[int, str], int]:
     }
 
 
-def validar_decision(cuerpo: Any, eventos: Sequence[Mapping[str, Any]], ficha: Mapping[str, Any]) -> Decision:
-    """Convierte el cuerpo del POST en una `Decision` o lanza `DecisionInvalida` con todos los motivos.
+def validar_ediciones(
+    crudas: Any, eventos: Sequence[Mapping[str, Any]], ficha: Mapping[str, Any], motivos: list[str]
+) -> list[Edicion]:
+    """Valida una lista de ediciones (solo campos del redactor, con su límite) y anota los errores en `motivos`.
 
-    Para aprobar: {"ediciones": [{"slide": 2, "campo": "cuerpo", "texto": "..."}], "comentario": "..."}, con las
-    dos claves opcionales. Para rechazar: {"rechazo": {"motivo": "...", "responsable": "revisor", "slide": 3,
-    "esperado": "..."}}, con solo el motivo obligatorio.
+    El «texto_antes» sale de lo dibujado, nunca del cliente. Una edición sin cambio real se descarta. Lo usan tanto
+    la aprobación como la re-verificación (A5).
     """
-    if not isinstance(cuerpo, Mapping):
-        raise DecisionInvalida(["El cuerpo debe ser un objeto JSON."])
-    if "rechazo" in cuerpo:
-        return _validar_rechazo(cuerpo, ficha)
-    desconocidas = sorted(set(cuerpo) - {"ediciones", "comentario", "excepcion"})
-    motivos: list[str] = [f"Clave desconocida: «{k}»." for k in desconocidas]
-
-    comentario = cuerpo.get("comentario")
-    if comentario is not None:
-        if not isinstance(comentario, str):
-            motivos.append("«comentario» debe ser un texto.")
-            comentario = None
-        else:
-            comentario = comentario.strip() or None
-            if comentario is not None and len(comentario) > TEXTO_MAX_CONTRATO:
-                motivos.append(f"«comentario» supera {TEXTO_MAX_CONTRATO} caracteres ({len(comentario)}).")
-
-    crudas = cuerpo.get("ediciones", [])
     if not isinstance(crudas, list):
         motivos.append("«ediciones» debe ser una lista.")
-        crudas = []
-
+        return []
     vigentes = textos_vigentes(eventos)
     limites = _limites(ficha)
     ediciones: list[Edicion] = []
@@ -182,7 +164,34 @@ def validar_decision(cuerpo: Any, eventos: Sequence[Mapping[str, Any]], ficha: M
             )
         elif nuevo != vigentes[clave]:  # sin cambio real no hay edición: así no se emite una `editada` sin diferencia
             ediciones.append(Edicion(slide, campo, vigentes[clave], nuevo))
+    return ediciones
 
+
+def validar_decision(cuerpo: Any, eventos: Sequence[Mapping[str, Any]], ficha: Mapping[str, Any]) -> Decision:
+    """Convierte el cuerpo del POST en una `Decision` o lanza `DecisionInvalida` con todos los motivos.
+
+    Para aprobar: {"ediciones": [{"slide": 2, "campo": "cuerpo", "texto": "..."}], "comentario": "..."}, con las
+    dos claves opcionales. Para rechazar: {"rechazo": {"motivo": "...", "responsable": "revisor", "slide": 3,
+    "esperado": "..."}}, con solo el motivo obligatorio.
+    """
+    if not isinstance(cuerpo, Mapping):
+        raise DecisionInvalida(["El cuerpo debe ser un objeto JSON."])
+    if "rechazo" in cuerpo:
+        return _validar_rechazo(cuerpo, ficha)
+    desconocidas = sorted(set(cuerpo) - {"ediciones", "comentario", "excepcion"})
+    motivos: list[str] = [f"Clave desconocida: «{k}»." for k in desconocidas]
+
+    comentario = cuerpo.get("comentario")
+    if comentario is not None:
+        if not isinstance(comentario, str):
+            motivos.append("«comentario» debe ser un texto.")
+            comentario = None
+        else:
+            comentario = comentario.strip() or None
+            if comentario is not None and len(comentario) > TEXTO_MAX_CONTRATO:
+                motivos.append(f"«comentario» supera {TEXTO_MAX_CONTRATO} caracteres ({len(comentario)}).")
+
+    ediciones = validar_ediciones(cuerpo.get("ediciones", []), eventos, ficha, motivos)
     excepcion = _texto_opcional(cuerpo.get("excepcion"), "excepcion", motivos)
 
     if motivos:
