@@ -1,11 +1,16 @@
-/* Variables del kit de marca del MVP (templates/brand-kits/mvp.json). */
+/* Tokens del tema de la interfaz (paleta 2026, por rol). El kit de marca
+   (templates/brand-kits/mvp.json) pinta el lienzo aparte, no esta UI. */
 :root {
-  --fondo: #0f172a;
-  --texto: #f8fafc;
-  --acento: #38bdf8;
-  --texto-sobre-acento: #0f172a;
-  --borde: rgb(248 250 252 / 0.2);
-  --error: #ef4444;
+  --fondo: #0a0e1a; /* tinta base */
+  --superficie: #141b2e; /* tarjetas y paneles elevados (profundidad por capas) */
+  --texto: #f2f5fb;
+  --texto-tenue: #9aa6bf; /* texto secundario */
+  --acento: #6e8bff; /* primario (índigo) */
+  --texto-sobre-acento: #0a0e1a;
+  --borde: rgb(242 245 251 / 0.12);
+  --error: #f4556a; /* estado alerta / rojo del semáforo */
+  --estado-ok: #34d399; /* verde del semáforo */
+  --asesor: #2dd4bf; /* segunda opinión (teal) */
   color-scheme: dark;
 }
 
@@ -729,13 +734,13 @@ input[type="range"] {
 
 /* Foco visible para quien navega con teclado. */
 .miniatura:focus-visible {
-  outline: 2px solid #38bdf8;
+  outline: 2px solid var(--acento);
   outline-offset: 2px;
 }
 
 /* Miniatura del slide que se ve en el lienzo principal. */
 .miniatura-activa {
-  border-color: #38bdf8;
+  border-color: var(--acento);
 }
 
 /* Slide aún vacío: atenuada y sin cursor de clic. */
@@ -880,7 +885,7 @@ input[type="range"] {
 }
 
 .barra-punto-verde {
-  background: #3fb97f;
+  background: var(--estado-ok);
 }
 
 .barra-punto-rojo {
@@ -948,7 +953,7 @@ input[type="range"] {
 }
 
 .semaforo-verde {
-  border-color: #3fb97f;
+  border-color: var(--estado-ok);
 }
 
 .semaforo-rojo {
@@ -1026,7 +1031,7 @@ input[type="range"] {
 .foto-onda {
   position: absolute;
   border-radius: 12px;
-  border: 5px solid #38bdf8;
+  border: 5px solid var(--acento);
   box-shadow: 0 0 24px 4px rgb(56 189 248 / 0.8);
 }
 .foto-flash {
@@ -1040,7 +1045,7 @@ input[type="range"] {
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 18px 40px rgb(0 0 0 / 0.55);
-  outline: 4px solid #f8fafc;
+  outline: 4px solid var(--texto);
   outline-offset: -4px;
 }
 .foto-tarjeta-img {
@@ -1063,15 +1068,15 @@ input[type="range"] {
   padding: 10px 18px;
   border-radius: 999px;
   background: rgb(15 23 42 / 0.92);
-  border: 2px solid #38bdf8;
-  color: #f8fafc;
+  border: 2px solid var(--acento);
+  color: var(--texto);
   font-size: clamp(0.78rem, 2.2vw, 1.05rem);
   white-space: nowrap;
   box-shadow: 0 6px 20px rgb(0 0 0 / 0.5);
 }
 .foto-cartel-agente {
   font-weight: 700;
-  color: #38bdf8;
+  color: var(--acento);
 }
 .foto-cartel-texto {
   overflow: hidden;
@@ -1091,7 +1096,7 @@ input[type="range"] {
   align-self: center;
   padding: 1px 7px;
   border-radius: 999px;
-  border: 1px solid #38bdf8;
+  border: 1px solid var(--acento);
   background: rgb(56 189 248 / 0.16);
   color: #7dd3fc;
   font-size: 0.64rem;
@@ -1120,8 +1125,10 @@ input[type="range"] {
 .revision-slide {
   margin: 8px 0;
   padding: 8px 12px;
-  border: 1px solid var(--acento);
-  border-radius: 8px;
+  /* Profundidad por capas: la tarjeta se eleva sobre el fondo con su superficie, borde discreto. */
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
   font-size: 0.875rem;
 }
 
@@ -1142,7 +1149,7 @@ input[type="range"] {
 }
 
 .revision-chip-verde {
-  background: #3fb97f;
+  background: var(--estado-ok);
 }
 
 .revision-chip-rojo {
@@ -1194,13 +1201,13 @@ input[type="range"] {
 }
 
 .revision-corregido {
-  border-left-color: #3fb97f;
+  border-left-color: var(--estado-ok);
   opacity: 0.75;
 }
 
 /* Alerta del asesor (segunda opinión) dentro de la caja de revisión. */
 .revision-asesor {
-  border-left-color: #2dd4bf;
+  border-left-color: var(--asesor);
 }
 
 /* Re-verificar un slide (A5): los dos botones de la zona de acciones. */
@@ -1220,7 +1227,7 @@ input[type="range"] {
 .panel-asesor {
   margin: 0 0 12px;
   padding: 10px 12px;
-  border: 1px solid #2dd4bf;
+  border: 1px solid var(--asesor);
   border-radius: 8px;
 }
 
@@ -1245,6 +1252,6 @@ input[type="range"] {
 }
 
 .boton-asesor {
-  border-color: #2dd4bf;
-  color: #2dd4bf;
+  border-color: var(--asesor);
+  color: var(--asesor);
 }
