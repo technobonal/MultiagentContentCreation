@@ -132,6 +132,8 @@ export function actividadDeEstado(
       return { ...base, accion: "procesar", destino: "centro", burbuja: f("Pidiendo aprobación…", "Pedindo aprovação…") };
     case "aprobada":
       return { ...base, accion: "aprobar", destino: "centro", burbuja: f("Aprobando…", "Aprovando…") };
+    case "rechazada":
+      return { ...base, accion: "procesar", destino: "centro", burbuja: f("Rechazando…", "Rejeitando…") };
     case "editada":
       return { ...base, accion: "escribir", destino: "campo", burbuja: f(`Editando slide ${n}…`, `Editando slide ${n}…`) };
     case "run_finalizada":

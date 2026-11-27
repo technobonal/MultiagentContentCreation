@@ -36,7 +36,7 @@ python contracts/validate.py
 | `causa` | `seq` del evento que originó este (obligatorio en correcciones) |
 | `payload` | Datos propios de cada tipo |
 
-## Catálogo 0.1 (16 eventos)
+## Catálogo 0.1 (17 eventos)
 
 | Evento | Emisor | Datos clave | Notas |
 | ------ | ------ | ----------- | ----- |
@@ -54,6 +54,7 @@ python contracts/validate.py
 | `corregir` | redactor / director_arte | Motivo, operación nueva | `causa` = seq del evento sustituido |
 | `aprobacion_solicitada` | sistema | Estado de revisión, abiertos, sello | |
 | `aprobada` | humano | Decisión | |
+| `rechazada` | humano | Decisión, motivo, quién falló y qué debía hacer (opcionales) | Cierra el run como `rechazada` |
 | `editada` | humano | Campo, texto antes, texto después | Diff para aprender (Fase 6) |
 | `run_finalizada` | sistema | Estado final, referencia al fact ledger, sello | |
 

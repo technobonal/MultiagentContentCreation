@@ -292,6 +292,11 @@ function aplicarTipo(estado: Estado, evento: Evento): Resultado {
         decision: { seq: evento.seq, comentario: evento.payload.comentario },
       });
 
+    case "rechazada":
+      return resultado({
+        decision: { seq: evento.seq, rechazo: { ...evento.payload, slide: evento.slide } },
+      });
+
     case "editada": {
       if (evento.slide === undefined) return sinSlide(evento.tipo);
       const p = evento.payload;

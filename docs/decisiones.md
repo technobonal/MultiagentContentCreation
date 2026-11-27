@@ -18,3 +18,4 @@ Una línea por decisión, con fecha. Lo más reciente al final.
 - 2026-11-16: Las plantillas se copian a `frontend/public/plantillas` con `scripts/copiar-plantillas.mjs` (predev); esa carpeta se ignora en Git.
 - 2026-11-16: La grabación `b5_cifra_inventada` pasa a 24 eventos (un `colocar_fondo` por slide) y las pruebas leen el conteo del fixture en vez de fijarlo.
 - 2026-11-17: Estado real de la Fase 1 verificado en pantalla: pasos 1 a 4a y tarjeta de hallazgos cerrados; pendientes controles definitivos y miniaturas (4b), retoques visuales, segunda grabación y video.
+- 2026-11-26: El catálogo 0.1 pasa de 16 a 17 eventos con `rechazada`: la persona cierra el run con un motivo obligatorio (y, si quiere, quién falló, en qué slide y qué debía hacer). `run_finalizada` admite el estado final `rechazada`; `aprobacion_solicitada` no. Cada rechazo se guarda en un archivo local fuera de Git para aprender de él más adelante.

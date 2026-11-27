@@ -29,6 +29,42 @@ export interface CuerpoDecision {
   readonly comentario?: string;
 }
 
+/** Agentes que se pueden señalar como responsables al rechazar. */
+export const RESPONSABLES = ["redactor", "revisor", "director_arte", "estratega"] as const;
+export type Responsable = (typeof RESPONSABLES)[number];
+
+/** Lo que la persona escribe para rechazar; «» y null significan «sin indicar». */
+export interface BorradorRechazo {
+  readonly motivo: string;
+  readonly responsable: Responsable | "";
+  readonly slide: number | null;
+  readonly esperado: string;
+}
+
+export const RECHAZO_VACIO: BorradorRechazo = { motivo: "", responsable: "", slide: null, esperado: "" };
+
+/** Cuerpo del POST para rechazar: solo el motivo es obligatorio y lo vacío no se envía. */
+export interface CuerpoRechazo {
+  readonly rechazo: {
+    readonly motivo: string;
+    readonly responsable?: Responsable;
+    readonly slide?: number;
+    readonly esperado?: string;
+  };
+}
+
+export function cuerpoRechazo(b: BorradorRechazo): CuerpoRechazo {
+  const esperado = b.esperado.trim();
+  return {
+    rechazo: {
+      motivo: b.motivo.trim(),
+      ...(b.responsable === "" ? {} : { responsable: b.responsable }),
+      ...(b.slide === null ? {} : { slide: b.slide }),
+      ...(esperado === "" ? {} : { esperado }),
+    },
+  };
+}
+
 export type ResultadoEnvio =
   | { readonly ok: true; readonly ediciones: number }
   | { readonly ok: false; readonly motivos: readonly string[] };
@@ -97,7 +133,7 @@ function motivosDeError(cuerpo: unknown, status: number): readonly string[] {
 /** Envía la decisión. Nunca lanza: devuelve ok o los motivos para mostrárselos a la persona. */
 export async function enviarAprobacion(
   runId: string,
-  cuerpo: CuerpoDecision,
+  cuerpo: CuerpoDecision | CuerpoRechazo,
   llamar: typeof fetch = fetch,
 ): Promise<ResultadoEnvio> {
   let respuesta: Response;

@@ -6,7 +6,9 @@ import {
   camposModificados,
   claveCampo,
   cuerpoDecision,
+  cuerpoRechazo,
   enviarAprobacion,
+  RECHAZO_VACIO,
   esperaAprobacion,
   textoActual,
 } from "./aprobacion.ts";
@@ -115,5 +117,25 @@ describe("enviarAprobacion", () => {
   it("si no hay conexión no lanza: devuelve un motivo", async () => {
     const r = await enviarAprobacion("r", { ediciones: [] }, vi.fn().mockRejectedValue(new TypeError("fallo de red")));
     expect(r).toEqual({ ok: false, motivos: ["No se pudo conectar con el servidor."] });
+  });
+});
+
+describe("cuerpoRechazo", () => {
+  it("con solo el motivo no envía nada más, y lo recorta", () => {
+    expect(cuerpoRechazo({ ...RECHAZO_VACIO, motivo: "  Cambia la fuente  ", esperado: "   " })).toEqual({
+      rechazo: { motivo: "Cambia la fuente" },
+    });
+  });
+  it("envía quién falló, el slide y lo esperado cuando se indican", () => {
+    expect(cuerpoRechazo({ motivo: "m", responsable: "revisor", slide: 3, esperado: " e " })).toEqual({
+      rechazo: { motivo: "m", responsable: "revisor", slide: 3, esperado: "e" },
+    });
+  });
+  it("se envía al mismo endpoint que la aprobación", async () => {
+    const llamar = vi.fn(async () => new Response(JSON.stringify({ ediciones: 0 }), { status: 202 }));
+    await expect(enviarAprobacion("run_1", { rechazo: { motivo: "m" } }, llamar)).resolves.toEqual({ ok: true, ediciones: 0 });
+    expect(llamar).toHaveBeenCalledWith("/api/runs/run_1/aprobacion", expect.objectContaining({
+      method: "POST", body: JSON.stringify({ rechazo: { motivo: "m" } }),
+    }));
   });
 });

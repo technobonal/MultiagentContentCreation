@@ -54,6 +54,7 @@ from app.agentes.revisor_codigo import con_ids as _con_ids
 from app.agentes.revisor_codigo import revisar_codigo as _revisar_codigo
 from app.agentes.revisor_fidelidad import revisar_fidelidad as _revisar_fidelidad
 from app.fuentes.cargador_fuente import FuenteCargada
+from app.runs.rechazos import armar_registro, guardar_rechazo
 from app.runs.registro import Ejecucion, EventoInvalido
 from app.runs.sello import calcular_sello, decidir_estado_final, hallazgos_abiertos, referencia_fact_ledger
 from app.variantes import (
@@ -394,10 +395,26 @@ async def _correr(
     return _Cierre(estado_final, sello)
 
 
+async def _rechazar(ejecucion: Ejecucion, rechazo: Any, cierre: _Cierre) -> None:
+    """Guarda el rechazo en disco y lo emite. Si el disco falla, el rechazo vale igual y queda avisado en el log."""
+    registro = armar_registro(
+        ejecucion.run_id, ejecucion.resolucion.plantilla_id, rechazo, ejecucion.eventos,
+        cierre.estado_final, cierre.sello,
+    )
+    try:
+        guardar_rechazo(config.RECHAZOS_ARCHIVO, registro)
+    except OSError as exc:
+        log.error("No se pudo guardar el rechazo del run %s (%s): %s", ejecucion.run_id, type(exc).__name__, exc)
+    payload = {"decision": "rechazada", "motivo": rechazo.motivo}
+    payload |= {k: v for k, v in (("responsable", rechazo.responsable), ("esperado", rechazo.esperado)) if v}
+    await ejecucion.emitir(agente="humano", tipo="rechazada", slide=rechazo.slide, payload=payload)
+
+
 async def _finalizar(ejecucion: Ejecucion, cierre: _Cierre, esperar_aprobacion: bool, timeout_seg: float) -> None:
     """Cierra el run: con aprobación humana espera la decisión, emite sus eventos y después `run_finalizada`.
 
-    Orden: [editada]* → aprobada → run_finalizada. Si nadie decide en `timeout_seg` (0 o menos = sin límite),
+    Orden: [editada]* → aprobada → run_finalizada, o bien rechazada → run_finalizada (estado «rechazada»).
+    Si nadie decide en `timeout_seg` (0 o menos = sin límite),
     el run termina igual con estado `requiere_humano`. Con bloqueantes abiertos la persona puede aprobar, pero el
     estado final no cambia: el sello cubre lo que escribió el modelo, no las ediciones de la persona.
     """
@@ -407,6 +424,9 @@ async def _finalizar(ejecucion: Ejecucion, cierre: _Cierre, esperar_aprobacion: 
         if decision is None:
             log.warning("El run %s no recibió decisión en %s s: queda en requiere_humano", ejecucion.run_id, timeout_seg)
             estado_final = "requiere_humano"
+        elif decision.rechazo is not None:
+            await _rechazar(ejecucion, decision.rechazo, cierre)
+            estado_final = "rechazada"
         else:
             for ed in decision.ediciones:
                 await ejecucion.emitir(

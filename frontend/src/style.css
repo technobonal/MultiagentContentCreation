@@ -858,6 +858,30 @@ input[type="range"] {
   opacity: 0.75;
 }
 
+/* Rechazar: se distingue de aprobar sin competir con él. */
+.panel-aprobacion-botones .boton-rechazar {
+  margin-left: auto;
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.panel-aprobacion-campo select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  background: var(--fondo);
+  color: var(--texto);
+  font: inherit;
+}
+
+/* Tras decidir ya no hay barra fija: sobra el hueco que se le reservaba. */
+.panel-aprobacion.panel-aprobacion-cerrado {
+  padding-bottom: 12px;
+}
+
 /* Tras decidir: solo el aviso de lo que se editó a mano. */
 .panel-aprobacion-cerrado {
   font-size: 0.8125rem;

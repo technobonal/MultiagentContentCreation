@@ -13,7 +13,11 @@
       "additionalProperties": false,
       "properties": {
         "estado_final": {
-          "$ref": "../common.schema.json#/$defs/estado_revision"
+          "$comment": "El estado de la revisión o, si la persona rechazó el pack, 'rechazada' (solo puede darse al final).",
+          "anyOf": [
+            { "$ref": "../common.schema.json#/$defs/estado_revision" },
+            { "const": "rechazada" }
+          ]
         },
         "fact_ledger_ref": {
           "type": "string",

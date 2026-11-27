@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://multiagent.local/contracts/events/aprobada.schema.json",
-  "$comment": "El humano aprobó el pack. Reanuda el grafo con Command(resume=...). El rechazo se agrega como evento 'rechazada' en una versión 0.x posterior.",
+  "$comment": "El humano aprobó el pack. Reanuda el grafo con Command(resume=...). El rechazo es el evento 'rechazada'.",
   "title": "aprobada",
   "required": ["agente", "payload"],
   "properties": {

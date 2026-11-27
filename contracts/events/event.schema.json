@@ -135,6 +135,15 @@
       "then": { "$ref": "aprobada.schema.json" }
     },
     {
+      "$comment": "Si el tipo es rechazada, aplica su esquema (el motivo sirve para aprender después).",
+      "if": {
+        "$comment": "Detecta el tipo rechazada.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "rechazada" } }
+      },
+      "then": { "$ref": "rechazada.schema.json" }
+    },
+    {
       "$comment": "Si el tipo es editada, aplica su esquema (registra el diff humano para aprender después).",
       "if": {
         "$comment": "Detecta el tipo editada.",

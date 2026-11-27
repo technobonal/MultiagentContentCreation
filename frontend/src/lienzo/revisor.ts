@@ -73,6 +73,7 @@ const T = {
   persiste: { es: "El hallazgo persiste", "pt-BR": "O achado persiste" },
   esperando: { es: "Esperando aprobación humana", "pt-BR": "Aguardando aprovação humana" },
   aprobadaHumano: { es: "Aprobada por el humano", "pt-BR": "Aprovada pelo humano" },
+  rechazadaHumano: { es: "Rechazada por el humano", "pt-BR": "Rejeitada pelo humano" },
   respaldadas: { es: "afirmaciones respaldadas", "pt-BR": "afirmações respaldadas" },
   abiertos: { es: "hallazgos abiertos", "pt-BR": "achados abertos" },
 } as const satisfies Record<string, Textos>;
@@ -166,6 +167,21 @@ export function tarjetaDeRevisor(estado: Estado, idioma: IdiomaFase): TarjetaRev
       lineas: [
         `${s.afirmaciones_respaldadas}/${s.afirmaciones_totales} ${T.respaldadas[idioma]} · ${r.hallazgos_abiertos} ${T.abiertos[idioma]}`,
       ],
+      cita: null,
+      slide: null,
+      afirmacion: null,
+    };
+  }
+
+  // Rechazo del humano: su motivo y, si lo dio, qué se esperaba.
+  if (ultimo.tipo === "rechazada") {
+    const rechazo = estado.decision?.rechazo;
+    if (rechazo === undefined) return null;
+    return {
+      clave,
+      tono: "aviso",
+      titulo: T.rechazadaHumano[idioma],
+      lineas: rechazo.esperado === undefined ? [rechazo.motivo] : [rechazo.motivo, rechazo.esperado],
       cita: null,
       slide: null,
       afirmacion: null,

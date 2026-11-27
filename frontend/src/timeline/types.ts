@@ -20,6 +20,7 @@ export const TIPOS_EVENTO = [
   "corregir",
   "aprobacion_solicitada",
   "aprobada",
+  "rechazada",
   "editada",
   "run_finalizada",
 ] as const;
@@ -185,13 +186,20 @@ export interface PayloadAprobada {
   readonly decision: "aprobada";
   readonly comentario?: string;
 }
+export interface PayloadRechazada {
+  readonly decision: "rechazada";
+  readonly motivo: string;
+  readonly responsable?: "estratega" | "redactor" | "director_arte" | "revisor";
+  readonly esperado?: string;
+}
 export interface PayloadEditada {
   readonly campo: string;
   readonly texto_antes: string;
   readonly texto_despues: string;
 }
 export interface PayloadRunFinalizada {
-  readonly estado_final: EstadoRevision;
+  /** "rechazada" solo si la persona rechazó el pack. */
+  readonly estado_final: EstadoRevision | "rechazada";
   readonly fact_ledger_ref: string;
   readonly sello: Sello;
 }
@@ -227,6 +235,7 @@ export type Evento =
   | Sobre<"corregir", PayloadCorregir>
   | Sobre<"aprobacion_solicitada", PayloadAprobacionSolicitada>
   | Sobre<"aprobada", PayloadAprobada>
+  | Sobre<"rechazada", PayloadRechazada>
   | Sobre<"editada", PayloadEditada>
   | Sobre<"run_finalizada", PayloadRunFinalizada>;
 
@@ -323,7 +332,12 @@ export interface Estado {
   readonly ledger: Readonly<Record<string, RegistroLedger>>;
   readonly hallazgos: Readonly<Record<string, Hallazgo>>;
   readonly revision: PayloadAprobacionSolicitada | null;
-  readonly decision: { readonly seq: number; readonly comentario?: string } | null;
+  // La decisión humana: una aprobación (con su comentario) o, si trae `rechazo`, un rechazo.
+  readonly decision: {
+    readonly seq: number;
+    readonly comentario?: string;
+    readonly rechazo?: PayloadRechazada & { readonly slide?: number };
+  } | null;
   readonly final: PayloadRunFinalizada | null;
   readonly ediciones: readonly Edicion[];
   readonly agentes: Readonly<Record<string, { readonly tipo: string; readonly seq: number }>>;

@@ -1,5 +1,7 @@
 """Aprobación humana (HITL): textos vigentes de un run y validación de la decisión de la persona.
 
+La decisión es aprobar (con o sin ediciones) o rechazar con un motivo.
+
 Funciones puras, sin red ni estado: reciben los eventos ya emitidos y la ficha de la plantilla. Así se
 prueban solas y las usan tanto el endpoint (para rechazar una decisión mala con un 422) como el orquestador
 (para emitir los eventos `editada` y `aprobada`).
@@ -19,6 +21,8 @@ from app.agentes.redactor import campos_del_redactor
 
 # Tope del contrato `texto` (common.schema.json): un evento con más caracteres no valida.
 TEXTO_MAX_CONTRATO = 400
+# Agentes que se pueden señalar como responsables en un rechazo (contrato `rechazada`).
+RESPONSABLES = ("estratega", "redactor", "director_arte", "revisor")
 
 
 class DecisionInvalida(Exception):
@@ -40,11 +44,57 @@ class Edicion:
 
 
 @dataclass(frozen=True)
+class Rechazo:
+    """Por qué la persona rechaza el pack. Solo el motivo es obligatorio."""
+
+    motivo: str
+    responsable: str | None = None
+    slide: int | None = None
+    esperado: str | None = None
+
+
+@dataclass(frozen=True)
 class Decision:
-    """Decisión de la persona: ediciones (puede no haber) y comentario opcional. Siempre es una aprobación."""
+    """Decisión de la persona. Con `rechazo` el pack se rechaza; sin él es una aprobación, con o sin ediciones."""
 
     ediciones: tuple[Edicion, ...] = ()
     comentario: str | None = None
+    rechazo: Rechazo | None = None
+
+
+def _texto_opcional(valor: Any, nombre: str, motivos: list[str]) -> str | None:
+    """Texto sin espacios en los bordes, o None si no vino o quedó vacío; anota por qué si no sirve."""
+    if valor is None:
+        return None
+    if not isinstance(valor, str):
+        motivos.append(f"«{nombre}» debe ser un texto.")
+        return None
+    limpio = valor.strip()
+    if len(limpio) > TEXTO_MAX_CONTRATO:
+        motivos.append(f"«{nombre}» supera {TEXTO_MAX_CONTRATO} caracteres ({len(limpio)}).")
+    return limpio or None
+
+
+def _validar_rechazo(cuerpo: Mapping[str, Any], ficha: Mapping[str, Any]) -> Decision:
+    """Un rechazo va solo: mezclarlo con ediciones o comentario sería una decisión ambigua."""
+    motivos = [f"«{k}» no se puede enviar junto con un rechazo." for k in sorted(set(cuerpo) - {"rechazo"})]
+    crudo = cuerpo["rechazo"]
+    if not isinstance(crudo, Mapping):
+        raise DecisionInvalida([*motivos, "«rechazo» debe ser un objeto con al menos el motivo."])
+    motivos += [f"Clave desconocida en el rechazo: «{k}»." for k in sorted(set(crudo) - {"motivo", "responsable", "slide", "esperado"})]
+    motivo = _texto_opcional(crudo.get("motivo"), "motivo", motivos)
+    if motivo is None and (crudo.get("motivo") is None or isinstance(crudo.get("motivo"), str)):
+        motivos.append("Para rechazar hay que escribir el motivo.")
+    esperado = _texto_opcional(crudo.get("esperado"), "esperado", motivos)
+    responsable = crudo.get("responsable")
+    if responsable is not None and responsable not in RESPONSABLES:
+        motivos.append(f"«responsable» debe ser uno de: {', '.join(RESPONSABLES)}.")
+    slide = crudo.get("slide")
+    if slide is not None and (isinstance(slide, bool) or slide not in [s["numero"] for s in ficha["slides"]]):
+        motivos.append(f"El carrusel no tiene el slide {slide!r}.")
+    if motivos:
+        raise DecisionInvalida(motivos)
+    return Decision(rechazo=Rechazo(motivo, responsable, slide, esperado))
 
 
 def textos_vigentes(eventos: Sequence[Mapping[str, Any]]) -> dict[tuple[int, str], str]:
@@ -73,11 +123,14 @@ def _limites(ficha: Mapping[str, Any]) -> dict[tuple[int, str], int]:
 def validar_decision(cuerpo: Any, eventos: Sequence[Mapping[str, Any]], ficha: Mapping[str, Any]) -> Decision:
     """Convierte el cuerpo del POST en una `Decision` o lanza `DecisionInvalida` con todos los motivos.
 
-    Forma esperada: {"ediciones": [{"slide": 2, "campo": "cuerpo", "texto": "..."}], "comentario": "..."},
-    con las dos claves opcionales.
+    Para aprobar: {"ediciones": [{"slide": 2, "campo": "cuerpo", "texto": "..."}], "comentario": "..."}, con las
+    dos claves opcionales. Para rechazar: {"rechazo": {"motivo": "...", "responsable": "revisor", "slide": 3,
+    "esperado": "..."}}, con solo el motivo obligatorio.
     """
     if not isinstance(cuerpo, Mapping):
         raise DecisionInvalida(["El cuerpo debe ser un objeto JSON."])
+    if "rechazo" in cuerpo:
+        return _validar_rechazo(cuerpo, ficha)
     desconocidas = sorted(set(cuerpo) - {"ediciones", "comentario"})
     motivos: list[str] = [f"Clave desconocida: «{k}»." for k in desconocidas]
 

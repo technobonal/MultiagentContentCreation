@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/rechazada.schema.json",
+  "$comment": "El humano rechazó el pack y el run se cierra. El motivo es obligatorio: junto con quién falló y qué debía hacer, es la materia prima para aprender del rechazo más adelante. Si el problema está en un slide, va en el sobre ('slide').",
+  "title": "rechazada",
+  "required": ["agente", "payload"],
+  "properties": {
+    "agente": { "const": "humano" },
+    "payload": {
+      "$comment": "Decisión de rechazo con su porqué.",
+      "type": "object",
+      "required": ["decision", "motivo"],
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "const": "rechazada",
+          "description": "Decisión de la persona."
+        },
+        "motivo": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        },
+        "responsable": {
+          "type": "string",
+          "enum": ["estratega", "redactor", "director_arte", "revisor"],
+          "description": "Agente que falló, si la persona lo sabe."
+        },
+        "esperado": {
+          "$ref": "../common.schema.json#/$defs/texto"
+        }
+      }
+    }
+  }
+}

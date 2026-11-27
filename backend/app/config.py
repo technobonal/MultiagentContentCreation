@@ -333,3 +333,6 @@ PLANTILLA_POR_DEFECTO = os.environ.get("PLANTILLA_POR_DEFECTO", "ig_carrusel_pas
 VARIANTE_PLANTILLA = os.environ.get("VARIANTE_PLANTILLA", "")
 # Igual para la composición ("a" o "b" en la Cápsula).
 COMPOSICION_PLANTILLA = os.environ.get("COMPOSICION_PLANTILLA", "")
+
+# Registro de rechazos (una línea JSON por rechazo). Puede tener texto de fuentes privadas: está fuera de Git.
+RECHAZOS_ARCHIVO = Path(os.environ.get("RECHAZOS_ARCHIVO") or Path(__file__).resolve().parents[1] / "datos" / "rechazos.jsonl")

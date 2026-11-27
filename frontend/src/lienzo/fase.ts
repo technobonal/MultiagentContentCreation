@@ -23,6 +23,7 @@ type ClaveFase =
   | "corrigiendo"
   | "aprobacion"
   | "aprobada"
+  | "rechazada"
   | "editando"
   | "terminado"
   | "desconocida";
@@ -39,6 +40,7 @@ const TEXTOS: Readonly<Record<ClaveFase, Readonly<Record<IdiomaFase, string>>>> 
   corrigiendo: { es: "Corrigiendo…", "pt-BR": "Corrigindo…" },
   aprobacion: { es: "Esperando aprobación…", "pt-BR": "Aguardando aprovação…" },
   aprobada: { es: "Aprobada", "pt-BR": "Aprovada" },
+  rechazada: { es: "Rechazada", "pt-BR": "Rejeitada" },
   editando: { es: "Editando…", "pt-BR": "Editando…" },
   terminado: { es: "Terminado", "pt-BR": "Concluído" },
   desconocida: { es: "Procesando…", "pt-BR": "Processando…" },
@@ -60,6 +62,7 @@ const FASE_POR_TIPO: Readonly<Record<string, ClaveFase>> = {
   corregir: "corrigiendo",
   aprobacion_solicitada: "aprobacion",
   aprobada: "aprobada",
+  rechazada: "rechazada",
   editada: "editando",
   run_finalizada: "terminado",
 };

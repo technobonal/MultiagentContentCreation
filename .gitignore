@@ -40,3 +40,6 @@ retomar_paso2.md
 # Fuentes PDF de prueba de terceros (no se versionan)
 backend/fuentes/salud.pdf
 backend/fuentes/CTRL_BROCHURE_muestra.pdf
+
+# Registro local de rechazos: puede tener texto de fuentes privadas
+backend/datos/
