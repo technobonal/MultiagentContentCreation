@@ -87,6 +87,18 @@ def test_editar_a_mano_quita_el_visto_bueno_antes_y_despues_de_emitirse():
     assert not informe(run.add("editada", 1, campo="titulo").eventos)["visto_bueno"]
 
 
+def test_una_edicion_re_verificada_vuelve_al_verde_y_no_arrastra_lo_viejo(subtests):
+    """A5: editar y re-verificar (verificación posterior a la `editada`) da verde; los veredictos viejos caducan."""
+    # El texto viejo tenía una frase no verificada; se edita y la re-verificación la respalda.
+    run = Run().texto(1).verif(1, "no_verificada", "Frase vieja.").add("editada", 1, campo="titulo", texto_despues="b")
+    with subtests.test("sin re-verificar sigue en rojo"):
+        assert not informe(run.eventos)["visto_bueno"]
+    with subtests.test("re-verificado pasa a verde, sin arrastrar la frase vieja"):
+        r = informe(run.verif(1, "respaldada", "Frase nueva.").eventos)
+        assert r["visto_bueno"] and colores(r) == {1: "verde"}
+        assert not any("Frase vieja." in m for m in r["slides"][0]["motivos"])
+
+
 @pytest.mark.parametrize("run", [Run("sin_fuente_verificada").texto(1).verif(1), Run()], ids=["sin_fuente", "sin_textos"])
 def test_sin_fuente_o_sin_textos_no_hay_visto_bueno(run):
     r = informe(run.eventos)

@@ -1,10 +1,14 @@
 """Semáforo de aprobación: verde o rojo por slide, calculado por código a partir de los eventos. Nunca por un LLM.
 
 Un slide está en rojo si tiene un hallazgo mayor o bloqueante abierto, una frase «no verificada» (sin cita
-literal), texto del redactor sin ningún veredicto sobre su versión actual, una edición a mano (no se vuelve
-a verificar) o una alerta del asesor sobre su texto actual. Las alertas se acumulan: volver a preguntarle y que
+literal), texto del redactor sin ningún veredicto sobre su versión actual, una edición a mano todavía sin
+re-verificar o una alerta del asesor sobre su texto actual. Las alertas se acumulan: volver a preguntarle y que
 no repita una no la quita (si no, bastaría con insistir). Solo hay visto bueno si todo está en verde. Verde significa que pasó estos controles, no que el
 texto sea verdad: el revisor puede equivocarse.
+
+Una `editada` emitida (A5) cuenta como un cambio de texto: caducan los veredictos anteriores y, si la persona
+pidió re-verificar, los veredictos nuevos (posteriores) deciden el color. Solo las ediciones de una decisión
+TODAVÍA no emitida (parámetro `ediciones`) se marcan «sin re-verificar», porque esas se aplican al aprobar.
 """
 
 from collections.abc import Mapping, Sequence
@@ -22,9 +26,11 @@ def informe(eventos: Sequence[Mapping[str, Any]], ediciones: Sequence[Any] = ())
     """
     slides: set[int] = set()
     del_redactor: set[int] = set()
-    ultima_escritura: dict[int, int] = {}
+    # Último cambio de texto por slide: cuenta tanto `escribir_texto` como una `editada` a mano (A5).
+    ultimo_cambio: dict[int, int] = {}
     verificaciones: list[Mapping[str, Any]] = []
     abiertos_por_id: dict[str, Mapping[str, Any]] = {}
+    # Solo las ediciones de una decisión sin emitir: se aplican al aprobar y no se re-verifican.
     editados: list[tuple[int, str]] = [(e.slide, e.campo) for e in ediciones]
     generales: list[str] = []
     consultas: list[Mapping[str, Any]] = []
@@ -37,14 +43,12 @@ def informe(eventos: Sequence[Mapping[str, Any]], ediciones: Sequence[Any] = ())
             generales.append("No hay una fuente verificada: nada se comprobó contra un documento.")
         elif tipo == "texto_propuesto":
             del_redactor.add(slide)
-        elif tipo == "escribir_texto":
-            ultima_escritura[slide] = e["seq"]
+        elif tipo in ("escribir_texto", "editada"):  # ambos reescriben el texto del slide
+            ultimo_cambio[slide] = e["seq"]
         elif tipo == "verificacion_fidelidad":
             verificaciones.append(e)
         elif tipo == "hallazgo_abierto":
             abiertos_por_id[payload["hallazgo_id"]] = e
-        elif tipo == "editada":
-            editados.append((slide, payload["campo"]))
         elif tipo == "asesoria":
             consultas.append(e)
 
@@ -54,10 +58,10 @@ def informe(eventos: Sequence[Mapping[str, Any]], ediciones: Sequence[Any] = ())
     motivos: dict[int, list[str]] = {n: [] for n in slides}
     avisos: dict[int, list[str]] = {n: [] for n in slides}
 
-    # Solo valen los veredictos posteriores a la última escritura: los de un texto ya reescrito no cuentan.
+    # Solo valen los veredictos posteriores al último cambio: los de un texto ya reescrito o editado no cuentan.
     vigentes: dict[int, list[Mapping[str, Any]]] = {}
     for v in verificaciones:
-        if v["seq"] > ultima_escritura.get(v.get("slide"), 0):
+        if v["seq"] > ultimo_cambio.get(v.get("slide"), 0):
             vigentes.setdefault(v.get("slide"), []).append(v["payload"])
     for n in sorted(del_redactor):
         motivos.setdefault(n, [])
@@ -84,8 +88,8 @@ def informe(eventos: Sequence[Mapping[str, Any]], ediciones: Sequence[Any] = ())
         for alerta in consulta["payload"]["alertas"]:
             n = alerta["slide"]
             motivo = f"Alerta del asesor: «{alerta['frase']}» — {alerta['explicacion']} (sugiere {alerta['sugerencia']})"
-            # Deja de valer solo si el texto del slide se volvió a escribir después del consejo.
-            if consulta["seq"] > ultima_escritura.get(n, 0) and motivo not in motivos.setdefault(n, []):
+            # Deja de valer solo si el texto del slide se volvió a escribir o editar después del consejo.
+            if consulta["seq"] > ultimo_cambio.get(n, 0) and motivo not in motivos.setdefault(n, []):
                 motivos[n].append(motivo)
 
     for slide, campo in editados:
