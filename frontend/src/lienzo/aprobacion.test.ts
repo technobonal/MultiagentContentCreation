@@ -10,6 +10,8 @@ import {
   enviarAprobacion,
   RECHAZO_VACIO,
   esperaAprobacion,
+  necesitaExcepcion,
+  pedirInforme,
   textoActual,
 } from "./aprobacion.ts";
 
@@ -137,5 +139,34 @@ describe("cuerpoRechazo", () => {
     expect(llamar).toHaveBeenCalledWith("/api/runs/run_1/aprobacion", expect.objectContaining({
       method: "POST", body: JSON.stringify({ rechazo: { motivo: "m" } }),
     }));
+  });
+});
+
+describe("semáforo y excepción", () => {
+  const VERDE = { visto_bueno: true, generales: [], slides: [{ slide: 1, color: "verde", motivos: [], avisos: [] }] } as const;
+
+  it("hace falta excepción en rojo o con ediciones, aunque el servidor diera verde", () => {
+    expect(necesitaExcepcion(VERDE, 0)).toBe(false);
+    expect(necesitaExcepcion(VERDE, 1)).toBe(true);
+    expect(necesitaExcepcion({ ...VERDE, visto_bueno: false }, 0)).toBe(true);
+  });
+
+  it("la excepción viaja solo si tiene texto", () => {
+    expect(cuerpoDecision(estado(), {}, "", "  ")).toEqual({ ediciones: [] });
+    expect(cuerpoDecision(estado(), {}, "", " Lo comprobé. ")).toEqual({ ediciones: [], excepcion: "Lo comprobé." });
+  });
+
+  it("pide el informe del run", async () => {
+    const llamar = vi.fn(async () => new Response(JSON.stringify(VERDE)));
+    await expect(pedirInforme("run_1", llamar)).resolves.toEqual(VERDE);
+    expect(llamar).toHaveBeenCalledWith("/api/runs/run_1/informe");
+  });
+
+  it.each([
+    ["un 404", async () => new Response("{}", { status: 404 })],
+    ["una forma inesperada", async () => new Response(JSON.stringify({ visto_bueno: "sí" }))],
+    ["sin conexión", async () => Promise.reject(new Error("red"))],
+  ])("con %s no inventa un informe", async (_, llamar) => {
+    await expect(pedirInforme("run_1", llamar as typeof fetch)).resolves.toBeNull();
   });
 });

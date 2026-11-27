@@ -13,10 +13,11 @@
       "additionalProperties": false,
       "properties": {
         "estado_final": {
-          "$comment": "El estado de la revisión o, si la persona rechazó el pack, 'rechazada' (solo puede darse al final).",
+          "$comment": "El estado de la revisión o, según la decisión de la persona (solo al final): 'rechazada', o 'aprobada_sin_visto_bueno' si aprobó con el semáforo en rojo.",
           "anyOf": [
             { "$ref": "../common.schema.json#/$defs/estado_revision" },
-            { "const": "rechazada" }
+            { "const": "rechazada" },
+            { "const": "aprobada_sin_visto_bueno" }
           ]
         },
         "fact_ledger_ref": {

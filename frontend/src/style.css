@@ -858,6 +858,44 @@ input[type="range"] {
   opacity: 0.75;
 }
 
+/* Semáforo de la revisión: el color acompaña al texto, que ya dice «verde» o «rojo». */
+.semaforo ul {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.semaforo-slide {
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  border-left: 4px solid;
+  font-size: 0.8125rem;
+}
+
+.semaforo-resumen {
+  padding: 6px 8px;
+  border: 1px solid;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.semaforo-verde {
+  border-color: #3fb97f;
+}
+
+.semaforo-rojo {
+  border-color: var(--error);
+}
+
+.semaforo-motivo {
+  display: block;
+  margin-top: 2px;
+}
+
+.semaforo-aviso {
+  opacity: 0.75;
+}
+
 /* Rechazar: se distingue de aprobar sin competir con él. */
 .panel-aprobacion-botones .boton-rechazar {
   margin-left: auto;

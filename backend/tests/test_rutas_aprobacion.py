@@ -18,8 +18,13 @@ FICHA = {
 async def _run_esperando(registro: RegistroRuns, esperando: bool = True):
     """Ejecución real con dos textos dibujados; con `esperando` abre la espera como lo hace el orquestador."""
     ejecucion = registro.crear(hacer_entrada(), SimpleNamespace(ficha=FICHA), "real")
+    await ejecucion.emitir("redactor", "texto_propuesto", {"campo": "titulo", "texto": "Salud para todos"}, slide=1)
     await ejecucion.emitir("director_arte", "escribir_texto", {"campo": "titulo", "texto": "Salud para todos"}, slide=1)
     await ejecucion.emitir("director_arte", "escribir_texto", {"campo": "cuerpo", "texto": "Un derecho."}, slide=1)
+    await ejecucion.emitir("revisor", "verificacion_fidelidad", {
+        "afirmacion_id": "a1", "afirmacion": "Salud para todos", "clasificacion": "opinion_cta",
+        "veredicto": "no_aplica", "cita": None, "motivo": "m",
+    }, slide=1)
     if esperando:
         ejecucion.abrir_decision()
     return ejecucion
@@ -47,7 +52,7 @@ def test_las_ediciones_llegan_con_el_antes_calculado_por_el_servidor(falsos, reg
     async def escenario():
         ej = await _run_esperando(registro)
         # El cliente no manda el «antes»: lo calcula el servidor desde lo dibujado.
-        r = await _post(ej.run_id, json={"ediciones": [{"slide": 1, "campo": "titulo", "texto": "Salud y bienestar"}], "comentario": "Ok"})
+        r = await _post(ej.run_id, json={"ediciones": [{"slide": 1, "campo": "titulo", "texto": "Salud y bienestar"}], "comentario": "Ok", "excepcion": "Lo comprobé."})
         return ej, r
 
     ej, r = correr(escenario())
@@ -117,10 +122,14 @@ def test_el_orquestador_recibe_la_decision_del_endpoint_y_cierra_el_run(falsos, 
             ej, fuente(), "cliente", KIT, fabricar_agentes()[0], esperar_aprobacion=True, aprobacion_timeout_seg=5.0))
         while not any(e["tipo"] == "aprobacion_solicitada" for e in ej.eventos):
             await asyncio.sleep(0.001)
-        r = await _post(ej.run_id, json={"ediciones": [{"slide": 1, "campo": "titulo", "texto": "De la persona"}]})
+        edicion = {"ediciones": [{"slide": 1, "campo": "titulo", "texto": "De la persona"}]}
+        bloqueada = await _post(ej.run_id, json=edicion)  # editar quita el visto bueno
+        assert bloqueada.status_code == 422
+        r = await _post(ej.run_id, json={**edicion, "excepcion": "Lo comprobé."})
         await tarea
         return ej, r
 
     ej, r = correr(escenario())
     assert r.status_code == 202
     assert [e["tipo"] for e in ej.eventos][-4:] == ["aprobacion_solicitada", "editada", "aprobada", "run_finalizada"]
+    assert ej.eventos[-1]["payload"]["estado_final"] == "aprobada_sin_visto_bueno"

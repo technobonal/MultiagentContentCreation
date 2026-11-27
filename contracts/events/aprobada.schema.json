@@ -18,6 +18,21 @@
         },
         "comentario": {
           "$ref": "../common.schema.json#/$defs/texto"
+        },
+        "excepcion": {
+          "$comment": "La persona aprobó sin visto bueno (semáforo en rojo). El motivo es obligatorio y el run no queda como 'aprobada'.",
+          "type": "object",
+          "required": ["motivo", "slides_en_rojo"],
+          "additionalProperties": false,
+          "properties": {
+            "motivo": { "$ref": "../common.schema.json#/$defs/texto" },
+            "slides_en_rojo": {
+              "$comment": "Slides en rojo al decidir. Vacío si el problema era de todo el carrusel (por ejemplo, sin fuente).",
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "$ref": "../common.schema.json#/$defs/slide_num" }
+            }
+          }
         }
       }
     }

@@ -23,10 +23,42 @@ export interface EdicionEnviada {
   readonly texto: string;
 }
 
-/** Cuerpo del POST: ediciones (puede ser vacío) y comentario opcional. */
+/** El semáforo que calcula el servidor. */
+export interface Informe {
+  readonly visto_bueno: boolean;
+  readonly generales: readonly string[];
+  readonly slides: readonly {
+    readonly slide: number;
+    readonly color: "verde" | "rojo";
+    readonly motivos: readonly string[];
+    readonly avisos: readonly string[];
+  }[];
+}
+
+/** Hace falta una excepción si el servidor no da el visto bueno o si la persona editó algo (no se re-verifica). */
+export function necesitaExcepcion(informe: Informe, cambios: number): boolean {
+  return !informe.visto_bueno || cambios > 0;
+}
+
+/** Pide el semáforo del run; null si no se pudo obtener (entonces no se ofrece aprobar). */
+export async function pedirInforme(runId: string, llamar: typeof fetch = fetch): Promise<Informe | null> {
+  try {
+    const respuesta = await llamar(`/api/runs/${encodeURIComponent(runId)}/informe`);
+    if (!respuesta.ok) return null;
+    const json = (await respuesta.json()) as Partial<Informe> | null;
+    return typeof json?.visto_bueno === "boolean" && Array.isArray(json.slides) && Array.isArray(json.generales)
+      ? (json as Informe)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Cuerpo del POST: ediciones (puede ser vacío), comentario opcional y, en rojo, la excepción. */
 export interface CuerpoDecision {
   readonly ediciones: readonly EdicionEnviada[];
   readonly comentario?: string;
+  readonly excepcion?: string;
 }
 
 /** Agentes que se pueden señalar como responsables al rechazar. */
@@ -108,14 +140,15 @@ export function camposModificados(estado: Estado, borradores: Borradores): reado
 }
 
 /** Cuerpo del POST: solo los campos modificados y el comentario si no está vacío. */
-export function cuerpoDecision(estado: Estado, borradores: Borradores, comentario: string): CuerpoDecision {
+export function cuerpoDecision(estado: Estado, borradores: Borradores, comentario: string, excepcion = ""): CuerpoDecision {
   const ediciones = camposModificados(estado, borradores).map((c) => ({
     slide: c.slide,
     campo: c.campo,
     texto: textoActual(borradores, c).trim(),
   }));
   const limpio = comentario.trim();
-  return limpio === "" ? { ediciones } : { ediciones, comentario: limpio };
+  const porque = excepcion.trim();
+  return { ediciones, ...(limpio === "" ? {} : { comentario: limpio }), ...(porque === "" ? {} : { excepcion: porque }) };
 }
 
 /** Motivos de un error del servidor: «motivos» (422 y 409) o «detail» (404); si no, un mensaje con el código. */

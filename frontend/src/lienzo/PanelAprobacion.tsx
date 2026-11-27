@@ -4,9 +4,10 @@
  * y los botones «Aprobar» / «Aprobar con cambios» y «Rechazar» (que pide el motivo). Los eventos `editada`,
  * `aprobada`, `rechazada` y `run_finalizada` los
  * emite el servidor y llegan por el SSE: el panel solo envía la decisión y muestra los motivos si la rechaza.
- * Las ediciones no se vuelven a verificar contra la fuente, y el panel lo dice.
+ * Arriba va el semáforo del servidor; en rojo (o si hay ediciones, que no se re-verifican) solo se puede aprobar
+ * escribiendo una excepción, y el run queda marcado «sin visto bueno».
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Estado } from "../timeline/types.ts";
 import {
   camposEditables,
@@ -16,10 +17,13 @@ import {
   cuerpoRechazo,
   enviarAprobacion,
   esperaAprobacion,
+  necesitaExcepcion,
+  pedirInforme,
   RECHAZO_VACIO,
   textoActual,
 } from "./aprobacion.ts";
-import type { Borradores, CuerpoDecision, CuerpoRechazo } from "./aprobacion.ts";
+import type { Borradores, CuerpoDecision, CuerpoRechazo, Informe } from "./aprobacion.ts";
+import { InformeSemaforo } from "./InformeSemaforo.tsx";
 import { FormularioRechazo } from "./FormularioRechazo.tsx";
 
 export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: string }) {
@@ -30,6 +34,24 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
   // null: no se está rechazando; si no, lo que la persona lleva escrito.
   const [rechazo, setRechazo] = useState<typeof RECHAZO_VACIO | null>(null);
 
+  // undefined: cargando; null: no se pudo obtener.
+  const [informe, setInforme] = useState<Informe | null | undefined>(undefined);
+  const [excepcion, setExcepcion] = useState("");
+  const [intento, setIntento] = useState(0);
+  const esperando = esperaAprobacion(estado);
+
+  useEffect(() => {
+    if (!esperando) return;
+    let cancelado = false;
+    setInforme(undefined);
+    void pedirInforme(runId).then((i) => {
+      if (!cancelado) setInforme(i);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [esperando, runId, intento]);
+
   // Tras decidir, el panel se reemplaza por un aviso con lo que quedó editado a mano.
   if (estado.decision !== null || estado.final !== null) {
     const rechazado = estado.decision?.rechazo;
@@ -37,6 +59,14 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
       return (
         <aside className="panel-aprobacion panel-aprobacion-cerrado" role="status">
           Carrusel rechazado{rechazado.slide === undefined ? "" : ` (slide ${rechazado.slide})`}: {rechazado.motivo}
+        </aside>
+      );
+    }
+    const sinAval = estado.decision?.excepcion;
+    if (sinAval !== undefined) {
+      return (
+        <aside className="panel-aprobacion panel-aprobacion-cerrado" role="status">
+          Aprobado por una persona, sin visto bueno: {sinAval.motivo}
         </aside>
       );
     }
@@ -53,6 +83,8 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
   const campos = camposEditables(estado);
   const cambios = camposModificados(estado, borradores).length;
   const sello = estado.revision.sello;
+  // Sin informe no se sabe si hay visto bueno: no se ofrece aprobar.
+  const enRojo = informe ? necesitaExcepcion(informe, cambios) : false;
 
   async function decidir(cuerpo: CuerpoDecision | CuerpoRechazo) {
     setEnviando(true);
@@ -77,6 +109,30 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
           deshabilitado={enviando}
           alCambiar={setRechazo}
         />
+      )}
+
+      {informe === undefined && <p className="panel-aprobacion-aviso">Cargando el informe de revisión…</p>}
+      {informe === null && (
+        <p className="panel-aprobacion-aviso" role="alert">
+          No se pudo cargar el informe: sin él no se puede aprobar.{" "}
+          <button type="button" onClick={() => setIntento((n) => n + 1)}>
+            Reintentar
+          </button>
+        </p>
+      )}
+      {informe && <InformeSemaforo informe={informe} />}
+
+      {rechazo === null && enRojo && (
+        <label className="panel-aprobacion-campo semaforo-excepcion">
+          Para aprobar igual, escribí por qué (quedará como «aprobada sin visto bueno»)
+          <textarea
+            rows={2}
+            maxLength={400}
+            value={excepcion}
+            disabled={enviando}
+            onChange={(e) => setExcepcion(e.currentTarget.value)}
+          />
+        </label>
       )}
 
       {rechazo === null && (
@@ -140,8 +196,16 @@ export function PanelAprobacion({ estado, runId }: { estado: Estado; runId: stri
               >
                 Rechazar
               </button>
-              <button type="button" disabled={enviando} onClick={() => void decidir(cuerpoDecision(estado, borradores, comentario))}>
-                {enviando ? "Enviando…" : cambios > 0 ? `Aprobar con ${cambios} cambio${cambios === 1 ? "" : "s"}` : "Aprobar"}
+              <button
+                type="button"
+                disabled={enviando || !informe || (enRojo && excepcion.trim() === "")}
+                onClick={() => void decidir(cuerpoDecision(estado, borradores, comentario, enRojo ? excepcion : ""))}
+              >
+                {enviando
+                  ? "Enviando…"
+                  : enRojo
+                    ? "Aprobar sin visto bueno"
+                    : "Aprobar"}
               </button>
             </>
           ) : (

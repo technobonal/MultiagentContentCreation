@@ -185,6 +185,8 @@ export interface PayloadAprobacionSolicitada {
 export interface PayloadAprobada {
   readonly decision: "aprobada";
   readonly comentario?: string;
+  /** Solo si aprobó con el semáforo en rojo. */
+  readonly excepcion?: { readonly motivo: string; readonly slides_en_rojo: readonly number[] };
 }
 export interface PayloadRechazada {
   readonly decision: "rechazada";
@@ -198,8 +200,8 @@ export interface PayloadEditada {
   readonly texto_despues: string;
 }
 export interface PayloadRunFinalizada {
-  /** "rechazada" solo si la persona rechazó el pack. */
-  readonly estado_final: EstadoRevision | "rechazada";
+  /** Los dos últimos salen solo de la decisión humana. */
+  readonly estado_final: EstadoRevision | "rechazada" | "aprobada_sin_visto_bueno";
   readonly fact_ledger_ref: string;
   readonly sello: Sello;
 }
@@ -336,6 +338,7 @@ export interface Estado {
   readonly decision: {
     readonly seq: number;
     readonly comentario?: string;
+    readonly excepcion?: PayloadAprobada["excepcion"];
     readonly rechazo?: PayloadRechazada & { readonly slide?: number };
   } | null;
   readonly final: PayloadRunFinalizada | null;

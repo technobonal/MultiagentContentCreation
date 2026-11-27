@@ -55,6 +55,8 @@ from app.agentes.revisor_codigo import revisar_codigo as _revisar_codigo
 from app.agentes.revisor_fidelidad import revisar_fidelidad as _revisar_fidelidad
 from app.fuentes.cargador_fuente import FuenteCargada
 from app.runs.rechazos import armar_registro, guardar_rechazo
+from app.runs.semaforo import informe
+from app.runs.aprobacion import Rechazo
 from app.runs.registro import Ejecucion, EventoInvalido
 from app.runs.sello import calcular_sello, decidir_estado_final, hallazgos_abiertos, referencia_fact_ledger
 from app.variantes import (
@@ -395,19 +397,49 @@ async def _correr(
     return _Cierre(estado_final, sello)
 
 
-async def _rechazar(ejecucion: Ejecucion, rechazo: Any, cierre: _Cierre) -> None:
-    """Guarda el rechazo en disco y lo emite. Si el disco falla, el rechazo vale igual y queda avisado en el log."""
+def _guardar_decision(ejecucion: Ejecucion, motivo: Rechazo, cierre: _Cierre, tipo: str, semaforo: dict) -> None:
+    """Guarda en disco un rechazo o una excepción. Si el disco falla, la decisión vale igual y queda avisado."""
     registro = armar_registro(
-        ejecucion.run_id, ejecucion.resolucion.plantilla_id, rechazo, ejecucion.eventos,
-        cierre.estado_final, cierre.sello,
+        ejecucion.run_id, ejecucion.resolucion.plantilla_id, motivo, ejecucion.eventos,
+        cierre.estado_final, cierre.sello, tipo, semaforo,
     )
     try:
         guardar_rechazo(config.RECHAZOS_ARCHIVO, registro)
     except OSError as exc:
-        log.error("No se pudo guardar el rechazo del run %s (%s): %s", ejecucion.run_id, type(exc).__name__, exc)
+        log.error("No se pudo guardar el rechazo o la excepción del run %s (%s): %s",
+                  ejecucion.run_id, type(exc).__name__, exc)
+
+
+async def _rechazar(ejecucion: Ejecucion, rechazo: Rechazo, cierre: _Cierre) -> None:
+    """Guarda el rechazo y lo emite."""
+    _guardar_decision(ejecucion, rechazo, cierre, "rechazo", informe(ejecucion.eventos))
     payload = {"decision": "rechazada", "motivo": rechazo.motivo}
     payload |= {k: v for k, v in (("responsable", rechazo.responsable), ("esperado", rechazo.esperado)) if v}
     await ejecucion.emitir(agente="humano", tipo="rechazada", slide=rechazo.slide, payload=payload)
+
+
+async def _aprobar(ejecucion: Ejecucion, decision: Any, cierre: _Cierre) -> str:
+    """Emite las ediciones y la aprobación; devuelve el estado final, que sale del semáforo."""
+    semaforo = informe(ejecucion.eventos, decision.ediciones)  # antes de emitir las ediciones: aún son de la decisión
+    for ed in decision.ediciones:
+        await ejecucion.emitir(
+            agente="humano", tipo="editada", slide=ed.slide,
+            payload={"campo": ed.campo, "texto_antes": ed.texto_antes, "texto_despues": ed.texto_despues},
+        )
+    payload = {"decision": "aprobada"}
+    if decision.comentario:
+        payload["comentario"] = decision.comentario
+    if decision.excepcion and not semaforo["visto_bueno"]:
+        payload["excepcion"] = {
+            "motivo": decision.excepcion,
+            "slides_en_rojo": [f["slide"] for f in semaforo["slides"] if f["color"] == "rojo"],
+        }
+        _guardar_decision(ejecucion, Rechazo(decision.excepcion), cierre, "excepcion", semaforo)
+    await ejecucion.emitir(agente="humano", tipo="aprobada", payload=payload)
+    if "excepcion" in payload:
+        return "aprobada_sin_visto_bueno"
+    # El endpoint no deja llegar aquí en rojo sin excepción; si pasara, no se informa como aprobada.
+    return cierre.estado_final if semaforo["visto_bueno"] else "requiere_humano"
 
 
 async def _finalizar(ejecucion: Ejecucion, cierre: _Cierre, esperar_aprobacion: bool, timeout_seg: float) -> None:
@@ -415,8 +447,8 @@ async def _finalizar(ejecucion: Ejecucion, cierre: _Cierre, esperar_aprobacion: 
 
     Orden: [editada]* → aprobada → run_finalizada, o bien rechazada → run_finalizada (estado «rechazada»).
     Si nadie decide en `timeout_seg` (0 o menos = sin límite),
-    el run termina igual con estado `requiere_humano`. Con bloqueantes abiertos la persona puede aprobar, pero el
-    estado final no cambia: el sello cubre lo que escribió el modelo, no las ediciones de la persona.
+    el run termina igual con estado `requiere_humano`. Aprobar con el semáforo en rojo exige una excepción y el
+    run queda como `aprobada_sin_visto_bueno`: el sello cubre lo que escribió el modelo, no lo que decidió la persona.
     """
     estado_final = cierre.estado_final
     if esperar_aprobacion:
@@ -428,15 +460,7 @@ async def _finalizar(ejecucion: Ejecucion, cierre: _Cierre, esperar_aprobacion: 
             await _rechazar(ejecucion, decision.rechazo, cierre)
             estado_final = "rechazada"
         else:
-            for ed in decision.ediciones:
-                await ejecucion.emitir(
-                    agente="humano", tipo="editada", slide=ed.slide,
-                    payload={"campo": ed.campo, "texto_antes": ed.texto_antes, "texto_despues": ed.texto_despues},
-                )
-            payload = {"decision": "aprobada"}
-            if decision.comentario:
-                payload["comentario"] = decision.comentario
-            await ejecucion.emitir(agente="humano", tipo="aprobada", payload=payload)
+            estado_final = await _aprobar(ejecucion, decision, cierre)
     await ejecucion.emitir(
         agente="sistema", tipo="run_finalizada",
         payload={

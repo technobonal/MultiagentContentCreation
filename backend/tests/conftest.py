@@ -19,3 +19,9 @@ def _sin_fotos_por_defecto(monkeypatch):
 def _sin_pausa_entre_fotos(monkeypatch):
     """Los tests no esperan entre foto y foto (salvo el que prueba la pausa, que la fija a mano)."""
     monkeypatch.setattr(config, "FOTOS_PAUSA_SEG", 0.0)
+
+
+@pytest.fixture(autouse=True)
+def _sin_escribir_en_el_registro_real(tmp_path, monkeypatch):
+    """Ningún test toca el registro de rechazos de la persona: de ahí van a aprender los agentes."""
+    monkeypatch.setattr(config, "RECHAZOS_ARCHIVO", tmp_path / "rechazos.jsonl")

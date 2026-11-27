@@ -16,6 +16,7 @@ from app.events.validador import comprobar_entrada
 from app.fuentes.cargador_fuente import FuenteError, cargar_fuente
 from app.resolution import cargar_fichas, resolver
 from app.runs.aprobacion import DecisionInvalida, validar_decision
+from app.runs.semaforo import informe
 from app.runs.contexto_real import ORIGEN_REAL, ContextoReal
 from app.runs.orquestador import ejecutar_run
 from app.runs.orquestador_real import ejecutar_run_real
@@ -134,6 +135,15 @@ async def aprobar_run(run_id: str, request: Request, registro: RegistroRuns = De
     if not ejecucion.registrar_decision(decision):
         return _rechazo(409, ["El run ya recibió una decisión."])
     return {"run_id": run_id, "ediciones": len(decision.ediciones)}
+
+
+@router.get("/runs/{run_id}/informe")
+async def informe_de_run(run_id: str, registro: RegistroRuns = Depends(obtener_registro_runs)):
+    """Semáforo del run (verde o rojo por slide, con sus motivos). Es el mismo que decide si se puede aprobar."""
+    ejecucion = registro.obtener(run_id)
+    if ejecucion is None:
+        raise HTTPException(status_code=404, detail=f"No existe la ejecución {run_id}")
+    return informe(ejecucion.eventos)
 
 
 @router.get("/runs/{run_id}/imagenes/{referencia}")

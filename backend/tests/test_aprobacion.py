@@ -1,5 +1,7 @@
 """Pruebas de la aprobación humana: textos vigentes y validación de la decisión. Sin red ni servidor."""
 
+from itertools import count
+
 import pytest
 
 from app.runs.aprobacion import Decision, DecisionInvalida, Edicion, textos_vigentes, validar_decision
@@ -18,15 +20,29 @@ FICHA = {
 }
 
 
+_SEQ = count(1)
+
+
 def _ev(tipo, slide, **payload):
-    return {"tipo": tipo, "slide": slide, "payload": payload}
+    return {"seq": next(_SEQ), "tipo": tipo, "slide": slide, "payload": payload}
 
 
+def _verificado(slide):
+    return _ev("verificacion_fidelidad", slide, afirmacion_id="a1", veredicto="respaldada", afirmacion="Frase.")
+
+
+# Un run en verde: textos del redactor, dibujados y con veredicto.
 EVENTOS = [
+    _ev("texto_propuesto", 1, campo="titulo", texto="Salud para todos"),
     _ev("escribir_texto", 1, campo="titulo", texto="Salud para todos"),
     _ev("escribir_texto", 1, campo="cuerpo", texto="Un derecho de todas las personas."),
+    _ev("texto_propuesto", 2, campo="cta", texto="Pide tu cita"),
     _ev("escribir_texto", 2, campo="cta", texto="Pide tu cita"),
+    _verificado(1),
+    _verificado(2),
 ]
+# Editar a mano quita el visto bueno, así que quien edita tiene que escribir por qué aprueba igual.
+EXCEPCION = "Lo comprobé a mano."
 
 
 def _validar(cuerpo, eventos=EVENTOS):
@@ -59,7 +75,8 @@ def test_aprobar_sin_cambios_es_valido():
 
 
 def test_una_edicion_valida_lleva_el_antes_de_lo_dibujado():
-    d = _validar({"ediciones": [{"slide": 1, "campo": "titulo", "texto": "  Salud y bienestar  "}], "comentario": " Listo. "})
+    d = _validar({"ediciones": [{"slide": 1, "campo": "titulo", "texto": "  Salud y bienestar  "}], "comentario": " Listo. ",
+                  "excepcion": EXCEPCION})
     assert d.ediciones == (Edicion(1, "titulo", "Salud para todos", "Salud y bienestar"),)
     assert d.comentario == "Listo."
 
@@ -71,7 +88,8 @@ def test_una_edicion_sin_cambio_real_se_ignora():
 
 def test_el_antes_sigue_las_ediciones_anteriores():
     eventos = [*EVENTOS, _ev("editada", 1, campo="titulo", texto_antes="Salud para todos", texto_despues="Nuevo")]
-    d = validar_decision({"ediciones": [{"slide": 1, "campo": "titulo", "texto": "Otro"}]}, eventos, FICHA)
+    cuerpo = {"ediciones": [{"slide": 1, "campo": "titulo", "texto": "Otro"}], "excepcion": EXCEPCION}
+    d = validar_decision(cuerpo, eventos, FICHA)
     assert d.ediciones[0].texto_antes == "Nuevo"
 
 
@@ -102,7 +120,7 @@ def test_ediciones_invalidas(edicion, fragmento):
 
 
 def test_el_limite_de_la_ficha_se_cumple_justo():
-    d = _validar({"ediciones": [{"slide": 1, "campo": "titulo", "texto": "x" * 20}]})
+    d = _validar({"ediciones": [{"slide": 1, "campo": "titulo", "texto": "x" * 20}], "excepcion": EXCEPCION})
     assert len(d.ediciones[0].texto_despues) == 20
 
 

@@ -289,7 +289,7 @@ function aplicarTipo(estado: Estado, evento: Evento): Resultado {
 
     case "aprobada":
       return resultado({
-        decision: { seq: evento.seq, comentario: evento.payload.comentario },
+        decision: { seq: evento.seq, comentario: evento.payload.comentario, excepcion: evento.payload.excepcion },
       });
 
     case "rechazada":

@@ -73,6 +73,7 @@ const T = {
   persiste: { es: "El hallazgo persiste", "pt-BR": "O achado persiste" },
   esperando: { es: "Esperando aprobación humana", "pt-BR": "Aguardando aprovação humana" },
   aprobadaHumano: { es: "Aprobada por el humano", "pt-BR": "Aprovada pelo humano" },
+  sinVistoBueno: { es: "Aprobada por una persona, sin visto bueno", "pt-BR": "Aprovada por uma pessoa, sem aval" },
   rechazadaHumano: { es: "Rechazada por el humano", "pt-BR": "Rejeitada pelo humano" },
   respaldadas: { es: "afirmaciones respaldadas", "pt-BR": "afirmações respaldadas" },
   abiertos: { es: "hallazgos abiertos", "pt-BR": "achados abertos" },
@@ -194,9 +195,9 @@ export function tarjetaDeRevisor(estado: Estado, idioma: IdiomaFase): TarjetaRev
     if (d === null) return null;
     return {
       clave,
-      tono: "ok",
-      titulo: T.aprobadaHumano[idioma],
-      lineas: d.comentario === undefined ? [] : [d.comentario],
+      tono: d.excepcion === undefined ? "ok" : "aviso",
+      titulo: (d.excepcion === undefined ? T.aprobadaHumano : T.sinVistoBueno)[idioma],
+      lineas: [d.excepcion?.motivo, d.comentario].filter((l): l is string => l !== undefined),
       cita: null,
       slide: null,
       afirmacion: null,

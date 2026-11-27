@@ -11,6 +11,7 @@ Reglas:
 - El «texto_antes» sale de lo que ya está dibujado (último `escribir_texto` o `editada` del campo), nunca del cliente.
 - Una edición que deja el texto igual se ignora; un mismo campo dos veces en la decisión es un error.
 - Las ediciones NO se vuelven a verificar contra la fuente: el sello cubre solo lo que escribió el modelo.
+- Sin visto bueno (semaforo.py) solo se puede aprobar escribiendo una excepción, y el run lo deja marcado.
 """
 
 from collections.abc import Mapping, Sequence
@@ -18,6 +19,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.agentes.redactor import campos_del_redactor
+from app.runs.semaforo import informe
 
 # Tope del contrato `texto` (common.schema.json): un evento con más caracteres no valida.
 TEXTO_MAX_CONTRATO = 400
@@ -60,6 +62,7 @@ class Decision:
     ediciones: tuple[Edicion, ...] = ()
     comentario: str | None = None
     rechazo: Rechazo | None = None
+    excepcion: str | None = None  # motivo para aprobar sin visto bueno
 
 
 def _texto_opcional(valor: Any, nombre: str, motivos: list[str]) -> str | None:
@@ -131,7 +134,7 @@ def validar_decision(cuerpo: Any, eventos: Sequence[Mapping[str, Any]], ficha: M
         raise DecisionInvalida(["El cuerpo debe ser un objeto JSON."])
     if "rechazo" in cuerpo:
         return _validar_rechazo(cuerpo, ficha)
-    desconocidas = sorted(set(cuerpo) - {"ediciones", "comentario"})
+    desconocidas = sorted(set(cuerpo) - {"ediciones", "comentario", "excepcion"})
     motivos: list[str] = [f"Clave desconocida: «{k}»." for k in desconocidas]
 
     comentario = cuerpo.get("comentario")
@@ -180,6 +183,21 @@ def validar_decision(cuerpo: Any, eventos: Sequence[Mapping[str, Any]], ficha: M
         elif nuevo != vigentes[clave]:  # sin cambio real no hay edición: así no se emite una `editada` sin diferencia
             ediciones.append(Edicion(slide, campo, vigentes[clave], nuevo))
 
+    excepcion = _texto_opcional(cuerpo.get("excepcion"), "excepcion", motivos)
+
     if motivos:
         raise DecisionInvalida(motivos)
-    return Decision(tuple(ediciones), comentario)
+    _exigir_visto_bueno(informe(eventos, ediciones), excepcion)
+    return Decision(tuple(ediciones), comentario, excepcion=excepcion)
+
+
+def _exigir_visto_bueno(semaforo: Mapping[str, Any], excepcion: str | None) -> None:
+    """En rojo hace falta la excepción; en verde sobra (marcaría como dudoso algo que pasó los controles)."""
+    if semaforo["visto_bueno"] and excepcion is not None:
+        raise DecisionInvalida(["El carrusel tiene visto bueno: no hace falta una excepción."])
+    if not semaforo["visto_bueno"] and excepcion is None:
+        rojos = [str(f["slide"]) for f in semaforo["slides"] if f["color"] == "rojo"]
+        detalle = f" Slides en rojo: {', '.join(rojos)}." if rojos else f" {' '.join(semaforo['generales'])}"
+        raise DecisionInvalida([
+            f"No hay visto bueno.{detalle} Para aprobar igual, escribe en «excepcion» por qué; para no aprobar, rechaza."
+        ])
