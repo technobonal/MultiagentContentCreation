@@ -101,7 +101,13 @@ Dónde quedamos: van 8 de las 9 tandas de «Estilos y plantillas» (más abajo, 
 Lo que sigue:
 - [x] Run real en la B (2026-11-26, `run_2c314df9`, celeste): la escena de la foto toma la forma de cada silueta y los 5 slides salen con su foto; la cabeza del slide 4, completa. Si una cara cae en los slides 2 o 3, revisar que sus curvas grandes no la rocen (en el folleto de prueba ahí van edificios). En la paleta celeste el título azul queda al límite (4,7 de 4,5 mínimo): no oscurecer más ese fondo
 - [ ] 9, familia Geométrica (diagonales y rombos; maqueta aprobada)
-- [ ] Calidad de texto vista en `run_2c314df9` (revisar con Frank): el subtítulo de la portada termina en «el refugio que deseas final»; el cuerpo del slide 4 casi repite el del 2; el revisor marcó «control de tu tiempo» en el slide 5, pero dejó pasar el título «Recupera el control de tu tiempo» del slide 3 (sin investigar aún)
+- [x] Fidelidad: ningún slide con texto pasa sin veredictos (2026-11-26). Visto en `run_2c314df9`: los slides 1 a 3 (primer grupo de una llamada) volvieron sin afirmaciones y el run dio «aprobada», sello 4 de 4. Ahora el slide vacío se verifica otra vez por separado y, si sigue vacío, abre un hallazgo «mayor» con responsable `estratega` (nadie lo corrige solo: el run pide una persona). Una afirmación ajena al texto del slide no suma al sello (`es_del_texto`: la mitad de sus palabras con contenido tiene que estar en el slide); si abre un hallazgo, se conserva. El log dice cuántas llegan y cuántas cuentan por slide. Sin cambios de contrato; 1062 tests de backend
+- [x] Arreglo probado con un run real (`run_515f388f`, 2026-11-26): la ronda 1 verificó los 5 slides y se descartaron 12 afirmaciones que no estaban en su slide (nombres de modos, carretera E66, colegios) y habrían podido inflar el sello. Tres (modos CREATE, RECHARGE y CONNECT) son dudosas: el slide 4 dice «crea, recarga o conecta». Ningún slide volvió vacío, así que el reintento solo está probado con tests
+- [ ] URGENTE, fidelidad: el revisor puede cambiar lo que dice el slide y aprobar la versión cambiada. En `run_515f388f` el título del slide 5 «Controla tu tiempo y espacio…» pasó como «permite controlar cómo vives» (respaldada), cuando en los slides 2 y 3 marcó el control de tiempo y espacio como no respaldado. El run dio «aprobada», 12 de 12. Idea: exigir por código que las afirmaciones cubran las palabras de cada campo y pedir en el prompt que no se reformulen (plan antes de programar)
+- [ ] El conteo por slide del revisor es `log.info` y la app no configura el registro: en un arranque normal no se ve (tampoco el resumen de tiempos de `_Medidor`)
+- [ ] Redacción (`run_515f388f`): los slides 2 y 3 terminan con el mismo título
+- [ ] Límites del arreglo: si un slide trae solo ALGUNAS de sus afirmaciones, no se detecta; la comparación es por palabras, no por significado
+- [ ] Calidad de texto vista en `run_2c314df9` (revisar con Frank): el subtítulo de la portada termina en «el refugio que deseas final» y el cuerpo del slide 4 casi repite el del 2
 - [ ] Opcional: espaciar el arte para que se vea la burbuja de Tipografía (suma segundos al run; consultar antes)
 - [ ] Opcional: probar un run real que cubra la pausa tras la última foto (cubierta por test)
 
@@ -110,6 +116,18 @@ Pedir la Cápsula: la interfaz todavía no permite elegirla; se envía `diseno.p
 La plantilla Cápsula se generó con un script temporal fuera del repo: de aquí en adelante `templates/catalog/ig_carrusel_pasos_capsula_6slides/` (SVG y ficha) es la fuente de verdad y se edita a mano.
 
 Al verificar en el navegador, capturar la pantalla COMPLETA (así se detectó que el CSS de la plantilla pisaba el de la app). Cómo levantar todo: ver la sección del 2026-11-25, justo debajo.
+
+### Plan «Aprobación con criterio y aprendizaje» (acordado el 2026-11-26, unas 6 tandas) — VA ANTES de la familia Geométrica
+
+Pedido de Frank: poder rechazar, con un agente que ayude a decidir, corrigiendo hasta tener el visto bueno, y que cada rechazo sirva para que el agente no lo repita. Decisión de Frank sobre el semáforo en rojo: **opción B** (se puede aprobar escribiendo el motivo y queda marcado como «aprobada por una persona, sin visto bueno»).
+
+Principio: la luz verde la decide el CÓDIGO (todos los textos verificados, sin hallazgos abiertos y ediciones re-verificadas). El asesor (LLM, de un modelo distinto al redactor) explica y puede frenar, pero no pone en verde lo que está en rojo. La persona puede rechazar siempre.
+
+- [ ] A1. Cerrar el hueco de las frases cambiadas: el revisor devuelve el trozo literal del slide que juzga, el código comprueba que sea literal y que entre todos cubran cada texto (plan antes de programar)
+- [ ] A2. Botón Rechazar con motivo (evento nuevo, previsto en `aprobada.schema.json`) y registro ordenado de cada rechazo en disco, fuera de Git: agente, error, texto, motivo y qué debe hacer
+- [ ] A3. Informe por slide en verde o rojo hecho por código, bloqueo de la aprobación en rojo y excepción B con motivo. Hoy las ediciones a mano no se re-verifican
+- [ ] A4 y A5. Agente asesor y ciclo corregir y volver a verificar, con tope de rondas
+- [ ] A6. Aprendizaje: lecciones que Frank aprueba, pocas por agente (empezar con 5), en la parte variable del prompt (no romper el caché); lo comprobable pasa a regla de código; medir si el error se repite
 
 ### Para retomar (anotado el 2026-11-25)
 

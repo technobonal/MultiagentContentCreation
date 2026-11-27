@@ -166,12 +166,14 @@ def test_no_respaldada_conserva_la_cita_si_es_literal_y_la_descarta_si_no():
 # ---------------------------- clasificación impuesta por el código ----------------------------
 
 def test_opinion_o_cta_siempre_es_no_aplica_y_sin_cita():
-    (a,) = _una(_a(afirmacion="Guárdalo para después.", tipo="opinion_cta", veredicto="respaldada")).afirmaciones
+    textos = [_texto(titulo="Guárdalo para después.")]
+    (a,) = _una(_a(afirmacion="Guárdalo para después.", tipo="opinion_cta", veredicto="respaldada"), textos=textos).afirmaciones
     assert (a.clasificacion, a.veredicto, a.cita) == ("opinion_cta", "no_aplica", None)
 
 
 def test_una_cifra_vuelve_factual_a_una_opinion():
-    (a,) = _una(_a(afirmacion="Empieza en 5 minutos.", tipo="opinion_cta", veredicto=None, cita=None)).afirmaciones
+    textos = [_texto(titulo="Empieza en 5 minutos.")]
+    (a,) = _una(_a(afirmacion="Empieza en 5 minutos.", tipo="opinion_cta", veredicto=None, cita=None), textos=textos).afirmaciones
     assert a.clasificacion == "factual" and a.veredicto == "no_verificada"
 
 
@@ -323,7 +325,7 @@ def test_hallazgo_del_modelo_de_otro_slide_no_cuenta_como_senalado():
 
 def test_cota_de_afirmaciones_por_slide():
     muchas = [_a(afirmacion=f"Dato {chr(97 + i)}.") for i in range(MAX_AFIRMACIONES_SLIDE + 3)]
-    r = _una(*muchas)
+    r = _una(*muchas, textos=[_texto(titulo="Dato")])
     assert [a.afirmacion_id for a in r.afirmaciones] == [f"a{i}" for i in range(1, MAX_AFIRMACIONES_SLIDE + 1)]
 
 
@@ -363,7 +365,7 @@ def test_slide_sin_texto_en_los_campos_se_omite():
 
 def test_acepta_textos_con_atributo_slide():
     t = SimpleNamespace(slide=1, campos={"titulo": "Sprints"})
-    assert _una(_a(), textos=[t]).afirmaciones[0].slide == 1
+    assert _una(_a("Sprints."), textos=[t]).afirmaciones[0].slide == 1
 
 
 def test_respuesta_sin_la_lista_de_afirmaciones_es_error():
@@ -373,7 +375,7 @@ def test_respuesta_sin_la_lista_de_afirmaciones_es_error():
 
 
 def test_el_pedido_lleva_prompt_fijo_y_solo_los_fragmentos_asignados():
-    pedir = PedirFalso({"afirmaciones": []})
+    pedir = PedirFalso({"afirmaciones": [_a()]})
     _revisar(pedir)
     sistema, usuario = pedir.llamadas[0]
     assert sistema == "SISTEMA FIJO"  # sin el comentario HTML, que no debe llegar al modelo
@@ -497,7 +499,8 @@ def test_agrupado_revisa_dos_slides_en_una_llamada_con_sus_propios_fragmentos():
 
 def test_agrupado_una_cita_de_otro_slide_no_respalda():
     # El slide 1 cita un trozo que solo está en los fragmentos del slide 2: no es literal para él.
-    pedir = PedirFalso({"slides": [{"slide": 1, "afirmaciones": [_a(cita=CITA_P1)]}, {"slide": 2, "afirmaciones": []}]})
+    a2 = _a("El Scrum Master ayuda al equipo.", cita=CITA_P1)
+    pedir = PedirFalso({"slides": [{"slide": 1, "afirmaciones": [_a(cita=CITA_P1)]}, {"slide": 2, "afirmaciones": [a2]}]})
     r = _agrupado(pedir, 2)
     assert r.afirmaciones[0].veredicto == "no_verificada" and r.afirmaciones[0].cita is None
 
@@ -551,7 +554,7 @@ def test_agrupado_acepta_el_numero_de_slide_como_texto():
 def test_agrupado_un_elemento_ilegible_no_tumba_el_run():
     pedir = PedirFalso(
         {"slides": [{"slide": 1, "afirmaciones": [_a()]}, "basura"]},
-        {"afirmaciones": []},  # el slide 2 se revisa solo
+        {"afirmaciones": [_a("El Scrum Master ayuda al equipo.", cita=CITA_P1)]},  # el slide 2 se revisa solo
     )
     r = _agrupado(pedir, 2)
     assert len(pedir.llamadas) == 2 and r.sello["slides_verificados"] == 2
@@ -575,3 +578,61 @@ def test_cita_rechazada_queda_en_el_log_con_su_causa(caplog):
 ])
 def test_causa_de_cita_rechazada(cita, causa):
     assert causa in rf._por_que_no_es_literal(cita)
+
+
+# ---------------------------- ningún slide con texto pasa sin veredictos ----------------------------
+
+A2 = _a("El Scrum Master ayuda al equipo.", cita=CITA_P1)
+VACIOS = {"slides": [{"slide": 1, "afirmaciones": []}, {"slide": 2, "afirmaciones": []}]}
+
+
+def test_un_grupo_que_vuelve_vacio_se_verifica_slide_por_slide():
+    """Lo visto en un run real: los 3 slides de la primera llamada volvieron sin afirmaciones y pasaron."""
+    pedir = PedirFalso(VACIOS, {"afirmaciones": [_a()]}, {"afirmaciones": [A2]})
+    r = _agrupado(pedir, 2)
+    assert len(pedir.llamadas) == 3 and r.hallazgos == []
+    assert [(a.afirmacion_id, a.slide) for a in r.afirmaciones] == [("a1", 1), ("a2", 2)]
+
+
+def test_si_sigue_vacio_abre_un_hallazgo_que_nadie_corrige_solo():
+    pedir = PedirFalso(VACIOS, {"afirmaciones": [_a()]}, {"afirmaciones": []})
+    r = _agrupado(pedir, 2)
+    (h,) = r.hallazgos
+    assert (h.slide, h.dimension, h.gravedad, h.responsable) == (2, "fidelidad", "mayor", "estratega")
+    assert "sin verificar" in h.evidencia
+    assert r.sello["slides_verificados"] == 1
+
+
+def test_de_a_un_slide_tambien_hay_un_segundo_intento_y_solo_uno():
+    pedir = PedirFalso({"afirmaciones": []}, {"afirmaciones": []})
+    r = _revisar(pedir)
+    assert len(pedir.llamadas) == 2 and [h.slide for h in r.hallazgos] == [1]
+
+
+def test_una_afirmacion_ajena_al_slide_no_cuenta_a_favor():
+    ajena = _a("El Product Owner ordena el Product Backlog.", cita=CITA_P1)
+    r = _una(_a(), ajena, brief=_brief({1: (0, 1)}))
+    assert [a.afirmacion for a in r.afirmaciones] == ["Duran un mes como máximo."]
+
+
+def test_solo_afirmaciones_ajenas_es_como_no_haber_verificado():
+    ajena = _a("El Product Owner ordena el Product Backlog.", cita=CITA_P1)
+    pedir = PedirFalso({"afirmaciones": [ajena]}, {"afirmaciones": [ajena]})
+    r = _revisar(pedir, brief=_brief({1: (1,)}))
+    assert r.afirmaciones == [] and [h.slide for h in r.hallazgos] == [1]
+
+
+def test_una_afirmacion_ajena_que_abre_hallazgo_no_se_esconde():
+    ajena = _a("El Product Owner ordena el Product Backlog.", veredicto="contradice", cita=CITA_P1)
+    r = _una(_a(), ajena, brief=_brief({1: (0, 1)}))
+    assert len(r.afirmaciones) == 2 and [h.gravedad for h in r.hallazgos] == ["bloqueante"]
+
+
+@pytest.mark.parametrize("afirmacion, esperado", [
+    ("Se puede controlar cómo vives.", True),
+    ("No se puede controlar todo.", True),
+    ("Una casa debe proporcionar más espacio para la vida que deseas vivir.", False),
+])
+def test_es_del_texto_con_el_slide_del_run_real(afirmacion, esperado):
+    slide = {"titulo": "Controla cómo vives, no todo", "cta": "Diseña tu espacio para vivir a tu ritmo."}
+    assert rf.es_del_texto(afirmacion, slide) is esperado
