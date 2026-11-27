@@ -331,3 +331,5 @@ FOTOS_MAX_PAGINAS = int(os.environ.get("FOTOS_MAX_PAGINAS", "6"))  # páginas de
 PLANTILLA_POR_DEFECTO = os.environ.get("PLANTILLA_POR_DEFECTO", "ig_carrusel_pasos_oscuro_6slides")
 # Fija una variante de color para probarla (por ejemplo "menta"). Vacía: la elige el código según el run_id.
 VARIANTE_PLANTILLA = os.environ.get("VARIANTE_PLANTILLA", "")
+# Igual para la composición ("a" o "b" en la Cápsula).
+COMPOSICION_PLANTILLA = os.environ.get("COMPOSICION_PLANTILLA", "")

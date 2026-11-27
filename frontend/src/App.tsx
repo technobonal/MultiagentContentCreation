@@ -72,6 +72,7 @@ function Pantalla({
   const { svg, error: errorSvg } = usePlantilla(
     vista.estado.plantilla?.plantilla_id,
     vista.estado.plantilla?.variante?.reemplazos,
+    vista.estado.plantilla?.composicion,
   );
 
   // "auto" = idioma de la guía; si el usuario elige otro, manda su elección.

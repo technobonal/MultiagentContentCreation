@@ -4,6 +4,8 @@
   Estilo Cápsula: fondos celeste y azul alternados (el color de cada slide sale de card.json, campo fondo, y lo pinta
   el evento colocar_fondo sobre <rect id="fondo">). Texto a todo el ancho (920 px) para que quepan los mismos límites
   que en la plantilla oscura. Las formas con class="zona-foto" son los lugares reservados para las fotos.
+  Lo marcado con data-composicion="a" o "b" es propio de esa composición: el lienzo deja solo la del run
+  (la "a" si no dice otra). Fotos y textos son comunes a las dos.
   Zona segura vertical: y 120..1200; la barra de progreso es decorativa, en y 1240.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
@@ -44,21 +46,20 @@
       <stop offset="0" stop-color="#22C7E8"/>
       <stop offset="1" stop-color="#6A5CF0"/>
     </linearGradient>
-    <clipPath id="recorte-foto-1"><rect x="80" y="220" width="920" height="430" rx="215"/></clipPath>
-    <clipPath id="recorte-foto-2"><path d="M220 1200V1020A320 320 0 0 1 860 1020V1200Z"/></clipPath>
-    <clipPath id="recorte-foto-3"><path d="M430 0H1000V300A285 285 0 0 1 430 300Z"/></clipPath>
-    <clipPath id="recorte-foto-4"><rect x="80" y="750" width="920" height="420" rx="210"/></clipPath>
-    <clipPath id="recorte-foto-5"><circle cx="540" cy="930" r="260"/></clipPath>
+    <clipPath id="recorte-foto-1"><rect data-composicion="a" x="80" y="220" width="920" height="430" rx="215"/><path data-composicion="b" d="M295 220H960A40 40 0 0 1 1000 260V435A215 215 0 0 1 785 650H120A40 40 0 0 1 80 610V435A215 215 0 0 1 295 220Z"/></clipPath>
+    <clipPath id="recorte-foto-2"><path data-composicion="a" d="M220 1200V1020A320 320 0 0 1 860 1020V1200Z"/><path data-composicion="b" d="M640 700H800A60 60 0 0 1 860 760V1200A0 0 0 0 1 860 1200H220A0 0 0 0 1 220 1200V1120A420 420 0 0 1 640 700Z"/></clipPath>
+    <clipPath id="recorte-foto-3"><path data-composicion="a" d="M430 0H1000V300A285 285 0 0 1 430 300Z"/><path data-composicion="b" d="M430 0H1000A0 0 0 0 1 1000 0V525A60 60 0 0 1 940 585H850A420 420 0 0 1 430 165V0A0 0 0 0 1 430 0Z"/></clipPath>
+    <clipPath id="recorte-foto-4"><rect data-composicion="a" x="80" y="750" width="920" height="420" rx="210"/><path data-composicion="b" d="M290 750H790A210 210 0 0 1 1000 960V1130A40 40 0 0 1 960 1170H120A40 40 0 0 1 80 1130V960A210 210 0 0 1 290 750Z"/></clipPath>
+    <clipPath id="recorte-foto-5"><circle data-composicion="a" cx="540" cy="930" r="260"/><path data-composicion="b" d="M540 670H760A40 40 0 0 1 800 710V930A260 260 0 0 1 540 1190H540A260 260 0 0 1 280 930V930A260 260 0 0 1 540 670Z"/></clipPath>
   </defs>
   <rect id="fondo" width="1080" height="1350" fill="#BBDEFF"/>
 
   <g id="slide-1" class="slide activo" data-rol="gancho">
-    <rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/>
-    <circle cx="262" cy="153" r="17" fill="#3B49DF"/>
-    <g class="zona-foto" data-foto="imagen_portada"><rect x="80" y="220" width="920" height="430" rx="215" fill="url(#degradado)"/></g>
+    <g data-composicion="a"><rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/><circle cx="262" cy="153" r="17" fill="#3B49DF"/></g><g data-composicion="b"><circle cx="97" cy="153" r="17" fill="url(#degradado)"/><circle cx="141" cy="153" r="17" fill="#3B49DF"/><rect x="175" y="136" width="104" height="34" rx="17" fill="url(#degradado)"/></g>
+    <g class="zona-foto" data-foto="imagen_portada"><rect data-composicion="a" x="80" y="220" width="920" height="430" rx="215" fill="url(#degradado)"/><path data-composicion="b" d="M295 220H960A40 40 0 0 1 1000 260V435A215 215 0 0 1 785 650H120A40 40 0 0 1 80 610V435A215 215 0 0 1 295 220Z" fill="url(#degradado)"/></g>
     <g id="imagen-portada" class="hueco-imagen" data-campo="{{imagen_portada}}" data-opcional="true">
       <title>Foto de portada</title>
-      <rect x="80" y="220" width="920" height="430" rx="215" class="hueco-forma" data-radio="23.4% / 50%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
+      <rect data-composicion="a" x="80" y="220" width="920" height="430" rx="215" class="hueco-forma" data-radio="23.4% / 50%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/><path data-composicion="b" d="M295 220H960A40 40 0 0 1 1000 260V435A215 215 0 0 1 785 650H120A40 40 0 0 1 80 610V435A215 215 0 0 1 295 220Z" class="hueco-forma" data-radio="23.4% 4.3% 23.4% 4.3% / 50% 9.3% 50% 9.3%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
       <g clip-path="url(#recorte-foto-1)"><image x="80" y="220" width="920" height="430" preserveAspectRatio="xMidYMid slice" href="{{imagen_portada}}"/></g>
     </g>
     <foreignObject x="80" y="710" width="920" height="222" data-campo="{{titulo}}" data-lineas-max="3" data-fuente-min="56">
@@ -70,30 +71,29 @@
     <g id="progreso-1"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="1"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/></g>
   </g>
   <g id="slide-2" class="slide" data-rol="segundo_gancho">
-    <rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/>
-    <circle cx="262" cy="153" r="17" fill="#FFFFFF"/>
+    <g data-composicion="a"><rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/><circle cx="262" cy="153" r="17" fill="#FFFFFF"/></g><g data-composicion="b"><circle cx="97" cy="153" r="17" fill="url(#degradado)"/><circle cx="141" cy="153" r="17" fill="#FFFFFF"/><rect x="175" y="136" width="104" height="34" rx="17" fill="url(#degradado)"/></g>
     <foreignObject x="80" y="220" width="920" height="210" data-campo="{{titulo}}" data-lineas-max="3" data-fuente-min="56">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:60px;line-height:70px;height:210px;color:#FFFFFF;">{{titulo}}</div>
     </foreignObject>
     <foreignObject x="80" y="462" width="920" height="200" data-campo="{{cuerpo}}" data-lineas-max="4" data-fuente-min="32" data-sigue="titulo" data-separacion="36">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:50px;height:200px;color:#FFFFFF;">{{cuerpo}}</div>
     </foreignObject>
-    <g class="zona-foto" data-foto="imagen_producto"><path d="M220 1200V1020A320 320 0 0 1 860 1020V1200Z" fill="url(#degradado)"/></g>
+    <g class="zona-foto" data-foto="imagen_producto"><path data-composicion="a" d="M220 1200V1020A320 320 0 0 1 860 1020V1200Z" fill="url(#degradado)"/><path data-composicion="b" d="M640 700H800A60 60 0 0 1 860 760V1200A0 0 0 0 1 860 1200H220A0 0 0 0 1 220 1200V1120A420 420 0 0 1 640 700Z" fill="url(#degradado)"/></g>
     <g id="imagen-producto" class="hueco-imagen" data-campo="{{imagen_producto}}" data-opcional="true">
       <title>Foto del producto</title>
-      <path d="M220 1200V1020A320 320 0 0 1 860 1020V1200Z" class="hueco-forma" data-radio="50% 50% 0 0 / 64% 64% 0 0" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
+      <path data-composicion="a" d="M220 1200V1020A320 320 0 0 1 860 1020V1200Z" class="hueco-forma" data-radio="50% 50% 0 0 / 64% 64% 0 0" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/><path data-composicion="b" d="M640 700H800A60 60 0 0 1 860 760V1200A0 0 0 0 1 860 1200H220A0 0 0 0 1 220 1200V1120A420 420 0 0 1 640 700Z" class="hueco-forma" data-radio="65.6% 9.4% 0 0 / 84% 12% 0 0" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
       <g clip-path="url(#recorte-foto-2)"><image x="220" y="700" width="640" height="500" preserveAspectRatio="xMidYMid slice" href="{{imagen_producto}}"/></g>
     </g>
     <g id="progreso-2"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="1"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/></g>
   </g>
   <g id="slide-3" class="slide" data-rol="desarrollo">
-    <g class="zona-foto" data-foto="imagen_apoyo_3"><path d="M430 0H1000V300A285 285 0 0 1 430 300Z" fill="url(#degradado)"/></g>
+    <g class="zona-foto" data-foto="imagen_apoyo_3"><path data-composicion="a" d="M430 0H1000V300A285 285 0 0 1 430 300Z" fill="url(#degradado)"/><path data-composicion="b" d="M430 0H1000A0 0 0 0 1 1000 0V525A60 60 0 0 1 940 585H850A420 420 0 0 1 430 165V0A0 0 0 0 1 430 0Z" fill="url(#degradado)"/></g>
     <g id="imagen-apoyo-3" class="hueco-imagen" data-campo="{{imagen_apoyo_3}}" data-opcional="true">
       <title>Foto de apoyo</title>
-      <path d="M430 0H1000V300A285 285 0 0 1 430 300Z" class="hueco-forma" data-radio="0 0 50% 50% / 0 0 48.7% 48.7%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
+      <path data-composicion="a" d="M430 0H1000V300A285 285 0 0 1 430 300Z" class="hueco-forma" data-radio="0 0 50% 50% / 0 0 48.7% 48.7%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/><path data-composicion="b" d="M430 0H1000A0 0 0 0 1 1000 0V525A60 60 0 0 1 940 585H850A420 420 0 0 1 430 165V0A0 0 0 0 1 430 0Z" class="hueco-forma" data-radio="0 0 10.5% 73.7% / 0 0 10.3% 71.8%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
       <g clip-path="url(#recorte-foto-3)"><image x="430" y="0" width="570" height="585" preserveAspectRatio="xMidYMid slice" href="{{imagen_apoyo_3}}"/></g>
     </g>
-    <rect x="80" y="250" width="200" height="335" rx="100" fill="#3B49DF" fill-opacity=".12"/>
+    <g data-composicion="a"><rect x="80" y="250" width="200" height="335" rx="100" fill="#3B49DF" fill-opacity=".12"/></g><g data-composicion="b"><circle cx="180" cy="330" r="80" fill="#3B49DF" fill-opacity=".12"/><circle cx="180" cy="505" r="80" fill="#3B49DF" fill-opacity=".12"/></g>
     <foreignObject x="80" y="660" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;color:#3B49DF;">{{titulo}}</div>
     </foreignObject>
@@ -103,25 +103,23 @@
     <g id="progreso-3"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="1"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/></g>
   </g>
   <g id="slide-4" class="slide" data-rol="desarrollo">
-    <rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/>
-    <circle cx="262" cy="153" r="17" fill="#FFFFFF"/>
+    <g data-composicion="a"><rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/><circle cx="262" cy="153" r="17" fill="#FFFFFF"/></g><g data-composicion="b"><circle cx="97" cy="153" r="17" fill="url(#degradado)"/><circle cx="141" cy="153" r="17" fill="#FFFFFF"/><rect x="175" y="136" width="104" height="34" rx="17" fill="url(#degradado)"/></g>
     <foreignObject x="80" y="220" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;color:#FFFFFF;">{{titulo}}</div>
     </foreignObject>
     <foreignObject x="80" y="386" width="920" height="312" data-campo="{{cuerpo}}" data-lineas-max="6" data-fuente-min="30" data-sigue="titulo" data-separacion="36">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:52px;height:312px;color:#FFFFFF;">{{cuerpo}}</div>
     </foreignObject>
-    <g class="zona-foto" data-foto="imagen_apoyo_4"><rect x="80" y="750" width="920" height="420" rx="210" fill="url(#degradado)"/></g>
+    <g class="zona-foto" data-foto="imagen_apoyo_4"><rect data-composicion="a" x="80" y="750" width="920" height="420" rx="210" fill="url(#degradado)"/><path data-composicion="b" d="M290 750H790A210 210 0 0 1 1000 960V1130A40 40 0 0 1 960 1170H120A40 40 0 0 1 80 1130V960A210 210 0 0 1 290 750Z" fill="url(#degradado)"/></g>
     <g id="imagen-apoyo-4" class="hueco-imagen" data-campo="{{imagen_apoyo_4}}" data-opcional="true">
       <title>Foto de apoyo</title>
-      <rect x="80" y="750" width="920" height="420" rx="210" class="hueco-forma" data-radio="22.8% / 50%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
+      <rect data-composicion="a" x="80" y="750" width="920" height="420" rx="210" class="hueco-forma" data-radio="22.8% / 50%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/><path data-composicion="b" d="M290 750H790A210 210 0 0 1 1000 960V1130A40 40 0 0 1 960 1170H120A40 40 0 0 1 80 1130V960A210 210 0 0 1 290 750Z" class="hueco-forma" data-radio="22.8% 22.8% 4.3% 4.3% / 50% 50% 9.5% 9.5%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
       <g clip-path="url(#recorte-foto-4)"><image x="80" y="750" width="920" height="420" preserveAspectRatio="xMidYMid slice" href="{{imagen_apoyo_4}}"/></g>
     </g>
     <g id="progreso-4"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="1"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/></g>
   </g>
   <g id="slide-5" class="slide" data-rol="cierre">
-    <rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/>
-    <circle cx="262" cy="153" r="17" fill="#3B49DF"/>
+    <g data-composicion="a"><rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/><circle cx="262" cy="153" r="17" fill="#3B49DF"/></g><g data-composicion="b"><circle cx="97" cy="153" r="17" fill="url(#degradado)"/><circle cx="141" cy="153" r="17" fill="#3B49DF"/><rect x="175" y="136" width="104" height="34" rx="17" fill="url(#degradado)"/></g>
     <foreignObject x="80" y="220" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;color:#3B49DF;">{{titulo}}</div>
     </foreignObject>
@@ -130,17 +128,16 @@
     <foreignObject x="132" y="416" width="816" height="162" data-campo="{{cta}}" data-lineas-max="3" data-fuente-min="36">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t sobre-acento" style="display:flex;align-items:center;font-size:40px;line-height:54px;height:162px;color:#FFFFFF;">{{cta}}</div>
     </foreignObject>
-    <g class="zona-foto" data-foto="imagen_cierre"><circle cx="540" cy="930" r="260" fill="url(#degradado)"/></g>
+    <g class="zona-foto" data-foto="imagen_cierre"><circle data-composicion="a" cx="540" cy="930" r="260" fill="url(#degradado)"/><path data-composicion="b" d="M540 670H760A40 40 0 0 1 800 710V930A260 260 0 0 1 540 1190H540A260 260 0 0 1 280 930V930A260 260 0 0 1 540 670Z" fill="url(#degradado)"/></g>
     <g id="imagen-cierre" class="hueco-imagen" data-campo="{{imagen_cierre}}" data-opcional="true">
       <title>Foto de cierre</title>
-      <circle cx="540" cy="930" r="260" class="hueco-forma" data-radio="50%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
+      <circle data-composicion="a" cx="540" cy="930" r="260" class="hueco-forma" data-radio="50%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/><path data-composicion="b" d="M540 670H760A40 40 0 0 1 800 710V930A260 260 0 0 1 540 1190H540A260 260 0 0 1 280 930V930A260 260 0 0 1 540 670Z" class="hueco-forma" data-radio="50% 7.7% 50% 50% / 50% 7.7% 50% 50%" fill="none" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="4"/>
       <g clip-path="url(#recorte-foto-5)"><image x="280" y="670" width="520" height="520" preserveAspectRatio="xMidYMid slice" href="{{imagen_cierre}}"/></g>
     </g>
     <g id="progreso-5"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="1"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#3B49DF" fill-opacity="0.25"/></g>
   </g>
   <g id="slide-6" class="slide" data-rol="fuentes">
-    <rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/>
-    <circle cx="262" cy="153" r="17" fill="#FFFFFF"/>
+    <g data-composicion="a"><rect x="80" y="136" width="150" height="34" rx="17" fill="url(#degradado)"/><circle cx="262" cy="153" r="17" fill="#FFFFFF"/></g><g data-composicion="b"><circle cx="97" cy="153" r="17" fill="url(#degradado)"/><circle cx="141" cy="153" r="17" fill="#FFFFFF"/><rect x="175" y="136" width="104" height="34" rx="17" fill="url(#degradado)"/></g>
     <foreignObject x="80" y="415" width="920" height="120" data-campo="{{fuente_atribucion}}" data-lineas-max="3" data-fuente-min="24">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:28px;line-height:40px;height:120px;color:#FFFFFF;">{{fuente_atribucion}}</div>
     </foreignObject>
@@ -152,7 +149,7 @@
     <foreignObject x="80" y="745" width="920" height="40" data-campo="{{sello_revision}}" data-lineas-max="1" data-fuente-min="24">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t mono" style="font-size:24px;line-height:40px;height:40px;color:#FFFFFF;">{{sello_revision}}</div>
     </foreignObject>
-    <rect x="640" y="900" width="580" height="260" rx="130" fill="url(#degradado)"/>
+    <g data-composicion="a"><rect x="640" y="900" width="580" height="260" rx="130" fill="url(#degradado)"/></g><g data-composicion="b"><path d="M900 900H1080A0 0 0 0 1 1080 900V1160A0 0 0 0 1 1080 1160H640A0 0 0 0 1 640 1160V1160A260 260 0 0 1 900 900Z" fill="url(#degradado)"/></g>
     <g id="progreso-6"><rect x="80" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="236" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="392" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="548" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="704" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="0.25"/><rect x="860" y="1240" width="140" height="8" rx="4" fill="#FFFFFF" fill-opacity="1"/></g>
   </g>
 </svg>

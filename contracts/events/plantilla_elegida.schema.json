@@ -29,6 +29,11 @@
           "maximum": 1,
           "description": "Confianza de la elección. Por debajo del umbral se usa una plantilla neutra y se avisa."
         },
+        "composicion": {
+          "$comment": "Composición de la plantilla (siluetas y adornos), solo si su ficha declara composiciones. El lienzo deja del SVG lo marcado con este id.",
+          "type": "string",
+          "pattern": "^[a-z0-9_]{1,40}$"
+        },
         "variante": {
           "$comment": "Variante de color de la plantilla, solo si su ficha declara variantes. Viaja completa para que el lienzo la aplique sin leer la ficha y el run conserve sus colores. Los fondos de colocar_fondo ya vienen con la variante aplicada.",
           "type": "object",

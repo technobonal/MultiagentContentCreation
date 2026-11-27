@@ -56,7 +56,9 @@ from app.agentes.revisor_fidelidad import revisar_fidelidad as _revisar_fidelida
 from app.fuentes.cargador_fuente import FuenteCargada
 from app.runs.registro import Ejecucion, EventoInvalido
 from app.runs.sello import calcular_sello, decidir_estado_final, hallazgos_abiertos, referencia_fact_ledger
-from app.variantes import Variante, elegir_variante, ficha_con_variante, payload_con_variante
+from app.variantes import (
+    Composicion, Variante, elegir_composicion, elegir_variante, ficha_con_variante, payload_con_variante,
+)
 
 log = logging.getLogger(__name__)
 
@@ -177,7 +179,9 @@ def _payload_fuente_indexada(fuente: FuenteCargada) -> dict:
     }
 
 
-def _payload_plantilla(resolucion: Any, variante: Variante | None = None) -> dict:
+def _payload_plantilla(
+    resolucion: Any, variante: Variante | None = None, composicion: Composicion | None = None
+) -> dict:
     """Payload de plantilla_elegida con lo ya resuelto (el director de arte aún no elige con LLM)."""
     fijo = resolucion.modo_plantilla == "fijo"
     return payload_con_variante({
@@ -189,7 +193,7 @@ def _payload_plantilla(resolucion: Any, variante: Variante | None = None) -> dic
             else "Plantilla compatible del catálogo (resolución determinista, sin LLM)"
         ),
         "confianza": 1.0,
-    }, variante)
+    }, variante, composicion)
 
 
 async def _emitir_textos_propuestos(ejecucion: Ejecucion, texto: TextoSlide, causa: int | None = None) -> None:
@@ -330,8 +334,9 @@ async def _correr(
         brief = await agentes.generar_brief(cliente, entrada, resolucion, fuente)
     await ejecucion.emitir(agente="estratega", tipo="brief_emitido", payload=brief.payload_evento(resolucion))
     variante = elegir_variante(resolucion.ficha, ejecucion.run_id, config.VARIANTE_PLANTILLA)
+    composicion = elegir_composicion(resolucion.ficha, ejecucion.run_id, config.COMPOSICION_PLANTILLA)
     await ejecucion.emitir(
-        agente="director_arte", tipo="plantilla_elegida", payload=_payload_plantilla(resolucion, variante)
+        agente="director_arte", tipo="plantilla_elegida", payload=_payload_plantilla(resolucion, variante, composicion)
     )
 
     # El redactor trabaja los slides EN SECUENCIA para reutilizar el prefijo fijo del prompt (caché de Groq).

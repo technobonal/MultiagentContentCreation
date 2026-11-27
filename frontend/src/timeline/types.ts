@@ -122,6 +122,8 @@ export interface PayloadBriefEmitido {
 }
 export interface PayloadPlantillaElegida {
   readonly plantilla_id: string;
+  /** Composición (siluetas y adornos), si la plantilla declara composiciones. */
+  readonly composicion?: string;
   /** Variante de color, si la plantilla declara variantes. */
   readonly variante?: { readonly id: string; readonly reemplazos: Readonly<Record<string, string>> };
   readonly modo: Modo;

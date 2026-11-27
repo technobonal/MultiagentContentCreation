@@ -20,6 +20,10 @@
     "margen_superior_px": 120,
     "margen_inferior_px": 150
   },
+  "composiciones": [
+    { "id": "a", "nombre": "Píldoras y arcos" },
+    { "id": "b", "nombre": "Hojas y gotas" }
+  ],
   "variantes": [
     { "id": "celeste", "nombre": "Celeste y azul", "reemplazos": {} },
     { "id": "lavanda", "nombre": "Lavanda y violeta", "reemplazos": { "#BBDEFF": "#E2D4FF", "#3B49DF": "#5B2BB5", "#101828": "#170F2E", "#344054": "#3D3459", "#22C7E8": "#FF8BD1", "#6A5CF0": "#7C4DEB" } },

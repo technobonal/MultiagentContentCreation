@@ -1,7 +1,9 @@
-"""Variantes de color de una plantilla (campo opcional `variantes` de la ficha), sin LLM.
+"""Variantes de una plantilla (campos opcionales `variantes` y `composiciones` de la ficha), sin LLM.
 
-La variante sale del `run_id`: el mismo run siempre da la misma. Es un cambio de colores "original -> nuevo"
-que se aplica a los fondos de los slides (backend) y al SVG (lienzo, con lo que viaja en `plantilla_elegida`).
+Las dos salen del `run_id`, cada una por su lado: el mismo run siempre da lo mismo.
+- Variante: cambio de colores "original -> nuevo" para los fondos de los slides (backend) y el SVG (lienzo).
+- Composición: otras siluetas y adornos; el SVG trae las dos y el lienzo deja la elegida.
+Ambas viajan en `plantilla_elegida`.
 """
 
 import hashlib
@@ -16,20 +18,42 @@ class Variante:
     forzada: bool = False
 
 
+@dataclass(frozen=True)
+class Composicion:
+    id: str
+    nombre: str
+    forzada: bool = False
+
+
+def _elegir(disponibles: list[dict], semilla: str, forzada: str, que: str) -> dict:
+    """La `forzada` (para probar una; debe existir) o la que toque según la semilla."""
+    if forzada:
+        elegida = next((d for d in disponibles if d["id"] == forzada), None)
+        if elegida is None:
+            ids = ", ".join(d["id"] for d in disponibles)
+            raise ValueError(f"La plantilla no tiene la {que} «{forzada}». Disponibles: {ids}.")
+        return elegida
+    # `hash()` cambia entre procesos; sha256 no.
+    numero = int.from_bytes(hashlib.sha256(semilla.encode("utf-8")).digest()[:8], "big")
+    return disponibles[numero % len(disponibles)]
+
+
+def elegir_composicion(ficha: dict, run_id: str, forzada: str = "") -> Composicion | None:
+    """None si la plantilla no declara composiciones."""
+    disponibles = ficha.get("composiciones") or []
+    if not disponibles:
+        return None
+    # La semilla lleva un sufijo para que la composición no vaya atada a la paleta.
+    elegida = _elegir(disponibles, f"{run_id}:composicion", forzada, "composición")
+    return Composicion(elegida["id"], elegida["nombre"], bool(forzada))
+
+
 def elegir_variante(ficha: dict, run_id: str, forzada: str = "") -> Variante | None:
     """None si la plantilla no declara variantes. `forzada` (para probar una) debe existir en la ficha."""
     disponibles = ficha.get("variantes") or []
     if not disponibles:
         return None
-    if forzada:
-        elegida = next((v for v in disponibles if v["id"] == forzada), None)
-        if elegida is None:
-            ids = ", ".join(v["id"] for v in disponibles)
-            raise ValueError(f"La plantilla no tiene la variante «{forzada}». Disponibles: {ids}.")
-    else:
-        # `hash()` cambia entre procesos; sha256 no.
-        numero = int.from_bytes(hashlib.sha256(run_id.encode("utf-8")).digest()[:8], "big")
-        elegida = disponibles[numero % len(disponibles)]
+    elegida = _elegir(disponibles, run_id, forzada, "variante")
     return Variante(elegida["id"], elegida["nombre"], dict(elegida["reemplazos"]), bool(forzada))
 
 
@@ -45,13 +69,15 @@ def ficha_con_variante(ficha: dict, variante: Variante | None) -> dict:
     return {**ficha, "slides": slides}
 
 
-def payload_con_variante(payload: dict, variante: Variante | None) -> dict:
-    """Payload de `plantilla_elegida` con la variante y su porqué en el motivo."""
-    if variante is None:
-        return payload
-    porque = "fijada para probarla" if variante.forzada else "según el identificador del run"
-    return {
-        **payload,
-        "motivo": f"{payload['motivo']}. Colores: {variante.nombre} ({porque})",
-        "variante": {"id": variante.id, "reemplazos": variante.reemplazos},
-    }
+def payload_con_variante(payload: dict, variante: Variante | None, composicion: Composicion | None = None) -> dict:
+    """Payload de `plantilla_elegida` con la variante y la composición, y su porqué en el motivo."""
+    resultado = dict(payload)
+    for etiqueta, elegida in (("Colores", variante), ("Composición", composicion)):
+        if elegida is not None:
+            porque = "fijada para probarla" if elegida.forzada else "según el identificador del run"
+            resultado["motivo"] = f"{resultado['motivo']}. {etiqueta}: {elegida.nombre} ({porque})"
+    if variante is not None:
+        resultado["variante"] = {"id": variante.id, "reemplazos": variante.reemplazos}
+    if composicion is not None:
+        resultado["composicion"] = composicion.id
+    return resultado

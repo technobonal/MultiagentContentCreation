@@ -31,6 +31,24 @@ export function aplicarVariante(texto: string, reemplazos: Readonly<Record<strin
   return texto.replace(/#[0-9A-Fa-f]{6}\b/g, (color) => cambios.get(color.toUpperCase()) ?? color);
 }
 
+// Composición que se dibuja cuando el run no dice otra.
+export const COMPOSICION_POR_DEFECTO = "a";
+
+/**
+ * Una plantilla con composiciones trae las siluetas y adornos de todas, marcados con `data-composicion`: se quita lo
+ * que no es de la elegida. Va antes de dibujar, porque dos recortes en un mismo <clipPath> se sumarían.
+ */
+export function aplicarComposicion(texto: string, composicion: string = COMPOSICION_POR_DEFECTO): string {
+  if (!texto.includes("data-composicion=")) return texto;
+  const doc = new DOMParser().parseFromString(texto, "image/svg+xml");
+  // Un SVG roto se devuelve tal cual: parsearPlantilla da el error claro.
+  if (doc.querySelector("parsererror")) return texto;
+  for (const elemento of Array.from(doc.querySelectorAll("[data-composicion]"))) {
+    if (elemento.getAttribute("data-composicion") !== composicion) elemento.remove();
+  }
+  return new XMLSerializer().serializeToString(doc);
+}
+
 // Asegura que la base termine en "/".
 function conBarraFinal(base: string): string {
   return base.endsWith("/") ? base : `${base}/`;

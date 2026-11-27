@@ -76,6 +76,21 @@
       "maxItems": 7,
       "items": { "$ref": "#/$defs/slide" }
     },
+    "composiciones": {
+      "$comment": "Composiciones opcionales. La primera es la que se dibuja si el run no dice otra. En el SVG, lo propio de cada una lleva data-composicion con su id; las cajas de fotos y textos no cambian.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$comment": "Una composición: su identificador y su nombre visible.",
+        "type": "object",
+        "required": ["id", "nombre"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_]{1,40}$" },
+          "nombre": { "type": "string", "minLength": 3, "maxLength": 40 }
+        }
+      }
+    },
     "variantes": {
       "$comment": "Variantes de color opcionales. La primera es la original (sin reemplazos). Cada una cambia colores del SVG y de los fondos de los slides; el blanco no se reemplaza.",
       "type": "array",

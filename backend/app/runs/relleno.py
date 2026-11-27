@@ -12,7 +12,7 @@ aquí no se lee ninguna), declara la fuente como `sin_fuente_verificada` y no pi
 import json
 
 from app import config
-from app.variantes import elegir_variante, ficha_con_variante, payload_con_variante
+from app.variantes import elegir_composicion, elegir_variante, ficha_con_variante, payload_con_variante
 
 # Origen de los eventos de relleno. "grabado" hace que el lienzo muestre su marca visible, porque
 # no los emite un agente en ejecución. En el paso 2, los agentes reales emiten con "real".
@@ -42,6 +42,7 @@ def construir_guion(run_id: str, entrada: dict, resolucion, color_fondo: str) ->
     """Construye la lista ordenada de eventos de relleno de una ejecución."""
     variante = elegir_variante(resolucion.ficha, run_id, config.VARIANTE_PLANTILLA)
     ficha = ficha_con_variante(resolucion.ficha, variante)
+    composicion = elegir_composicion(resolucion.ficha, run_id, config.COMPOSICION_PLANTILLA)
     fuente = entrada["fuente"]
     # Valores que ya trae el usuario y que el director de arte escribe tal cual (sin redactor).
     valores_usuario = {"fuente_atribucion": fuente["atribucion"], "fuente_licencia": fuente["licencia"]}
@@ -82,7 +83,7 @@ def construir_guion(run_id: str, entrada: dict, resolucion, color_fondo: str) ->
                     else "Plantilla compatible del catálogo (elección de relleno, sin LLM)"
                 ),
                 "confianza": 1.0,
-            }, variante),
+            }, variante, composicion),
         },
     ]
 
