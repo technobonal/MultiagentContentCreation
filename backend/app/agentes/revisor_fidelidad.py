@@ -473,6 +473,22 @@ async def _pedir_slide(pedir: Pedir, sistema: str, slide: int, campos: Mapping[s
     return crudas
 
 
+async def _pedir_slide_seguro(pedir: Pedir, sistema: str, slide: int, campos: Mapping[str, str],
+                              fragmentos: Sequence[Fragmento]) -> list:
+    """Como `_pedir_slide`, pero si el modelo no da una respuesta válida devuelve [] en vez de cortar el run.
+
+    Las frases quedan sin juicio y el llamador abre un `hallazgo_sin_verificar`: el run termina pidiendo una
+    persona, nunca con `run_error`. Una respuesta mala del revisor (JSON roto, cupo agotado) no debe tirar abajo
+    todo el trabajo del estratega, el redactor y el arte.
+    """
+    try:
+        return await _pedir_slide(pedir, sistema, slide, campos, fragmentos)
+    except AgenteError as exc:
+        log.warning("Slide %d: el revisor no dio una respuesta válida (%s); queda sin verificar: %s",
+                    slide, exc.codigo, exc.mensaje)
+        return []
+
+
 async def _verificar_grupo(pedir: Pedir, sistema: str, grupo: Sequence[tuple[int, Mapping[str, str], list]],
                            primer_numero: int) -> list[tuple[list[Afirmacion], list[Frase]]]:
     """Verifica varios slides en UNA llamada; por slide, en el orden del grupo: (afirmaciones, frases sin juicio).
@@ -485,14 +501,20 @@ async def _verificar_grupo(pedir: Pedir, sistema: str, grupo: Sequence[tuple[int
     if len(grupo) > 1:
         usuario = SEPARADOR_SLIDES.join(
             _mensaje_usuario(slide, campos, [f.texto for f in fragmentos]) for slide, campos, fragmentos in grupo)
-        por_slide = _crudas_por_slide(await pedir(sistema, usuario), [slide for slide, _, _ in grupo])
+        try:
+            por_slide = _crudas_por_slide(await pedir(sistema, usuario), [slide for slide, _, _ in grupo])
+        except AgenteError as exc:
+            # La llamada agrupada no fue válida: no se tira el run, se revisa cada slide por separado (más abajo).
+            log.warning("La llamada agrupada del revisor no fue válida (%s); se revisa cada slide por separado: %s",
+                        exc.codigo, exc.mensaje)
+            por_slide = {}
     resultado = []
     numero = primer_numero
     # En el orden del grupo (no en el que respondió el modelo), para que los ids sean deterministas.
     for slide, campos, fragmentos in grupo:
         frases = frases_del_slide(campos)
         if len(grupo) == 1:
-            crudas = await _pedir_slide(pedir, sistema, slide, campos, fragmentos)
+            crudas = await _pedir_slide_seguro(pedir, sistema, slide, campos, fragmentos)
         else:
             crudas = por_slide.get(slide, [])
         juicios = _juzgadas(crudas, slide, frases, fragmentos)
@@ -500,7 +522,7 @@ async def _verificar_grupo(pedir: Pedir, sistema: str, grupo: Sequence[tuple[int
         if len(juicios) < len(frases):
             log.warning("Slide %d: %d de %d frases con veredicto; se pide de nuevo por separado",
                         slide, len(juicios), len(frases))
-            otra = _juzgadas(await _pedir_slide(pedir, sistema, slide, campos, fragmentos), slide, frases, fragmentos)
+            otra = _juzgadas(await _pedir_slide_seguro(pedir, sistema, slide, campos, fragmentos), slide, frases, fragmentos)
             juicios = {**otra, **juicios}
         log.info("Revisor, slide %d: %d de %d frases con veredicto", slide, len(juicios), len(frases))
         if numero + len(juicios) - 1 > MAX_AFIRMACIONES_RUN:

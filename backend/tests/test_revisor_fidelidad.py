@@ -373,10 +373,12 @@ def test_acepta_textos_con_atributo_slide():
     assert _una(_a(), textos=[t]).afirmaciones[0].slide == 1
 
 
-def test_respuesta_sin_la_lista_de_afirmaciones_es_error():
-    with pytest.raises(AgenteError) as e:
-        _revisar(PedirFalso({"otra": []}))
-    assert e.value.codigo == "revisor_respuesta_invalida"
+def test_respuesta_sin_la_lista_de_afirmaciones_deja_el_slide_sin_verificar():
+    # El modelo no devuelve «afirmaciones»: no se tira el run; el slide queda sin verificar (lo mira una persona).
+    # Dos respuestas: el intento del grupo/slide y el reintento por separado, ambos inválidos.
+    r = _revisar(PedirFalso({"otra": []}, {"otra": []}))
+    assert r.afirmaciones == []
+    assert any("Sin verificar" in h.evidencia and h.gravedad == "mayor" for h in r.hallazgos)
 
 
 def test_el_pedido_lleva_prompt_fijo_y_solo_los_fragmentos_asignados():
@@ -458,18 +460,21 @@ def test_reintenta_tras_json_roto():
     assert len(_con_cliente(c).afirmaciones) == 1 and len(c.llamadas) == 2
 
 
-def test_forma_invalida_tras_agotar_reintentos_es_salida_invalida():
-    c = ClienteFalso([json.dumps({"x": 1}), json.dumps({"x": 1})])
-    with pytest.raises(AgenteError) as e:
-        _con_cliente(c)
-    assert e.value.codigo == "salida_invalida" and len(c.llamadas) == 2
+def test_forma_invalida_tras_reintentos_deja_el_slide_sin_verificar():
+    # pedir_json reintenta una vez por pedido (2 llamadas); el slide se pide dos veces (grupo/solo + reintento),
+    # así que agota 4 respuestas inválidas y, en vez de tirar el run, lo deja sin verificar.
+    c = ClienteFalso([json.dumps({"x": 1})] * 4)
+    r = _con_cliente(c)
+    assert r.afirmaciones == [] and any("Sin verificar" in h.evidencia for h in r.hallazgos)
+    assert len(c.llamadas) == 4
 
 
-def test_salida_truncada_falla_sin_reintentar():
-    c = ClienteFalso([(_json(_a())[:30], "length")])
-    with pytest.raises(AgenteError) as e:
-        _con_cliente(c)
-    assert e.value.codigo == "salida_truncada" and len(c.llamadas) == 1
+def test_salida_truncada_deja_el_slide_sin_verificar_sin_reintentar():
+    # Una salida truncada no reintenta (1 llamada por pedido); el slide se pide dos veces y queda sin verificar.
+    c = ClienteFalso([(_json(_a())[:30], "length"), (_json(_a())[:30], "length")])
+    r = _con_cliente(c)
+    assert r.afirmaciones == [] and any("Sin verificar" in h.evidencia for h in r.hallazgos)
+    assert len(c.llamadas) == 2
 
 
 # ---------------------------- prompt real ----------------------------
@@ -519,6 +524,27 @@ def test_agrupado_un_slide_omitido_se_revisa_solo_en_otra_llamada():
     assert len(pedir.llamadas) == 2
     assert "SLIDE: 2" in pedir.llamadas[1][1] and "SLIDE: 1" not in pedir.llamadas[1][1]
     assert [(a.afirmacion_id, a.slide, a.veredicto) for a in r.afirmaciones] == [("a1", 1, "respaldada"), ("a2", 2, "respaldada")]
+
+
+def test_agrupado_si_la_llamada_del_grupo_lanza_se_revisa_cada_slide_por_separado():
+    """El caso del run real run_189726ac: la llamada agrupada devuelve una forma inválida (AgenteError). En vez
+    de tirar el run, cada slide se revisa por separado y se verifica igual."""
+    class GrupoRoto:
+        def __init__(self):
+            self.llamadas = []
+
+        async def __call__(self, sistema, usuario):
+            self.llamadas.append(usuario)
+            if rf.SEPARADOR_SLIDES in usuario:  # la llamada agrupada: simula una salida inválida del modelo
+                raise AgenteError("salida_invalida", "El modelo no devolvió un objeto con la forma esperada.")
+            return {"afirmaciones": [_a(cita=CITA_P1)]} if "SLIDE: 2" in usuario else {"afirmaciones": [_a()]}
+
+    pedir = GrupoRoto()
+    r = _agrupado(pedir, 2)
+    # Una llamada agrupada (que falla) más una por cada slide por separado.
+    assert len(pedir.llamadas) == 3
+    assert [(a.afirmacion_id, a.slide, a.veredicto) for a in r.afirmaciones] == [("a1", 1, "respaldada"), ("a2", 2, "respaldada")]
+    assert r.sello["slides_verificados"] == 2
 
 
 def test_con_pedir_inyectado_y_sin_valor_se_mantiene_una_llamada_por_slide():
