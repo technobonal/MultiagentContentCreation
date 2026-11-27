@@ -5,13 +5,28 @@
  */
 import { useEffect, useState } from "react";
 import type { Estado } from "../timeline/types.ts";
-import { motivosSinHallazgo, pedirInforme } from "./aprobacion.ts";
-import type { Informe } from "./aprobacion.ts";
+import { camposEditables, claveCampo, esperaAprobacion, motivosSinHallazgo, pedirInforme, textoActual } from "./aprobacion.ts";
+import type { Borradores, Informe } from "./aprobacion.ts";
+import { cambiosDelSlide, cuerpoEdicion, pedirReverificacion } from "./reverificar.ts";
 import { problemasDelSlide } from "./slideManual.ts";
 
-export function RevisionSlide({ estado, slide, onVolver }: { estado: Estado; slide: number; onVolver: () => void }) {
+export function RevisionSlide({
+  estado,
+  slide,
+  onVolver,
+  runId,
+}: {
+  estado: Estado;
+  slide: number;
+  onVolver: () => void;
+  // Solo en modo Servidor: con un runId se puede volver a verificar el slide (A5).
+  runId?: string;
+}) {
   const { abiertos, corregidos } = problemasDelSlide(estado, slide);
   const [informe, setInforme] = useState<Informe | null>(null);
+  const [borradores, setBorradores] = useState<Borradores>({});
+  const [reverificando, setReverificando] = useState(false);
+  const [motivos, setMotivos] = useState<readonly string[]>([]);
   // Antes de pedir la aprobación el semáforo está a medias: marcaría en rojo lo que aún no se revisó.
   const pedir = estado.revision !== null ? estado.runId : null;
 
@@ -32,6 +47,22 @@ export function RevisionSlide({ estado, slide, onVolver }: { estado: Estado; sli
   const otros = informe ? motivosSinHallazgo(informe, slide) : [];
   // Alertas del asesor para este slide (si pidió una segunda opinión).
   const alertas = (estado.asesor?.alertas ?? []).filter((a) => a.slide === slide);
+
+  // Re-verificación (A5): solo con servidor y mientras el run espera la decisión.
+  const puedeReverificar = runId !== undefined && esperaAprobacion(estado);
+  const campos = camposEditables(estado).filter((c) => c.slide === slide);
+  const cambios = cambiosDelSlide(estado, borradores, slide);
+
+  async function reverificar(cuerpo: Parameters<typeof pedirReverificacion>[1]) {
+    if (runId === undefined) return;
+    setReverificando(true);
+    setMotivos([]);
+    const r = await pedirReverificacion(runId, cuerpo);
+    setReverificando(false);
+    // Si salió bien, las verificaciones nuevas llegan por el SSE y el informe se recarga solo.
+    if (r.ok) setBorradores({});
+    else setMotivos(r.motivos);
+  }
 
   return (
     <section className="revision-slide" aria-label={`Revisión del slide ${slide}`}>
@@ -75,6 +106,49 @@ export function RevisionSlide({ estado, slide, onVolver }: { estado: Estado; sli
           </li>
         ))}
       </ul>
+
+      {puedeReverificar && (
+        <div className="revision-reverificar">
+          {campos.map((c) => (
+            <label key={claveCampo(c.slide, c.campo)} className="panel-aprobacion-campo">
+              {c.campo}
+              <textarea
+                rows={c.texto.length > 80 ? 3 : 1}
+                maxLength={400}
+                value={textoActual(borradores, c)}
+                disabled={reverificando}
+                onChange={(e) => {
+                  const valor = e.currentTarget.value;
+                  setBorradores((previos) => ({ ...previos, [claveCampo(c.slide, c.campo)]: valor }));
+                }}
+              />
+            </label>
+          ))}
+          {motivos.length > 0 && (
+            <ul role="alert" className="panel-aprobacion-errores">
+              {motivos.map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+            </ul>
+          )}
+          <div className="revision-reverificar-botones">
+            <button
+              type="button"
+              disabled={reverificando || cambios === 0}
+              onClick={() => void reverificar(cuerpoEdicion(estado, borradores, slide))}
+            >
+              {reverificando ? "Verificando…" : "Verificar mi edición"}
+            </button>
+            <button
+              type="button"
+              disabled={reverificando}
+              onClick={() => void reverificar({ slide, modo: "agente" })}
+            >
+              Corregir con el agente
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

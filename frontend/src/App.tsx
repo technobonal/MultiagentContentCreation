@@ -57,11 +57,14 @@ function Pantalla({
   reproductor,
   idiomaGuia,
   runFallido = false,
+  runId,
 }: {
   reproductor: Reproductor;
   idiomaGuia: IdiomaFase;
   // NUEVO (9B-3): el canal falló (solo modo Servidor; false por defecto).
   runFallido?: boolean;
+  // Solo en modo Servidor: habilita re-verificar un slide desde la revisión (A5).
+  runId?: string;
 }) {
   const vista = useReproductor(reproductor);
   // La plantilla la decide el run (evento plantilla_elegida); mientras no llega, la de por defecto.
@@ -129,7 +132,9 @@ function Pantalla({
         />
       )}
 
-      {slideManual !== null && <RevisionSlide estado={vista.estado} slide={slideManual} onVolver={soltarManual} />}
+      {slideManual !== null && (
+        <RevisionSlide estado={vista.estado} slide={slideManual} onVolver={soltarManual} runId={runId} />
+      )}
 
       <div className="controles">
         <div className="fila">
@@ -282,6 +287,7 @@ function PantallaServidor({ fuente, runId }: { fuente: FuenteEnVivo; runId: stri
         reproductor={fuente}
         idiomaGuia={idiomaGuia}
         runFallido={vivo.conexion === "error"}
+        runId={runId}
       />
       {/* Aprobación humana: solo aparece mientras el run espera la decisión (y deja un aviso si se editó algo). */}
       <PanelAprobacion estado={estado} runId={runId} />

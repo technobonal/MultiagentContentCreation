@@ -146,7 +146,8 @@ Principio: la luz verde la decide el CÓDIGO (todos los textos verificados, sin 
 - [ ] A5. Ciclo corregir y volver a verificar (incluidas las ediciones a mano), con tope de rondas
   - [x] A5.1a (2026-11-27) backend: canal de re-verificación en `Ejecucion` (`registrar_reverificacion`/`esperar_pedido`, `reverificando`, `rondas_reverif`); `_finalizar` ahora es un lazo (`_esperar_decision_con_reverificaciones`) que re-verifica un slide sin cerrar el run y vuelve a esperar; `reverificacion.py` (reconstruir hallazgos abiertos + validar el pedido); `ciclo_correccion` acepta `abiertos_iniciales` y `alcance_inicial`; `POST /runs/{id}/reverificar` (modo «edicion» reusa el revisor con tope 1; «agente» corre el ciclo con tope `REVERIF_MAX_RONDAS`=3). 1177 tests
   - [ ] A5.1b backend: pulir el modo «agente» (corrector reescribe → re-verifica) y medir rondas/tokens en un run real
-  - [ ] A5.2 frontend: botones «Verificar mi edición» / «Corregir con el agente» en `RevisionSlide`, estado «verificando…» y refresco del semáforo
+  - [x] A5.2 (2026-11-27) frontend: `reverificar.ts` (`cuerpoEdicion`, `cambiosDelSlide`, `pedirReverificacion`); en `RevisionSlide`, con un `runId` de Servidor y mientras el run espera, aparecen los campos editables del slide y los botones «Verificar mi edición» (activo si cambiaste algo) y «Corregir con el agente», con estado «Verificando…» y errores del servidor. El informe se recarga solo con los eventos nuevos (`ultimoSeq`). `runId` baja App→Pantalla→RevisionSlide (solo modo Servidor). 329 tests, tsc limpio
+  - Nota: la UI no muestra todavía cuántas re-verificaciones quedan; el tope lo avisa el servidor con un 409 (se ve como error). Pulir en A5.1b/validación real.
 - [ ] A6. Aprendizaje: lecciones que Frank aprueba, pocas por agente (empezar con 5), en la parte variable del prompt (no romper el caché); lo comprobable pasa a regla de código; medir si el error se repite
 
 ### Para retomar (anotado el 2026-11-25)

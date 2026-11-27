@@ -1107,6 +1107,19 @@ input[type="range"] {
   border-left-color: #2dd4bf;
 }
 
+/* Re-verificar un slide (A5): campos editables y los dos botones. */
+.revision-reverificar {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--acento);
+}
+
+.revision-reverificar-botones {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
 .revision-asesor-sugerencia {
   font-size: 0.8125rem;
   opacity: 0.8;
