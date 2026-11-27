@@ -19,6 +19,7 @@ export const TIPOS_EVENTO = [
   "hallazgo_corregido",
   "corregir",
   "aprobacion_solicitada",
+  "asesoria",
   "aprobada",
   "rechazada",
   "editada",
@@ -33,6 +34,7 @@ export type Agente =
   | "redactor"
   | "director_arte"
   | "revisor"
+  | "asesor"
   | "sistema"
   | "humano";
 export type Origen = "real" | "grabado";
@@ -182,6 +184,17 @@ export interface PayloadAprobacionSolicitada {
   readonly hallazgos_abiertos: number;
   readonly sello: Sello;
 }
+export interface PayloadAsesoria {
+  readonly modelo: string;
+  readonly frases_revisadas: number;
+  readonly frases_totales: number;
+  readonly alertas: readonly {
+    readonly slide: number;
+    readonly frase: string;
+    readonly explicacion: string;
+    readonly sugerencia: "reescribir" | "quitar" | "rechazar";
+  }[];
+}
 export interface PayloadAprobada {
   readonly decision: "aprobada";
   readonly comentario?: string;
@@ -236,6 +249,7 @@ export type Evento =
   | Sobre<"hallazgo_corregido", PayloadHallazgoCorregido>
   | Sobre<"corregir", PayloadCorregir>
   | Sobre<"aprobacion_solicitada", PayloadAprobacionSolicitada>
+  | Sobre<"asesoria", PayloadAsesoria>
   | Sobre<"aprobada", PayloadAprobada>
   | Sobre<"rechazada", PayloadRechazada>
   | Sobre<"editada", PayloadEditada>

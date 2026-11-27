@@ -336,6 +336,11 @@ async def _correr(
     with medidor.etapa("estratega"):
         brief = await agentes.generar_brief(cliente, entrada, resolucion, fuente)
     await ejecucion.emitir(agente="estratega", tipo="brief_emitido", payload=brief.payload_evento(resolucion))
+    # Los mismos fragmentos que usará el revisor, por si la persona pide una segunda opinión al final.
+    ejecucion.material_asesor = {
+        n: tuple(fuente.fragmentos[i].texto for i in indices if 0 <= i < len(fuente.fragmentos))
+        for n, indices in brief.fragmentos_por_slide.items()
+    }
     variante = elegir_variante(resolucion.ficha, ejecucion.run_id, config.VARIANTE_PLANTILLA)
     composicion = elegir_composicion(resolucion.ficha, ejecucion.run_id, config.COMPOSICION_PLANTILLA)
     await ejecucion.emitir(

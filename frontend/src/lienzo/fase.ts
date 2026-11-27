@@ -22,6 +22,7 @@ type ClaveFase =
   | "verificando"
   | "corrigiendo"
   | "aprobacion"
+  | "asesorando"
   | "aprobada"
   | "rechazada"
   | "editando"
@@ -39,6 +40,7 @@ const TEXTOS: Readonly<Record<ClaveFase, Readonly<Record<IdiomaFase, string>>>> 
   verificando: { es: "Verificando…", "pt-BR": "Verificando…" },
   corrigiendo: { es: "Corrigiendo…", "pt-BR": "Corrigindo…" },
   aprobacion: { es: "Esperando aprobación…", "pt-BR": "Aguardando aprovação…" },
+  asesorando: { es: "Dio su consejo", "pt-BR": "Deu seu conselho" },
   aprobada: { es: "Aprobada", "pt-BR": "Aprovada" },
   rechazada: { es: "Rechazada", "pt-BR": "Rejeitada" },
   editando: { es: "Editando…", "pt-BR": "Editando…" },
@@ -61,6 +63,7 @@ const FASE_POR_TIPO: Readonly<Record<string, ClaveFase>> = {
   hallazgo_corregido: "corrigiendo",
   corregir: "corrigiendo",
   aprobacion_solicitada: "aprobacion",
+  asesoria: "asesorando",
   aprobada: "aprobada",
   rechazada: "rechazada",
   editada: "editando",
@@ -73,6 +76,7 @@ const NOMBRES_AGENTE: Readonly<Record<string, Readonly<Record<IdiomaFase, string
   redactor: { es: "Redactor", "pt-BR": "Redator" },
   director_arte: { es: "Director de arte", "pt-BR": "Diretor de arte" },
   revisor: { es: "Revisor", "pt-BR": "Revisor" },
+  asesor: { es: "Asesor", "pt-BR": "Consultor" },
   sistema: { es: "Sistema", "pt-BR": "Sistema" },
   humano: { es: "Humano", "pt-BR": "Humano" },
 };

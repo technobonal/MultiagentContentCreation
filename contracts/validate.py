@@ -177,12 +177,12 @@ def comprobar_catalogo_eventos(esquemas):
             problemas.append(
                 f"{nombre} difiere del sobre: faltan {sorted(tipos_envelope - conjunto)}, sobran {sorted(conjunto - tipos_envelope)}"
             )
-    if len(tipos_envelope) != 17:  # catálogo 0.1: 15 originales + colocar_imagen y rechazada
-        problemas.append(f"el catálogo 0.1 debe tener 17 eventos y tiene {len(tipos_envelope)}")
+    if len(tipos_envelope) != 18:  # catálogo 0.1: 15 originales + colocar_imagen, rechazada y asesoria
+        problemas.append(f"el catálogo 0.1 debe tener 18 eventos y tiene {len(tipos_envelope)}")
     if problemas:
         registrar("FALLA", "Catálogo de eventos coherente", problemas)
     else:
-        registrar("OK", "Catálogo de eventos coherente (17 eventos)")
+        registrar("OK", "Catálogo de eventos coherente (18 eventos)")
 
 
 # --------------------------------------------------------------------------------------

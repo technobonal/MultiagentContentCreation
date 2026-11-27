@@ -135,6 +135,15 @@
       "then": { "$ref": "aprobada.schema.json" }
     },
     {
+      "$comment": "Si el tipo es asesoria, aplica su esquema (segunda opinión pedida por la persona).",
+      "if": {
+        "$comment": "Detecta el tipo asesoria.",
+        "required": ["tipo"],
+        "properties": { "tipo": { "const": "asesoria" } }
+      },
+      "then": { "$ref": "asesoria.schema.json" }
+    },
+    {
       "$comment": "Si el tipo es rechazada, aplica su esquema (el motivo sirve para aprender después).",
       "if": {
         "$comment": "Detecta el tipo rechazada.",

@@ -308,6 +308,19 @@ PDF_OCR = _booleano(os.environ.get("PDF_OCR", ""), True)
 # se imprime. Los modelos se prueban en orden: salta al siguiente ante 429, 5xx, timeout o respuesta vacía. Los gratis de
 # OpenRouter se limitan seguido y pueden usar lo que se les envía para entrenar: no mandarles fuentes privadas.
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+# Asesor de aprobación (solo a pedido), en Cloudflare Workers AI. Modelos en orden: el segundo es el respaldo y es de
+# otra familia. Solo se usan los «@cf/» (alojados por Cloudflare). Las claves van en el .env y nunca se imprimen.
+CLOUDFLARE_ACCOUNT_ID = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+CLOUDFLARE_API_TOKEN = os.environ.get("CLOUDFLARE_API_KEY_TOKEN", "").strip()
+ASESOR_MODELOS = tuple(
+    m.strip() for m in os.environ.get(
+        "ASESOR_MODELOS", "@cf/google/gemma-4-26b-a4b-it,@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+    ).split(",") if m.strip()
+)
+# Gemma razona antes de responder (1.321 tokens de salida para 3 frases en la prueba): con poco tope llega cortada.
+ASESOR_MAX_TOKENS = int(os.environ.get("ASESOR_MAX_TOKENS", "8000"))
+ASESOR_TIMEOUT_SEG = float(os.environ.get("ASESOR_TIMEOUT_SEG", "180"))
+ASESOR_MAX_CONSULTAS = int(os.environ.get("ASESOR_MAX_CONSULTAS", "3"))  # por run
 OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 OPENROUTER_MODELOS_VISION = tuple(
     m.strip() for m in os.environ.get(

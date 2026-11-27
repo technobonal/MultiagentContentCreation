@@ -63,6 +63,9 @@ class Ejecucion:
         # Aprobación humana: el orquestador abre la espera, el endpoint registra la decisión y despierta al orquestador.
         self._esperando_decision = False
         self._decision = None  # la `Decision` registrada (aprobacion.py); solo se acepta una
+        # Asesor: los fragmentos de la fuente de cada slide (los pone el orquestador) y si hay una consulta en curso.
+        self.material_asesor: dict[int, tuple[str, ...]] = {}
+        self.asesorando = False
         self._decision_lista = asyncio.Event()
         # Imágenes del run (recortes de la fuente) que el navegador pide por URL: referencia -> (bytes, tipo MIME).
         self._imagenes: dict[str, tuple[bytes, str]] = {}
@@ -82,6 +85,10 @@ class Ejecucion:
     def obtener_imagen(self, referencia: str) -> tuple[bytes, str] | None:
         """(bytes, MIME) de la imagen guardada, o None si no existe."""
         return self._imagenes.get(referencia)
+
+    @property
+    def decision_recibida(self) -> bool:
+        return self._decision is not None
 
     @property
     def esperando_decision(self) -> bool:

@@ -33,7 +33,7 @@
         "run_iniciada", "fuente_indexada", "brief_emitido", "plantilla_elegida",
         "texto_propuesto", "colocar_fondo", "colocar_imagen", "escribir_texto", "verificacion_fidelidad",
         "hallazgo_abierto", "hallazgo_corregido", "corregir", "aprobacion_solicitada",
-        "aprobada", "rechazada", "editada", "run_finalizada"
+        "asesoria", "aprobada", "rechazada", "editada", "run_finalizada"
       ],
       "description": "Nombre del evento (catálogo 0.1). Identificadores en ASCII: 'ajustar_tamano', no 'ajustar_tamaño'."
     },

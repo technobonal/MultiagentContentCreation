@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://multiagent.local/contracts/events/asesoria.schema.json",
+  "$comment": "El asesor dio una segunda opinión mientras el run esperaba la decisión (solo cuando la persona lo pide). Sus alertas solo pueden poner un slide en rojo, nunca en verde, y se acumulan hasta que se reescriba el texto.",
+  "title": "asesoria",
+  "required": ["agente", "payload"],
+  "properties": {
+    "agente": { "const": "asesor" },
+    "payload": {
+      "$comment": "Quién opinó, cuánto revisó y qué marcó. Sin alertas no significa aprobado.",
+      "type": "object",
+      "required": ["modelo", "frases_revisadas", "frases_totales", "alertas"],
+      "additionalProperties": false,
+      "properties": {
+        "modelo": { "$ref": "../common.schema.json#/$defs/texto" },
+        "frases_revisadas": { "type": "integer", "minimum": 0 },
+        "frases_totales": { "type": "integer", "minimum": 1 },
+        "alertas": {
+          "$comment": "Frases marcadas. El texto de la frase lo pone el código, no el modelo.",
+          "type": "array",
+          "items": {
+            "$comment": "Una alerta: dónde, qué frase, por qué y qué propone.",
+            "type": "object",
+            "required": ["slide", "frase", "explicacion", "sugerencia"],
+            "additionalProperties": false,
+            "properties": {
+              "slide": { "$ref": "../common.schema.json#/$defs/slide_num" },
+              "frase": { "$ref": "../common.schema.json#/$defs/texto" },
+              "explicacion": { "$ref": "../common.schema.json#/$defs/texto" },
+              "sugerencia": { "type": "string", "enum": ["reescribir", "quitar", "rechazar"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

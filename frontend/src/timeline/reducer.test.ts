@@ -270,7 +270,7 @@ describe("reductor: inmutabilidad", () => {
   });
 });
 
-// --- Tabla por tipo (los 17 tipos) -------------------------------------------
+// --- Tabla por tipo (los 18 tipos) -------------------------------------------
 interface CasoTipo {
   tipo: string;
   eventos: Borrador[];
@@ -309,6 +309,11 @@ const CASOS: CasoTipo[] = [
     expect(e.anomalias.map((a) => a.codigo)).toContain("sello_distinto");
   } },
   { tipo: "aprobada", eventos: [b(18)], verificar: (e) => expect(e.decision?.seq).toBe(1) },
+  { tipo: "asesoria", eventos: [b(6), d("asesor", "asesoria", { modelo: "m", frases_revisadas: 1, frases_totales: 1, alertas: [] })],
+    verificar: (e) => {
+      expect(e.lienzo.textos[1]?.titulo).toBe("Scrum en pocas palabras"); // un consejo no toca el lienzo
+      expect(e.decision).toBeNull();
+    } },
   { tipo: "rechazada", eventos: [d("humano", "rechazada", { decision: "rechazada", motivo: "No es lo que dice la fuente", responsable: "revisor" }, { slide: 3 })],
     verificar: (e) => {
       expect(e.decision?.rechazo).toEqual({ decision: "rechazada", motivo: "No es lo que dice la fuente", responsable: "revisor", slide: 3 });
@@ -321,7 +326,7 @@ const CASOS: CasoTipo[] = [
 ];
 
 describe("reductor: un caso mínimo por tipo", () => {
-  it("la tabla cubre exactamente los 17 tipos del catálogo", () => {
+  it("la tabla cubre exactamente los 18 tipos del catálogo", () => {
     expect(CASOS.map((c) => c.tipo).sort()).toEqual([...TIPOS_EVENTO].sort());
   });
 

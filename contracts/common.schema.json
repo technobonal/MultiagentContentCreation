@@ -22,7 +22,7 @@
     "agente": {
       "$comment": "Quién emite el evento. 'humano' se usa solo en aprobaciones y ediciones; 'sistema' en el ciclo de vida.",
       "type": "string",
-      "enum": ["estratega", "redactor", "director_arte", "revisor", "sistema", "humano"]
+      "enum": ["estratega", "redactor", "director_arte", "revisor", "asesor", "sistema", "humano"]
     },
     "origen": {
       "$comment": "'real' lo emite un agente en ejecución; 'grabado' es una secuencia de desarrollo y el lienzo muestra una marca visible.",

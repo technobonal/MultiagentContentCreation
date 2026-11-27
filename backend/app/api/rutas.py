@@ -15,7 +15,9 @@ from app.events.emisor import filtrar_desde, flujo_sse, flujo_vivo
 from app.events.validador import comprobar_entrada
 from app.fuentes.cargador_fuente import FuenteError, cargar_fuente
 from app.resolution import cargar_fichas, resolver
-from app.runs.aprobacion import DecisionInvalida, validar_decision
+from app.agentes.asesor import asesorar, frases_a_revisar
+from app.agentes.cliente_asesor import AsesorNoDisponible, ClienteAsesor
+from app.runs.aprobacion import DecisionInvalida, textos_vigentes, validar_decision
 from app.runs.semaforo import informe
 from app.runs.contexto_real import ORIGEN_REAL, ContextoReal
 from app.runs.orquestador import ejecutar_run
@@ -135,6 +137,48 @@ async def aprobar_run(run_id: str, request: Request, registro: RegistroRuns = De
     if not ejecucion.registrar_decision(decision):
         return _rechazo(409, ["El run ya recibió una decisión."])
     return {"run_id": run_id, "ediciones": len(decision.ediciones)}
+
+
+def obtener_cliente_asesor() -> ClienteAsesor:
+    """Dependencia aparte para que las pruebas pongan un asesor falso (sin red ni claves)."""
+    return ClienteAsesor()
+
+
+@router.post("/runs/{run_id}/asesor")
+async def pedir_consejo(
+    run_id: str, registro: RegistroRuns = Depends(obtener_registro_runs),
+    cliente: ClienteAsesor = Depends(obtener_cliente_asesor),
+):
+    """La persona pide una segunda opinión. Envía las frases y sus fragmentos de la fuente a Cloudflare.
+
+    Emite `asesoria` y devuelve el semáforo actualizado. 404 sin run; 409 si no espera decisión, ya hay una consulta
+    en curso, se agotaron las consultas o se decidió mientras tanto; 422 si no hay textos; 503 si no está disponible.
+    """
+    ejecucion = registro.obtener(run_id)
+    if ejecucion is None:
+        raise HTTPException(status_code=404, detail=f"No existe la ejecución {run_id}")
+    if not ejecucion.esperando_decision or ejecucion.decision_recibida:
+        return _rechazo(409, ["El asesor solo opina mientras el run espera tu decisión."])
+    if ejecucion.asesorando:
+        return _rechazo(409, ["El asesor ya está revisando: esperá su respuesta."])
+    if sum(e["tipo"] == "asesoria" for e in ejecucion.eventos) >= config.ASESOR_MAX_CONSULTAS:
+        return _rechazo(409, [f"Ya usaste las {config.ASESOR_MAX_CONSULTAS} consultas de este run."])
+    del_redactor = {(e["slide"], e["payload"]["campo"]) for e in ejecucion.eventos if e["tipo"] == "texto_propuesto"}
+    frases = frases_a_revisar(textos_vigentes(ejecucion.eventos), del_redactor)
+    if not frases:
+        return _rechazo(422, ["No hay textos del redactor para revisar."])
+    # Entre las comprobaciones y esta marca no hay ningún await: dos pedidos a la vez no pasan los dos.
+    ejecucion.asesorando = True
+    try:
+        payload = await asesorar(cliente, frases, ejecucion.material_asesor)
+        if not ejecucion.esperando_decision or ejecucion.decision_recibida:
+            return _rechazo(409, ["El run ya se decidió mientras el asesor revisaba: su consejo no se registró."])
+        await ejecucion.emitir(agente="asesor", tipo="asesoria", payload=payload)
+    except AsesorNoDisponible as exc:
+        return _rechazo(503, [exc.mensaje])
+    finally:
+        ejecucion.asesorando = False
+    return informe(ejecucion.eventos)
 
 
 @router.get("/runs/{run_id}/informe")
