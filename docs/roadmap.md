@@ -94,25 +94,24 @@ LangGraph entra en la **Fase 2, después de que existan el revisor y el ciclo de
 - [ ] Prefiltro del revisor en código y recorte de `redactor.md`/`revisor.md`: solo si hace falta más de un run por minuto o el run con 3 rondas de corrección vuelve a pasar los ~21K tokens
 - [ ] Medir el run completo con el log de tiempos y comparar con el objetivo (30-60 s, estimado)
 
-### Para retomar (anotado el 2026-11-27) — EMPEZAR POR AQUÍ
+### Para retomar (anotado el 2026-11-27, tarde) — EMPEZAR POR AQUÍ (seguimos 18:30)
 
-Dónde quedamos: hechas A1 (falta su run real), A2 (rechazar), A3 (semáforo con excepción), A4.1 (asesor en Cloudflare) y las miniaturas para revisar. El asesor se probó solo con textos inventados y todavía NO tiene botón en la pantalla. De estilos van 8 de 9 tandas.
+Dónde quedamos (todo pusheado hasta `7b0bd81`):
+- ✅ A4.2 (asesor en pantalla), ✅ A5 completa (A5.1a lazo+endpoint, A5.2 botones, A5.1b arreglo del semáforo), ✅ prueba real con Groq (`run_ae45df0e`): fidelidad por frase, semáforo por código, re-verificación rojo→verde confirmada.
+- ✅ UX Paso 1 (una sola edición: editar texto solo en la revisión del slide).
+- ✅ Robustez del revisor: una respuesta mala (JSON roto / cupo) ya NO tira el run; degrada a «sin verificar» → requiere_humano. Encontrado en el run real (el error «El modelo no devolvió una respuesta válida»).
 
-UX/UI (acordado el 2026-11-27, principio «trabajá arriba, decidí abajo»: lo de un slide vive en su revisión; lo del carrusel, en una barra de decisión):
-- [x] Paso 1: una sola edición. Se quitaron los campos de texto del panel de aprobación; editar queda solo en la revisión del slide (que re-verifica). El panel deja una pista que lleva ahí. 329 tests
-- [ ] Paso 2: barra de decisión fija abajo (semáforo compacto con salto al slide rojo + Asesor + Aprobar/Rechazar) con jerarquía de botones
-- [ ] Paso 3: la revisión del slide como tarjeta de trabajo ordenada (problemas → campos → acciones)
+Seguir por aquí (orden recomendado):
+1. UX Paso 2: barra de decisión fija abajo (semáforo compacto con salto al slide rojo + Asesor + Aprobar/Rechazar) con jerarquía de botones (primaria llena, rechazar outline-rojo, resto neutras).
+2. UX Paso 3: la revisión del slide como tarjeta ordenada (problemas → campos → acciones).
+3. A6: aprendizaje a partir de rechazos y excepciones (`backend/datos/rechazos.jsonl`).
+4. Tanda 9 de estilos: familia Geométrica (maqueta aprobada).
 
-Orden recomendado (pendiente de que Frank lo confirme):
-1. ~~A4.2: el asesor en la pantalla~~ ✅ hecho el 2026-11-27.
-2. A5: corregir un slide y volver a verificarlo (incluidas las ediciones a mano), con tope de rondas. ← EMPEZAR POR AQUÍ
-3. Prueba final con Groq (Frank la dejó para el final): ver que cada frase tenga veredicto, leer las citas, contar parciales, rondas y tokens, y si salen demasiados slides en rojo mejorar cómo cita el revisor sin relajar el semáforo. Probar el asesor sobre ese run. Pide «ya» antes: gasta tokens de Groq.
-4. A6: aprendizaje a partir de rechazos y excepciones (`backend/datos/rechazos.jsonl`).
-5. Tanda 9 de estilos: familia Geométrica (maqueta aprobada).
+Menores vistos en los runs reales (no bloquean): redacción algo marketinera (títulos tipo «Domina Scrum en 4 pasos», «Inscríbete ahora») y 2/6 rojos por paráfrasis sin cita literal → mejorar cómo cita el revisor sin relajar el semáforo. Y: las alertas del asesor caducan por slide, no por campo (editar un campo limpia las alertas de otro campo del mismo slide).
 
 Menores: redacción (portada con frase rara, títulos repetidos); el conteo por slide del revisor no se ve en un arranque normal (la app no configura el registro INFO); burbuja de Tipografía; run real que cubra la pausa tras la última foto; pendientes de fotos y animaciones de la sección del 2026-11-25.
 
-Cómo levantar todo: backend desde `backend/` con `MODO_RUN=real FOTOS_LICENCIA="Uso autorizado por el titular" ../.venv/Scripts/python.exe -m uvicorn app.main:app --port 8000`; lienzo con `npm run dev` desde `frontend/` (:5173). El backend que quedó encendido el 2026-11-27 es uno TEMPORAL de pruebas (veredictos simulados, sin LLM, y sin A4.1): hay que apagarlo antes de un run real. Claves en el `.env` de la raíz (Groq y, para el asesor, `CLOUDFLARE_ACCOUNT_ID` y `CLOUDFLARE_API_KEY_TOKEN`).
+Cómo levantar todo (modo real con LLM): backend desde `backend/` con `MODO_RUN=real FOTOS_LICENCIA="Uso autorizado por el titular" ../.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000`; lienzo con `npm run dev` desde `frontend/` (:5173). Lanzar un run: `POST /api/runs` con la entrada (ejemplo en `contracts/input/examples/valido_minimo_todo_auto.json`; fuente de prueba `guia_scrum_sintetica.txt`). Claves en el `.env` de la raíz (Groq y, para el asesor, `CLOUDFLARE_ACCOUNT_ID` y `CLOUDFLARE_API_KEY_TOKEN`). Nota: los runs viven en memoria; reiniciar el backend los borra. Al cierre del 2026-11-27 (tarde) se apagaron backend y lienzo.
 
 ### Para retomar (anotado el 2026-11-26)
 
