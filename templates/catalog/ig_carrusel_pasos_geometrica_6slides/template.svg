@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  template.svg · ig_carrusel_pasos_geometrica_6slides · v0.1.0
+  Estilo Geométrico: fondo tinta (#0A0D18) en todos los slides; diagonales y rombos en gradiente aurora
+  (magenta -> violeta -> azul -> cian). El color de fondo sale de card.json (campo fondo) y lo pinta el evento
+  colocar_fondo sobre <rect id="fondo">. Texto a todo el ancho (920 px) con los mismos límites que la plantilla
+  oscura. Base de la familia (9b): solo texto; los huecos de foto y las variantes vienen en tandas siguientes.
+  Zona segura vertical: y 120..1200; la fila de rombos de abajo (y 1255) es decorativa (barra de progreso).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <title>Carrusel lista de pasos (estilo geométrico, 6 slides)</title>
+  <style>
+  :root { --fondo:#0A0D18; --texto:#F4F6FB; --acento:#8B5CF6; --texto-sobre-acento:#F4F6FB; }
+
+  /* Inter (variable): un solo archivo cubre los pesos 400, 600 y 700 de la plantilla. */
+  @font-face {
+    font-family: "Inter";
+    src: url("../../typography/inter/Inter-Variable.ttf") format("truetype");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: block;
+  }
+
+  /* JetBrains Mono Regular: solo se usa en .mono (el sello de revisión), sin negrita. */
+  @font-face {
+    font-family: "JetBrains Mono";
+    src: url("../../typography/jetbrains-mono/JetBrainsMono-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: block;
+  }
+
+  .slide { display: none; }
+  .slide.activo { display: inline; }
+  .t { margin:0; padding:0; overflow:hidden; overflow-wrap:break-word; color:var(--texto);
+       font-family:"Inter", "Segoe UI", Arial, sans-serif; }
+  .titulo { font-weight:700; text-wrap:balance; }
+  .cuerpo { font-weight:400; text-wrap:pretty; }
+  .mono { font-family:"JetBrains Mono", Consolas, monospace; }
+  .sobre-acento { color:var(--texto-sobre-acento); font-weight:600; }
+</style>
+
+  <defs>
+    <linearGradient id="aurora" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FF4D9D"/><stop offset=".45" stop-color="#8B5CF6"/>
+      <stop offset=".75" stop-color="#4C7DFF"/><stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="aurora-d" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF4D9D"/><stop offset=".5" stop-color="#8B5CF6"/><stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="vm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF4D9D"/><stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#8B5CF6" stop-opacity=".5"/><stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow-b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="40"/></filter>
+  </defs>
+  <rect id="fondo" width="1080" height="1350" fill="#0A0D18"/>
+
+  <g id="slide-1" class="slide activo" data-rol="gancho">
+    <ellipse cx="760" cy="300" rx="420" ry="360" fill="url(#glow)" filter="url(#glow-b)"/>
+    <polygon points="0,0 1080,0 1080,520 0,860" fill="url(#aurora-d)" opacity=".16"/>
+    <polygon points="0,860 1080,520 1080,540 0,880" fill="url(#aurora)"/>
+    <path d="M170 178L242 250L170 322L98 250Z" fill="url(#aurora)"/>
+    <path d="M170 216L204 250L170 284L136 250Z" fill="#0A0D18"/>
+    <foreignObject x="80" y="840" width="920" height="222" data-campo="{{titulo}}" data-lineas-max="3" data-fuente-min="56">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:64px;line-height:74px;height:222px;color:#F4F6FB;">{{titulo}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="1080" width="920" height="150" data-campo="{{subtitulo}}" data-lineas-max="3" data-fuente-min="32" data-opcional="true" data-sigue="titulo" data-separacion="36">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:50px;height:150px;color:#9AA3B5;">{{subtitulo}}</div>
+    </foreignObject>
+    <g fill="url(#aurora)"><path d="M120 1244L131 1255L120 1266L109 1255Z"/></g>
+    <g fill="#2A2F40"><path d="M190 1244L201 1255L190 1266L179 1255Z"/><path d="M260 1244L271 1255L260 1266L249 1255Z"/><path d="M330 1244L341 1255L330 1266L319 1255Z"/><path d="M400 1244L411 1255L400 1266L389 1255Z"/><path d="M470 1244L481 1255L470 1266L459 1255Z"/></g>
+  </g>
+
+  <g id="slide-2" class="slide" data-rol="segundo_gancho">
+    <polygon points="1080,0 1080,1350 560,1350" fill="url(#aurora-d)" opacity=".14"/>
+    <path d="M880 820L1040 980L880 1140L720 980Z" fill="none" stroke="url(#aurora)" stroke-width="6"/>
+    <path d="M880 884L976 980L880 1076L784 980Z" fill="url(#vm)" opacity=".5"/>
+    <foreignObject x="80" y="240" width="920" height="222" data-campo="{{titulo}}" data-lineas-max="3" data-fuente-min="56">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:64px;line-height:74px;height:222px;color:#F4F6FB;">{{titulo}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="500" width="920" height="208" data-campo="{{cuerpo}}" data-lineas-max="4" data-fuente-min="32" data-sigue="titulo" data-separacion="36">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:52px;height:208px;color:#9AA3B5;">{{cuerpo}}</div>
+    </foreignObject>
+    <g fill="#2A2F40"><path d="M120 1244L131 1255L120 1266L109 1255Z"/></g>
+    <g fill="url(#aurora)"><path d="M190 1244L201 1255L190 1266L179 1255Z"/></g>
+    <g fill="#2A2F40"><path d="M260 1244L271 1255L260 1266L249 1255Z"/><path d="M330 1244L341 1255L330 1266L319 1255Z"/><path d="M400 1244L411 1255L400 1266L389 1255Z"/><path d="M470 1244L481 1255L470 1266L459 1255Z"/></g>
+  </g>
+
+  <g id="slide-3" class="slide" data-rol="desarrollo">
+    <polygon points="0,0 470,0 290,1350 0,1350" fill="url(#aurora-d)" opacity=".16"/>
+    <polygon points="0,0 60,0 20,1350 0,1350" fill="url(#aurora)"/>
+    <path d="M230 170L310 250L230 330L150 250Z" fill="url(#vm)" opacity=".18"/>
+    <path d="M230 170L310 250L230 330L150 250Z" fill="none" stroke="url(#aurora)" stroke-width="5"/>
+    <text x="230" y="278" font-size="76" font-weight="800" fill="url(#aurora)" font-family="Inter, Arial" text-anchor="middle">1</text>
+    <foreignObject x="80" y="520" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;color:#F4F6FB;">{{titulo}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="680" width="920" height="312" data-campo="{{cuerpo}}" data-lineas-max="6" data-fuente-min="30" data-sigue="titulo" data-separacion="36">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:52px;height:312px;color:#9AA3B5;">{{cuerpo}}</div>
+    </foreignObject>
+    <g fill="#2A2F40"><path d="M120 1244L131 1255L120 1266L109 1255Z"/><path d="M190 1244L201 1255L190 1266L179 1255Z"/></g>
+    <g fill="url(#aurora)"><path d="M260 1244L271 1255L260 1266L249 1255Z"/></g>
+    <g fill="#2A2F40"><path d="M330 1244L341 1255L330 1266L319 1255Z"/><path d="M400 1244L411 1255L400 1266L389 1255Z"/><path d="M470 1244L481 1255L470 1266L459 1255Z"/></g>
+  </g>
+
+  <g id="slide-4" class="slide" data-rol="desarrollo">
+    <polygon points="620,0 1080,0 1080,1350 800,1350" fill="url(#aurora-d)" opacity=".16"/>
+    <polygon points="1020,0 1080,0 1080,1350 1060,1350" fill="url(#aurora)"/>
+    <path d="M230 170L310 250L230 330L150 250Z" fill="url(#vm)" opacity=".18"/>
+    <path d="M230 170L310 250L230 330L150 250Z" fill="none" stroke="url(#aurora)" stroke-width="5"/>
+    <text x="230" y="278" font-size="76" font-weight="800" fill="url(#aurora)" font-family="Inter, Arial" text-anchor="middle">2</text>
+    <foreignObject x="80" y="520" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;color:#F4F6FB;">{{titulo}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="680" width="920" height="312" data-campo="{{cuerpo}}" data-lineas-max="6" data-fuente-min="30" data-sigue="titulo" data-separacion="36">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:36px;line-height:52px;height:312px;color:#9AA3B5;">{{cuerpo}}</div>
+    </foreignObject>
+    <g fill="#2A2F40"><path d="M120 1244L131 1255L120 1266L109 1255Z"/><path d="M190 1244L201 1255L190 1266L179 1255Z"/><path d="M260 1244L271 1255L260 1266L249 1255Z"/></g>
+    <g fill="url(#aurora)"><path d="M330 1244L341 1255L330 1266L319 1255Z"/></g>
+    <g fill="#2A2F40"><path d="M400 1244L411 1255L400 1266L389 1255Z"/><path d="M470 1244L481 1255L470 1266L459 1255Z"/></g>
+  </g>
+
+  <g id="slide-5" class="slide" data-rol="cierre">
+    <ellipse cx="540" cy="320" rx="520" ry="300" fill="url(#glow)" filter="url(#glow-b)"/>
+    <polygon points="0,440 1080,120 1080,150 0,470" fill="url(#aurora)"/>
+    <path d="M540 158L632 250L540 342L448 250Z" fill="url(#aurora)"/>
+    <path d="M540 206L584 250L540 294L496 250Z" fill="#0A0D18"/>
+    <foreignObject x="80" y="840" width="920" height="144" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:60px;line-height:72px;height:144px;color:#F4F6FB;">{{titulo}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="1030" width="920" height="162" data-campo="{{cta}}" data-lineas-max="3" data-fuente-min="36" data-sigue="titulo" data-separacion="36">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:40px;line-height:54px;height:162px;color:#22D3EE;">{{cta}}</div>
+    </foreignObject>
+    <g fill="#2A2F40"><path d="M120 1244L131 1255L120 1266L109 1255Z"/><path d="M190 1244L201 1255L190 1266L179 1255Z"/><path d="M260 1244L271 1255L260 1266L249 1255Z"/><path d="M330 1244L341 1255L330 1266L319 1255Z"/></g>
+    <g fill="url(#aurora)"><path d="M400 1244L411 1255L400 1266L389 1255Z"/></g>
+    <g fill="#2A2F40"><path d="M470 1244L481 1255L470 1266L459 1255Z"/></g>
+  </g>
+
+  <g id="slide-6" class="slide" data-rol="fuentes">
+    <polygon points="0,1120 1080,1000 1080,1030 0,1150" fill="url(#aurora)" opacity=".8"/>
+    <path d="M120 174L166 220L120 266L74 220Z" fill="url(#aurora)"/>
+    <foreignObject x="80" y="415" width="920" height="120" data-campo="{{fuente_atribucion}}" data-lineas-max="3" data-fuente-min="24">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:28px;line-height:40px;height:120px;color:#F4F6FB;">{{fuente_atribucion}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="601" width="920" height="80" data-campo="{{fuente_licencia}}" data-lineas-max="2" data-fuente-min="24">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t cuerpo" style="font-size:28px;line-height:40px;height:80px;color:#F4F6FB;">{{fuente_licencia}}</div>
+    </foreignObject>
+    <foreignObject x="80" y="745" width="920" height="40" data-campo="{{sello_revision}}" data-lineas-max="1" data-fuente-min="24">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="t mono" style="font-size:24px;line-height:40px;height:40px;color:#F4F6FB;">{{sello_revision}}</div>
+    </foreignObject>
+    <g fill="#2A2F40"><path d="M120 1244L131 1255L120 1266L109 1255Z"/><path d="M190 1244L201 1255L190 1266L179 1255Z"/><path d="M260 1244L271 1255L260 1266L249 1255Z"/><path d="M330 1244L341 1255L330 1266L319 1255Z"/><path d="M400 1244L411 1255L400 1266L389 1255Z"/></g>
+    <g fill="url(#aurora)"><path d="M470 1244L481 1255L470 1266L459 1255Z"/></g>
+  </g>
+</svg>
