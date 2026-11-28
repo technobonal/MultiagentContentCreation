@@ -103,6 +103,7 @@ Dónde quedamos (todo pusheado hasta `cf2db64`). Pruebas: backend 1221, frontend
 - ✅ UX extra: al topar las 3 re-verificaciones la tarjeta guía a decidir (no deja botones muertos); aviso en rojo de por qué «Aprobar sin visto bueno» está deshabilitado.
 
 Seguir por aquí (orden recomendado):
+0. **Design thinking sobre los botones (pedido de Frank el 2026-11-27)**: que tocar los botones sea fácil e intuitivo en toda la experiencia (barra de decisión, revisión del slide, asesor). Revisar jerarquía, estados (habilitado/deshabilitado con el porqué visible), rótulos claros, foco/orden y que nunca quede un botón «muerto» sin salida (como pasó con el tope). Aplicar UX/UI + design thinking antes de seguir sumando pantallas.
 1. ¿Pasar la UI (barra/paneles) de índigo a la paleta aurora, por coherencia con Geométrica?
 2. 9d-2 variantes de composición de Geométrica: OPCIONAL (mucho SVG duplicado, valor marginal); solo si Frank lo pide.
 3. A6: aprendizaje a partir de rechazos y excepciones (`backend/datos/rechazos.jsonl`).
