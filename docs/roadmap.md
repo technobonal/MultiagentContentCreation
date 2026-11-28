@@ -94,7 +94,22 @@ LangGraph entra en la **Fase 2, después de que existan el revisor y el ciclo de
 - [ ] Prefiltro del revisor en código y recorte de `redactor.md`/`revisor.md`: solo si hace falta más de un run por minuto o el run con 3 rondas de corrección vuelve a pasar los ~21K tokens
 - [ ] Medir el run completo con el log de tiempos y comparar con el objetivo (30-60 s, estimado)
 
-### Para retomar (anotado el 2026-11-27, tarde) — EMPEZAR POR AQUÍ (seguimos 18:30)
+### Para retomar (anotado el 2026-11-27, noche) — EMPEZAR POR AQUÍ (seguimos mañana)
+
+Dónde quedamos (todo pusheado hasta `cf2db64`). Pruebas: backend 1221, frontend 330, `validate.py` OK.
+- ✅ UX Paso 2 (barra de decisión fija: semáforo de puntos con salto al slide + recuento + Asesor/Rechazar/Aprobar con jerarquía) y ✅ UX Paso 3 (revisión como tarjeta: Problemas → Campos → Acciones).
+- ✅ Paleta: primero tokens semánticos 2026 (índigo); DESPUÉS Frank eligió la paleta DEFINITIVA «aurora» (tinta + gradiente magenta→violeta→cian) con una captura — usarla SIEMPRE (memoria `paleta-2026`). La familia Geométrica ya está en aurora.
+- ✅ Familia Geométrica (tanda 9): 9b base solo texto, 9c huecos de foto rómbicos (slides 1–5), 9d-1 variantes de paleta (aurora/solar/bioma; remapean solo los acentos). Verificada EN VIVO con `run_0a008482`.
+- ✅ UX extra: al topar las 3 re-verificaciones la tarjeta guía a decidir (no deja botones muertos); aviso en rojo de por qué «Aprobar sin visto bueno» está deshabilitado.
+
+Seguir por aquí (orden recomendado):
+1. ¿Pasar la UI (barra/paneles) de índigo a la paleta aurora, por coherencia con Geométrica?
+2. 9d-2 variantes de composición de Geométrica: OPCIONAL (mucho SVG duplicado, valor marginal); solo si Frank lo pide.
+3. A6: aprendizaje a partir de rechazos y excepciones (`backend/datos/rechazos.jsonl`).
+4. Menores: mejorar cómo CITA el revisor para bajar los rojos por paráfrasis sin relajar el semáforo (confirmado en vivo: slide 4 de Scrum en rojo aunque el contenido es correcto); redacción marketinera; las alertas del asesor caducan por slide y no por campo. El asesor (Cloudflare) tarda ~1 min a propósito (a pedido, modelos grandes + cascada) — se dejó así.
+
+---
+### Para retomar (anotado el 2026-11-27, tarde)
 
 Dónde quedamos (todo pusheado hasta `7b0bd81`):
 - ✅ A4.2 (asesor en pantalla), ✅ A5 completa (A5.1a lazo+endpoint, A5.2 botones, A5.1b arreglo del semáforo), ✅ prueba real con Groq (`run_ae45df0e`): fidelidad por frase, semáforo por código, re-verificación rojo→verde confirmada.
