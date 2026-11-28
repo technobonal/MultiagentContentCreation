@@ -214,6 +214,13 @@ export function PanelAprobacion({
         </ul>
       )}
 
+      {/* En rojo, «Aprobar» espera el motivo: el campo está arriba y el botón abajo, así que se avisa por qué. */}
+      {rechazo === null && enRojo && excepcion.trim() === "" && (
+        <p className="panel-aprobacion-aviso" role="status">
+          En rojo, «Aprobar» pide un motivo: escribilo arriba en «Para aprobar igual…».
+        </p>
+      )}
+
       {/* Barra fija al borde inferior: semáforo (salta al slide) + recuento + botones con su jerarquía. */}
       <BarraDecision
         slides={informe?.slides.map((s) => ({ slide: s.slide, color: s.color })) ?? []}

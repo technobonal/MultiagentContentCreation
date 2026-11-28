@@ -1210,6 +1210,16 @@ input[type="range"] {
   border-left-color: var(--asesor);
 }
 
+/* Tope de re-verificaciones: la tarjeta deja de ofrecer botones y guía a decidir en la barra. */
+.revision-tope {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 4px solid var(--acento);
+  background: var(--superficie);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+}
+
 /* Re-verificar un slide (A5): los dos botones de la zona de acciones. */
 .revision-reverificar-botones {
   display: flex;

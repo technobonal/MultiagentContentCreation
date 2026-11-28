@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import type { Estado } from "../timeline/types.ts";
 import { camposEditables, claveCampo, esperaAprobacion, motivosSinHallazgo, pedirInforme, textoActual } from "./aprobacion.ts";
 import type { Borradores, Informe } from "./aprobacion.ts";
-import { cambiosDelSlide, cuerpoEdicion, pedirReverificacion } from "./reverificar.ts";
+import { cambiosDelSlide, cuerpoEdicion, esTopeReverificacion, pedirReverificacion } from "./reverificar.ts";
 import { problemasDelSlide } from "./slideManual.ts";
 
 export function RevisionSlide({
@@ -27,6 +27,8 @@ export function RevisionSlide({
   const [borradores, setBorradores] = useState<Borradores>({});
   const [reverificando, setReverificando] = useState(false);
   const [motivos, setMotivos] = useState<readonly string[]>([]);
+  // Se agotaron las re-verificaciones del run: ya no tiene sentido ofrecer los botones; se guía a decidir.
+  const [tope, setTope] = useState(false);
   // Antes de pedir la aprobación el semáforo está a medias: marcaría en rojo lo que aún no se revisó.
   const pedir = estado.revision !== null ? estado.runId : null;
 
@@ -60,8 +62,12 @@ export function RevisionSlide({
     const r = await pedirReverificacion(runId, cuerpo);
     setReverificando(false);
     // Si salió bien, las verificaciones nuevas llegan por el SSE y el informe se recarga solo.
-    if (r.ok) setBorradores({});
-    else setMotivos(r.motivos);
+    if (r.ok) {
+      setBorradores({});
+    } else {
+      setMotivos(r.motivos);
+      if (esTopeReverificacion(r.motivos)) setTope(true);
+    }
   }
 
   const sinProblemas = abiertos.length === 0 && otros.length === 0 && alertas.length === 0 && fila?.color !== "rojo";
@@ -145,23 +151,31 @@ export function RevisionSlide({
                 ))}
               </ul>
             )}
-            <div className="revision-reverificar-botones">
-              <button
-                type="button"
-                className="boton-aprobar"
-                disabled={reverificando || cambios === 0}
-                onClick={() => void reverificar(cuerpoEdicion(estado, borradores, slide))}
-              >
-                {reverificando ? "Verificando…" : "Verificar mi edición"}
-              </button>
-              <button
-                type="button"
-                disabled={reverificando}
-                onClick={() => void reverificar({ slide, modo: "agente" })}
-              >
-                Corregir con el agente
-              </button>
-            </div>
+            {tope ? (
+              // Sin re-verificaciones no hay salida por acá: se guía a decidir el carrusel en la barra de abajo.
+              <p className="revision-tope" role="status">
+                Ya no podés volver a verificar este slide en este run. Para cerrar: en la barra de abajo escribí el
+                motivo y tocá <strong>«Aprobar sin visto bueno»</strong>, o <strong>«Rechazar»</strong>.
+              </p>
+            ) : (
+              <div className="revision-reverificar-botones">
+                <button
+                  type="button"
+                  className="boton-aprobar"
+                  disabled={reverificando || cambios === 0}
+                  onClick={() => void reverificar(cuerpoEdicion(estado, borradores, slide))}
+                >
+                  {reverificando ? "Verificando…" : "Verificar mi edición"}
+                </button>
+                <button
+                  type="button"
+                  disabled={reverificando}
+                  onClick={() => void reverificar({ slide, modo: "agente" })}
+                >
+                  Corregir con el agente
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}

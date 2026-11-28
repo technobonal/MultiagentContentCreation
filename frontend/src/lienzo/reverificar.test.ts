@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { crearEstadoInicial } from "../timeline/reducer.ts";
 import type { Estado } from "../timeline/types.ts";
 import { claveCampo } from "./aprobacion.ts";
-import { cambiosDelSlide, cuerpoEdicion, pedirReverificacion } from "./reverificar.ts";
+import { cambiosDelSlide, cuerpoEdicion, esTopeReverificacion, pedirReverificacion } from "./reverificar.ts";
 
 /** Estado con dos slides dibujados (slide 1: titulo y subtitulo; slide 2: cuerpo). */
 function estado(): Estado {
@@ -49,5 +49,11 @@ describe("pedirReverificacion", () => {
       .toEqual({ ok: false, motivos: ["Ya usaste las 3 re-verificaciones de este run."] });
     expect(await pedirReverificacion("r", { slide: 1, modo: "agente" }, vi.fn(async () => Promise.reject(new Error("red"))) as unknown as typeof fetch))
       .toEqual({ ok: false, motivos: ["No se pudo conectar con el servidor."] });
+  });
+
+  it("reconoce el tope de re-verificaciones por su motivo", () => {
+    expect(esTopeReverificacion(["Ya usaste las 3 re-verificaciones de este run."])).toBe(true);
+    expect(esTopeReverificacion(["El slide no tiene cambios para verificar."])).toBe(false);
+    expect(esTopeReverificacion([])).toBe(false);
   });
 });

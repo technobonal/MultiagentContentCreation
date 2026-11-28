@@ -29,6 +29,11 @@ export type ResultadoReverificar =
   | { readonly ok: true }
   | { readonly ok: false; readonly motivos: readonly string[] };
 
+/** ¿El error es por haber agotado las re-verificaciones del run? (el único motivo que las menciona). */
+export function esTopeReverificacion(motivos: readonly string[]): boolean {
+  return motivos.some((m) => /re-verificaciones/i.test(m));
+}
+
 /** Motivos de un error del servidor: «motivos» (422/409) o «detail» (404); si no, un mensaje con el código. */
 function motivosDeError(cuerpo: unknown, status: number): readonly string[] {
   if (typeof cuerpo === "object" && cuerpo !== null) {
