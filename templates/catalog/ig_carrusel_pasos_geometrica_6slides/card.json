@@ -20,6 +20,11 @@
     "margen_superior_px": 120,
     "margen_inferior_px": 150
   },
+  "variantes": [
+    { "id": "aurora", "nombre": "Aurora (magenta a cian)", "reemplazos": {} },
+    { "id": "solar", "nombre": "Solar (naranja a ámbar)", "reemplazos": { "#FF4D9D": "#FF7A3D", "#8B5CF6": "#FF4D7D", "#4C7DFF": "#B24DFF", "#22D3EE": "#FFC24D" } },
+    { "id": "bioma", "nombre": "Bioma (teal a menta)", "reemplazos": { "#FF4D9D": "#2DD4BF", "#8B5CF6": "#4C7DFF", "#4C7DFF": "#22D3EE", "#22D3EE": "#7CF2A8" } }
+  ],
   "slides": [
     {
       "numero": 1,

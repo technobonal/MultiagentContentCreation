@@ -8,6 +8,11 @@ import pytest
 
 from app.agentes.revisor_codigo import razon_contraste
 from app.resolution import cargar_fichas, resolver
+from app.variantes import elegir_variante
+
+# Acentos (los 4 stops del gradiente aurora) que cambian entre paletas; la base tinta y el texto quedan fijos.
+ACENTOS = {"#FF4D9D", "#8B5CF6", "#4C7DFF", "#22D3EE"}
+FIJOS = {"#0A0D18", "#F4F6FB", "#9AA3B5", "#2A2F40"}
 
 CATALOGO = Path(__file__).resolve().parents[2] / "templates" / "catalog"
 GEOM = "ig_carrusel_pasos_geometrica_6slides"
@@ -57,6 +62,32 @@ def test_cada_slide_menos_fuentes_tiene_un_hueco_rombico_que_no_pisa_el_texto(n)
         assert not (fx1 < tx2 and tx1 < fx2 and fy1 < ty2 and ty1 < fy2), f"la foto pisa el texto {(tx1, ty1, tx2, ty2)}"
     # El recorte rómbico (clipPath) y el contorno visible están presentes.
     assert 'class="hueco-forma"' in grupo(n) and f"url(#recorte-foto-{n})" in grupo(n)
+
+
+def test_la_primera_variante_es_la_original_sin_reemplazos():
+    assert FICHA["variantes"][0]["reemplazos"] == {}
+
+
+@pytest.mark.parametrize("variante", FICHA["variantes"][1:], ids=lambda v: v["id"])
+def test_cada_paleta_remapea_solo_los_acentos_y_no_toca_la_base_ni_el_texto(variante):
+    assert set(variante["reemplazos"]) == ACENTOS
+    assert FIJOS.isdisjoint(variante["reemplazos"])  # la base tinta y el texto no cambian
+
+
+@pytest.mark.parametrize("variante", FICHA["variantes"], ids=lambda v: v["id"])
+@pytest.mark.parametrize("slide", FICHA["slides"], ids=lambda s: f"slide{s['numero']}")
+def test_cada_texto_se_lee_en_cada_paleta(slide, variante):
+    def pintar(color):
+        return variante["reemplazos"].get(color.upper(), color)
+
+    for campo, color in campos_del_svg(slide["numero"]).items():
+        assert razon_contraste(pintar(color), pintar(slide["fondo"])) >= 4.5, f"{campo} en {variante['id']}"
+
+
+def test_el_mismo_run_da_la_misma_paleta_y_entre_varios_salen_todas():
+    assert elegir_variante(FICHA, "run_geo_1") == elegir_variante(FICHA, "run_geo_1")
+    ids = {v["id"] for v in FICHA["variantes"]}
+    assert {elegir_variante(FICHA, f"run_{i}").id for i in range(60)} == ids
 
 
 def test_se_puede_pedir_en_modo_fijo_y_no_reemplaza_a_la_de_siempre_en_auto():
