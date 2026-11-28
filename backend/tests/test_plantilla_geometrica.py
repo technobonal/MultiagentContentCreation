@@ -44,6 +44,21 @@ def test_todo_slide_va_sobre_tinta():
     assert {s["fondo"] for s in FICHA["slides"]} == {"#0A0D18"}
 
 
+def cajas(n: int, etiqueta: str) -> list[tuple[int, int, int, int]]:
+    """(x1, y1, x2, y2) de cada <foreignObject> o <image> del slide."""
+    patron = rf'<{etiqueta} x="(\d+)" y="(\d+)" width="(\d+)" height="(\d+)"'
+    return [(x, y, x + w, y + h) for x, y, w, h in (tuple(map(int, m)) for m in re.findall(patron, grupo(n)))]
+
+
+@pytest.mark.parametrize("n", range(1, 6))
+def test_cada_slide_menos_fuentes_tiene_un_hueco_rombico_que_no_pisa_el_texto(n):
+    [(fx1, fy1, fx2, fy2)] = cajas(n, "image")
+    for tx1, ty1, tx2, ty2 in cajas(n, "foreignObject"):
+        assert not (fx1 < tx2 and tx1 < fx2 and fy1 < ty2 and ty1 < fy2), f"la foto pisa el texto {(tx1, ty1, tx2, ty2)}"
+    # El recorte rómbico (clipPath) y el contorno visible están presentes.
+    assert 'class="hueco-forma"' in grupo(n) and f"url(#recorte-foto-{n})" in grupo(n)
+
+
 def test_se_puede_pedir_en_modo_fijo_y_no_reemplaza_a_la_de_siempre_en_auto():
     entrada = {"destino": {"red": "instagram", "formato": "carrusel_1080x1350"}, "fuente": {"idioma_salida": "es"}}
     auto, _ = resolver(entrada, cargar_fichas())

@@ -55,6 +55,11 @@
       <stop offset="0" stop-color="#8B5CF6" stop-opacity=".5"/><stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/>
     </radialGradient>
     <filter id="glow-b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="40"/></filter>
+    <clipPath id="recorte-foto-1"><path d="M540 170L750 385L540 600L330 385Z"/></clipPath>
+    <clipPath id="recorte-foto-2"><path d="M780 760L1000 980L780 1200L560 980Z"/></clipPath>
+    <clipPath id="recorte-foto-3"><path d="M730 140L920 325L730 510L540 325Z"/></clipPath>
+    <clipPath id="recorte-foto-4"><path d="M730 140L920 325L730 510L540 325Z"/></clipPath>
+    <clipPath id="recorte-foto-5"><path d="M540 120L750 330L540 540L330 330Z"/></clipPath>
   </defs>
   <rect id="fondo" width="1080" height="1350" fill="#0A0D18"/>
 
@@ -64,6 +69,12 @@
     <polygon points="0,860 1080,520 1080,540 0,880" fill="url(#aurora)"/>
     <path d="M170 178L242 250L170 322L98 250Z" fill="url(#aurora)"/>
     <path d="M170 216L204 250L170 284L136 250Z" fill="#0A0D18"/>
+    <g class="zona-foto" data-foto="imagen_portada"><path d="M540 170L750 385L540 600L330 385Z" fill="url(#vm)" opacity=".2"/></g>
+    <g id="imagen-portada" class="hueco-imagen" data-campo="{{imagen_portada}}" data-opcional="true">
+      <title>Foto de portada</title>
+      <path d="M540 170L750 385L540 600L330 385Z" class="hueco-forma" data-radio="8%" fill="none" stroke="url(#aurora)" stroke-width="4"/>
+      <g clip-path="url(#recorte-foto-1)"><image x="330" y="170" width="420" height="430" preserveAspectRatio="xMidYMid slice" href="{{imagen_portada}}"/></g>
+    </g>
     <foreignObject x="80" y="840" width="920" height="222" data-campo="{{titulo}}" data-lineas-max="3" data-fuente-min="56">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:64px;line-height:74px;height:222px;color:#F4F6FB;">{{titulo}}</div>
     </foreignObject>
@@ -76,8 +87,12 @@
 
   <g id="slide-2" class="slide" data-rol="segundo_gancho">
     <polygon points="1080,0 1080,1350 560,1350" fill="url(#aurora-d)" opacity=".14"/>
-    <path d="M880 820L1040 980L880 1140L720 980Z" fill="none" stroke="url(#aurora)" stroke-width="6"/>
-    <path d="M880 884L976 980L880 1076L784 980Z" fill="url(#vm)" opacity=".5"/>
+    <g class="zona-foto" data-foto="imagen_destacada"><path d="M780 760L1000 980L780 1200L560 980Z" fill="url(#vm)" opacity=".2"/></g>
+    <g id="imagen-destacada" class="hueco-imagen" data-campo="{{imagen_destacada}}" data-opcional="true">
+      <title>Foto destacada</title>
+      <path d="M780 760L1000 980L780 1200L560 980Z" class="hueco-forma" data-radio="8%" fill="none" stroke="url(#aurora)" stroke-width="4"/>
+      <g clip-path="url(#recorte-foto-2)"><image x="560" y="760" width="440" height="440" preserveAspectRatio="xMidYMid slice" href="{{imagen_destacada}}"/></g>
+    </g>
     <foreignObject x="80" y="240" width="920" height="222" data-campo="{{titulo}}" data-lineas-max="3" data-fuente-min="56">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:64px;line-height:74px;height:222px;color:#F4F6FB;">{{titulo}}</div>
     </foreignObject>
@@ -95,6 +110,12 @@
     <path d="M230 170L310 250L230 330L150 250Z" fill="url(#vm)" opacity=".18"/>
     <path d="M230 170L310 250L230 330L150 250Z" fill="none" stroke="url(#aurora)" stroke-width="5"/>
     <text x="230" y="278" font-size="76" font-weight="800" fill="url(#aurora)" font-family="Inter, Arial" text-anchor="middle">1</text>
+    <g class="zona-foto" data-foto="imagen_apoyo_3"><path d="M730 140L920 325L730 510L540 325Z" fill="url(#vm)" opacity=".2"/></g>
+    <g id="imagen-apoyo-3" class="hueco-imagen" data-campo="{{imagen_apoyo_3}}" data-opcional="true">
+      <title>Foto de apoyo</title>
+      <path d="M730 140L920 325L730 510L540 325Z" class="hueco-forma" data-radio="8%" fill="none" stroke="url(#aurora)" stroke-width="4"/>
+      <g clip-path="url(#recorte-foto-3)"><image x="540" y="140" width="380" height="370" preserveAspectRatio="xMidYMid slice" href="{{imagen_apoyo_3}}"/></g>
+    </g>
     <foreignObject x="80" y="520" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;color:#F4F6FB;">{{titulo}}</div>
     </foreignObject>
@@ -112,6 +133,12 @@
     <path d="M230 170L310 250L230 330L150 250Z" fill="url(#vm)" opacity=".18"/>
     <path d="M230 170L310 250L230 330L150 250Z" fill="none" stroke="url(#aurora)" stroke-width="5"/>
     <text x="230" y="278" font-size="76" font-weight="800" fill="url(#aurora)" font-family="Inter, Arial" text-anchor="middle">2</text>
+    <g class="zona-foto" data-foto="imagen_apoyo_4"><path d="M730 140L920 325L730 510L540 325Z" fill="url(#vm)" opacity=".2"/></g>
+    <g id="imagen-apoyo-4" class="hueco-imagen" data-campo="{{imagen_apoyo_4}}" data-opcional="true">
+      <title>Foto de apoyo</title>
+      <path d="M730 140L920 325L730 510L540 325Z" class="hueco-forma" data-radio="8%" fill="none" stroke="url(#aurora)" stroke-width="4"/>
+      <g clip-path="url(#recorte-foto-4)"><image x="540" y="140" width="380" height="370" preserveAspectRatio="xMidYMid slice" href="{{imagen_apoyo_4}}"/></g>
+    </g>
     <foreignObject x="80" y="520" width="920" height="124" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:52px;line-height:62px;height:124px;color:#F4F6FB;">{{titulo}}</div>
     </foreignObject>
@@ -126,8 +153,12 @@
   <g id="slide-5" class="slide" data-rol="cierre">
     <ellipse cx="540" cy="320" rx="520" ry="300" fill="url(#glow)" filter="url(#glow-b)"/>
     <polygon points="0,440 1080,120 1080,150 0,470" fill="url(#aurora)"/>
-    <path d="M540 158L632 250L540 342L448 250Z" fill="url(#aurora)"/>
-    <path d="M540 206L584 250L540 294L496 250Z" fill="#0A0D18"/>
+    <g class="zona-foto" data-foto="imagen_cierre"><path d="M540 120L750 330L540 540L330 330Z" fill="url(#vm)" opacity=".2"/></g>
+    <g id="imagen-cierre" class="hueco-imagen" data-campo="{{imagen_cierre}}" data-opcional="true">
+      <title>Foto de cierre</title>
+      <path d="M540 120L750 330L540 540L330 330Z" class="hueco-forma" data-radio="8%" fill="none" stroke="url(#aurora)" stroke-width="4"/>
+      <g clip-path="url(#recorte-foto-5)"><image x="330" y="120" width="420" height="420" preserveAspectRatio="xMidYMid slice" href="{{imagen_cierre}}"/></g>
+    </g>
     <foreignObject x="80" y="840" width="920" height="144" data-campo="{{titulo}}" data-lineas-max="2" data-fuente-min="48">
       <div xmlns="http://www.w3.org/1999/xhtml" class="t titulo" style="font-size:60px;line-height:72px;height:144px;color:#F4F6FB;">{{titulo}}</div>
     </foreignObject>
